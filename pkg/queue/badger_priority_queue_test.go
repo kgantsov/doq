@@ -67,6 +67,21 @@ func TestBadgerPriorityQueue(t *testing.T) {
 	}
 }
 
+func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
+	opts := badger.DefaultOptions("/tmp/badger")
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	defer db.Close()
+
+	pq := NewBadgerPriorityQueue(db, "test_queue")
+
+	m, err := pq.Dequeue()
+	assert.EqualError(t, err, ErrEmptyQueue.Error())
+	assert.Nil(t, m)
+}
+
 func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	opts := badger.DefaultOptions("/tmp/badger")
 	db, err := badger.Open(opts)

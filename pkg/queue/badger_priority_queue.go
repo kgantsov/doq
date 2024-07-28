@@ -3,11 +3,14 @@ package queue
 import (
 	"container/heap"
 	"encoding/json"
+	"fmt"
 	"sync"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/rs/zerolog/log"
 )
+
+var ErrEmptyQueue = fmt.Errorf("queue is empty")
 
 type Message struct {
 	ID       uint64
@@ -121,7 +124,7 @@ func (bpq *BadgerPriorityQueue) Dequeue() (*Message, error) {
 	defer bpq.mu.Unlock()
 
 	if bpq.pq.Len() == 0 {
-		return nil, nil
+		return nil, ErrEmptyQueue
 	}
 
 	queueItem := heap.Pop(bpq.pq).(*Item)
