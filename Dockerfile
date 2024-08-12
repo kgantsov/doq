@@ -1,0 +1,24 @@
+FROM golang:1.22.2-bullseye AS builder
+
+RUN apt update && apt install ca-certificates libgnutls30 -y
+
+RUN apt-get install bash
+
+RUN go install github.com/codegangsta/gin@latest
+
+# Copy the code from the host and compile it
+WORKDIR $GOPATH/src/doq
+COPY go.mod .
+COPY go.sum .
+
+# Get dependancies - will also be cached if we won't change mod/sum
+RUN go mod download
+# COPY the source code as the last step
+COPY . .
+
+
+WORKDIR $GOPATH/src/doq/cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix nocgo -o /server .
+
+
+WORKDIR $GOPATH/src/doq/cmd/server

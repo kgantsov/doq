@@ -8,15 +8,31 @@ import (
 )
 
 type QueueManager struct {
-	db *badger.DB
+	queues map[string]Queue
+	db     *badger.DB
 }
 
 func NewQueueManager(db *badger.DB) *QueueManager {
-	return &QueueManager{db: db}
+	return &QueueManager{db: db, queues: make(map[string]Queue)}
 }
 
 func (qm *QueueManager) DeclareQueue(queue_name string) (Queue, error) {
 	q := NewBadgerPriorityQueue(qm.db, queue_name)
+	return q, nil
+}
+
+func (qm *QueueManager) GetQueue(queue_name string) (Queue, error) {
+	q, ok := qm.queues[queue_name]
+	if !ok {
+		q, err := qm.DeclareQueue(queue_name)
+		if err != nil {
+			return nil, err
+		}
+
+		qm.queues[queue_name] = q
+
+		return q, nil
+	}
 	return q, nil
 }
 

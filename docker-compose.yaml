@@ -1,0 +1,37 @@
+# deployment of 3 nodes of the server
+version: '3.8'
+
+services:
+  node-1:
+    container_name: node-1
+    build: .
+    volumes:
+      - .:/go/src/doq
+    ports:
+      - "9000"
+      - "8001:8000"
+    command: ["go", "run", "main.go", "node-1", "8000", "9000", "node-2", "node-3"]
+  node-2:
+    container_name: node-2
+    build: .
+    volumes:
+      - .:/go/src/doq
+    ports:
+      - "9000"
+      - "8002:8000"
+    command: ["go", "run", "main.go", "node-2", "8000", "9000", "node-1", "node-3"]
+  node-3:
+    container_name: node-3
+    build: .
+    volumes:
+      - .:/go/src/doq
+    ports:
+      - "9000"
+      - "8003:8000"
+    command: ["go", "run", "main.go", "node-3", "8000", "9000", "node-1", "node-2"]
+
+  python:
+    container_name: shell
+    build:
+      context: python
+      dockerfile: Dockerfile
