@@ -81,6 +81,51 @@ func DequeueProxy(ctx context.Context, client *http.Client, host string, queueNa
 	return &data, nil
 }
 
+func UpdatePriorityProxy(
+	ctx context.Context,
+	client *http.Client,
+	host string,
+	queueName string,
+	id uint64,
+	body *UpdatePriorityInputBody,
+) (*UpdatePriorityOutputBody, error) {
+	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to parse host", err)
+	}
+
+	bodyB, err := json.Marshal(body)
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to marshal body", err)
+	}
+
+	req, err := http.NewRequest(
+		"PUT",
+		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/%d/priority", u.Hostname(), queueName, id),
+		bytes.NewBuffer(bodyB),
+	)
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to create a request", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, huma.Error503ServiceUnavailable("Failed to proxy enqueue request", err)
+	}
+	defer resp.Body.Close()
+
+	log.Info().Msgf("Response status: %d", resp.StatusCode)
+	log.Info().Msgf("Response body: %s", resp.Body)
+	var data UpdatePriorityOutputBody
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, huma.Error400BadRequest("Failed to decode response", err)
+	}
+
+	return &data, nil
+}
+
 func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOutput, error) {
 	queueName := input.QueueName
 	priority := input.Body.Priority
@@ -152,5 +197,50 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 	res.Body.ID = msg.ID
 	res.Body.Priority = msg.Priority
 	res.Body.Content = msg.Content
+	return res, nil
+}
+
+func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput) (*UpdatePriorityOutput, error) {
+	queueName := input.QueueName
+	priority := input.Body.Priority
+
+	log.Info().Msgf("Leader is: %s", h.node.Leader)
+
+	if !h.node.IsLeader() {
+		respBody, err := UpdatePriorityProxy(
+			ctx, h.httpClient, h.node.Leader, queueName, input.ID, &input.Body,
+		)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to proxy update priority request")
+			return nil, huma.Error503ServiceUnavailable(
+				"Failed to proxy update priority request", err,
+			)
+		}
+
+		res := &UpdatePriorityOutput{
+			Status: http.StatusOK,
+			Body: UpdatePriorityOutputBody{
+				Status:   "UPDATED",
+				ID:       respBody.ID,
+				Priority: respBody.Priority,
+			},
+		}
+		return res, nil
+	}
+
+	err := h.node.UpdatePriority(queueName, input.ID, priority)
+
+	if err != nil {
+		return nil, huma.Error409Conflict("Failed to update priority a message", err)
+	}
+
+	res := &UpdatePriorityOutput{
+		Status: http.StatusOK,
+		Body: UpdatePriorityOutputBody{
+			Status:   "UPDATED",
+			ID:       input.ID,
+			Priority: priority,
+		},
+	}
 	return res, nil
 }

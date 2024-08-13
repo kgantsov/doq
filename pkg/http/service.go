@@ -106,6 +106,18 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		},
 		h.Dequeue,
 	)
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "update-priority",
+			Method:      http.MethodPut,
+			Path:        "/API/v1/queues/:queue_name/:id/priority",
+			Summary:     "Update the priority of a message",
+			Description: "Update the priority of a message in the queue",
+			Tags:        []string{"Queues"},
+		},
+		h.UpdatePriority,
+	)
 }
 
 // Start starts the service.

@@ -11,6 +11,7 @@ import (
 )
 
 type Command struct {
+	ID        uint64 `json:"id,omitempty"`
 	Op        string `json:"op"`
 	QueueName string `json:"queue_name"`
 	Priority  int    `json:"priority"`
@@ -95,6 +96,45 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 			ID:        msg.ID,
 			Priority:  msg.Priority,
 			Content:   msg.Content,
+			error:     nil,
+		}
+	case "updatePriority":
+		q, err := f.queueManager.GetQueue(c.QueueName)
+		if err != nil {
+			return &FSMResponse{
+				QueueName: c.QueueName,
+				error:     fmt.Errorf("Failed to get a queue: %s", c.QueueName),
+			}
+		}
+
+		err = q.UpdatePriority(c.ID, c.Priority)
+
+		log.Debug().Msgf(
+			"Node %s Updated priority for a message: %d %d %v",
+			f.NodeID,
+			c.ID,
+			c.Priority,
+			err,
+		)
+
+		if err != nil {
+			if err == queue.ErrEmptyQueue {
+				return &FSMResponse{
+					QueueName: c.QueueName,
+					error:     fmt.Errorf("Queue is empty: %s", c.QueueName),
+				}
+			}
+			return &FSMResponse{
+				QueueName: c.QueueName,
+				error:     fmt.Errorf("Failed to dequeue a message from a queue: %s", c.QueueName),
+			}
+		}
+
+		return &FSMResponse{
+			QueueName: c.QueueName,
+			ID:        c.ID,
+			Priority:  c.Priority,
+			Content:   "",
 			error:     nil,
 		}
 	}

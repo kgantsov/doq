@@ -67,6 +67,27 @@ func (n *Node) Dequeue(QueueName string) (*queue.Message, error) {
 
 // }
 
-// func (n *Node) UpdatePriority(id uint64, newPriority int) error {
+func (n *Node) UpdatePriority(queueName string, id uint64, priority int) error {
+	cmd := Command{
+		ID:        id,
+		Op:        "updatePriority",
+		QueueName: queueName,
+		Priority:  priority,
+	}
+	data, err := json.Marshal(cmd)
+	if err != nil {
+		return err
+	}
 
-// }
+	f := n.Raft.Apply(data, 5*time.Second)
+	if f.Error() != nil {
+		return f.Error()
+	}
+
+	r := f.Response().(*FSMResponse)
+	if r.error != nil {
+		return r.error
+	}
+
+	return nil
+}
