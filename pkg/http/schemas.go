@@ -1,7 +1,7 @@
 package http
 
 type EnqueueInputBody struct {
-	Priority int    `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
+	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Content  string `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
 }
 
@@ -13,7 +13,7 @@ type EnqueueInput struct {
 type EnqueueOutputBody struct {
 	Status   string `json:"status" example:"ENQUEUED" doc:"Status of the enqueue operation"`
 	ID       uint64 `json:"id" doc:"ID of the message"`
-	Priority int    `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
+	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Content  string `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
 }
 type EnqueueOutput struct {
@@ -28,7 +28,7 @@ type DequeueInput struct {
 type DequeueOutputBody struct {
 	Status   string `json:"status" example:"DEQUEUED" doc:"Status of the dequeue operation"`
 	ID       uint64 `json:"id" doc:"ID of the message"`
-	Priority int    `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
+	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Content  string `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
 }
 
@@ -38,7 +38,7 @@ type DequeueOutput struct {
 }
 
 type UpdatePriorityInputBody struct {
-	Priority int `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
+	Priority int64 `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 }
 
 type UpdatePriorityInput struct {
@@ -50,7 +50,7 @@ type UpdatePriorityInput struct {
 type UpdatePriorityOutputBody struct {
 	Status   string `json:"status" example:"ENQUEUED" doc:"Status of the enqueue operation"`
 	ID       uint64 `json:"id" doc:"ID of the message"`
-	Priority int    `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
+	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 }
 type UpdatePriorityOutput struct {
 	Status int

@@ -7,7 +7,7 @@ import (
 	"github.com/kgantsov/doq/pkg/queue"
 )
 
-func (n *Node) Enqueue(queueName string, priority int, content string) (*queue.Message, error) {
+func (n *Node) Enqueue(queueName string, priority int64, content string) (*queue.Message, error) {
 	cmd := Command{
 		Op:        "enqueue",
 		QueueName: queueName,
@@ -67,7 +67,7 @@ func (n *Node) Dequeue(QueueName string) (*queue.Message, error) {
 
 // }
 
-func (n *Node) UpdatePriority(queueName string, id uint64, priority int) error {
+func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error {
 	cmd := Command{
 		ID:        id,
 		Op:        "updatePriority",

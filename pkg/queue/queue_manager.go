@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -8,8 +9,10 @@ import (
 )
 
 type QueueManager struct {
+	db *badger.DB
+
 	queues map[string]Queue
-	db     *badger.DB
+	mu     sync.Mutex
 }
 
 func NewQueueManager(db *badger.DB) *QueueManager {
@@ -22,6 +25,9 @@ func (qm *QueueManager) DeclareQueue(queue_name string) (Queue, error) {
 }
 
 func (qm *QueueManager) GetQueue(queue_name string) (Queue, error) {
+	qm.mu.Lock()
+	defer qm.mu.Unlock()
+
 	q, ok := qm.queues[queue_name]
 	if !ok {
 		q, err := qm.DeclareQueue(queue_name)

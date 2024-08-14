@@ -7,10 +7,10 @@ import (
 
 type Item struct {
 	ID       uint64
-	Priority int
+	Priority int64
 }
 
-func (m *Item) UpdatePriority(newPriority int) {
+func (m *Item) UpdatePriority(newPriority int64) {
 	m.Priority = newPriority
 }
 
@@ -48,6 +48,12 @@ func (pq *PriorityQueue) Push(x any) {
 	pq.items = append(pq.items, item)
 }
 
+func (pq *PriorityQueue) Peek() any {
+	n := len(pq.items)
+	item := pq.items[n-1]
+	return item
+}
+
 func (pq *PriorityQueue) Pop() any {
 	old := pq.items
 	n := len(old)
@@ -66,7 +72,7 @@ func (pq *PriorityQueue) GetByID(id uint64) *Item {
 	return pq.items[index]
 }
 
-func (pq *PriorityQueue) UpdatePriority(id uint64, priority int) {
+func (pq *PriorityQueue) UpdatePriority(id uint64, priority int64) {
 	index, ok := pq.idToIndex[id]
 	if !ok {
 		fmt.Println("Message not found")

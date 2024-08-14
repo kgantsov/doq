@@ -2,6 +2,7 @@ package queue
 
 import (
 	"testing"
+	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/rs/zerolog/log"
@@ -12,7 +13,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 	tests := []struct {
 		name     string
 		messages []struct {
-			Priority int
+			Priority int64
 			Content  string
 		}
 		expected []string
@@ -20,7 +21,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 		{
 			name: "First test",
 			messages: []struct {
-				Priority int
+				Priority int64
 				Content  string
 			}{
 				{Priority: 10, Content: "test 1"},
@@ -97,7 +98,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m1, err = pq.GetByID(m1.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
-	assert.Equal(t, 10, m1.Priority)
+	assert.Equal(t, int64(10), m1.Priority)
 
 	m2, err := pq.Enqueue(20, "test 2")
 	assert.Nil(t, err)
@@ -105,7 +106,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m2, err = pq.GetByID(m2.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m2.Content)
-	assert.Equal(t, 20, m2.Priority)
+	assert.Equal(t, int64(20), m2.Priority)
 
 	m3, err := pq.Enqueue(30, "test 3")
 	assert.Nil(t, err)
@@ -113,7 +114,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m3, err = pq.GetByID(m3.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
-	assert.Equal(t, 30, m3.Priority)
+	assert.Equal(t, int64(30), m3.Priority)
 
 	m4, err := pq.Enqueue(40, "test 4")
 	assert.Nil(t, err)
@@ -121,7 +122,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m4, err = pq.GetByID(m4.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
-	assert.Equal(t, 40, m4.Priority)
+	assert.Equal(t, int64(40), m4.Priority)
 
 	m5, err := pq.Enqueue(50, "test 5")
 	assert.Nil(t, err)
@@ -129,7 +130,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m5, err = pq.GetByID(m5.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 5", m5.Content)
-	assert.Equal(t, 50, m5.Priority)
+	assert.Equal(t, int64(50), m5.Priority)
 
 	err = pq.UpdatePriority(m1.ID, 60)
 	assert.Nil(t, err)
@@ -137,7 +138,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m1, err = pq.GetByID(m1.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
-	assert.Equal(t, 60, m1.Priority)
+	assert.Equal(t, int64(60), m1.Priority)
 
 	err = pq.UpdatePriority(m4.ID, 55)
 	assert.Nil(t, err)
@@ -145,7 +146,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m4, err = pq.GetByID(m4.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
-	assert.Equal(t, 55, m4.Priority)
+	assert.Equal(t, int64(55), m4.Priority)
 
 	m, err := pq.Dequeue()
 	assert.Nil(t, err)
@@ -174,4 +175,34 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	assert.Equal(t, "test 1", m.Content)
 
 	db.Close()
+}
+
+func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
+	opts := badger.DefaultOptions("/tmp/badger")
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	pq := NewBadgerPriorityQueue(db, "test_queue_1")
+
+	priority := time.Now().UTC().Add(1 * time.Second).Unix()
+	m1, err := pq.Enqueue(priority, "delayed message 1")
+	assert.Nil(t, err)
+
+	m1, err = pq.GetByID(m1.ID)
+	assert.Nil(t, err)
+	assert.Equal(t, "delayed message 1", m1.Content)
+	assert.Equal(t, priority, m1.Priority)
+
+	m1, err = pq.Dequeue()
+	assert.Nil(t, m1)
+	assert.EqualError(t, err, ErrEmptyQueue.Error())
+
+	time.Sleep(1 * time.Second)
+
+	m1, err = pq.Dequeue()
+	assert.Nil(t, err)
+	assert.Equal(t, "delayed message 1", m1.Content)
+	assert.Equal(t, priority, m1.Priority)
 }

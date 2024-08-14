@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/rs/zerolog/log"
@@ -14,7 +15,7 @@ var ErrEmptyQueue = fmt.Errorf("queue is empty")
 
 type Message struct {
 	ID       uint64
-	Priority int
+	Priority int64
 	Content  string
 }
 
@@ -22,7 +23,7 @@ func (m *Message) ToBytes() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-func (m *Message) UpdatePriority(newPriority int) {
+func (m *Message) UpdatePriority(newPriority int64) {
 	m.Priority = newPriority
 }
 
@@ -84,7 +85,7 @@ func (bpq *BadgerPriorityQueue) GetNextID() (uint64, error) {
 	return num, nil
 }
 
-func (bpq *BadgerPriorityQueue) Enqueue(priority int, content string) (*Message, error) {
+func (bpq *BadgerPriorityQueue) Enqueue(priority int64, content string) (*Message, error) {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -127,7 +128,15 @@ func (bpq *BadgerPriorityQueue) Dequeue() (*Message, error) {
 		return nil, ErrEmptyQueue
 	}
 
-	queueItem := heap.Pop(bpq.pq).(*Item)
+	queueItem := bpq.pq.Peek().(*Item)
+	log.Debug().Msgf("Message %d Priority %d Time %d", queueItem.ID, queueItem.Priority, time.Now().UTC().Unix())
+	if int64(queueItem.Priority) > time.Now().UTC().Unix() {
+		// Delayed message handling
+		// If a priority is in the future, return nil
+		return nil, ErrEmptyQueue
+	}
+
+	queueItem = heap.Pop(bpq.pq).(*Item)
 
 	var msg *Message
 
@@ -178,7 +187,7 @@ func (bpq *BadgerPriorityQueue) GetByID(id uint64) (*Message, error) {
 	return msg, nil
 }
 
-func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int) error {
+func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -220,5 +229,8 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int) error
 }
 
 func (bpq *BadgerPriorityQueue) Len() int {
+	bpq.mu.Lock()
+	defer bpq.mu.Unlock()
+
 	return bpq.pq.Len()
 }

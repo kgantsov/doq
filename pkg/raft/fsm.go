@@ -14,7 +14,7 @@ type Command struct {
 	ID        uint64 `json:"id,omitempty"`
 	Op        string `json:"op"`
 	QueueName string `json:"queue_name"`
-	Priority  int    `json:"priority"`
+	Priority  int64  `json:"priority"`
 	Content   string `json:"content"`
 }
 
@@ -26,7 +26,7 @@ type FSM struct {
 type FSMResponse struct {
 	QueueName string
 	ID        uint64
-	Priority  int
+	Priority  int64
 	Content   string
 	error     error
 }
