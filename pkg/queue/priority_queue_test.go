@@ -66,7 +66,10 @@ func TestPriorityQueue(t *testing.T) {
 			assert.Equal(t, pq.Len(), len(tt.messages))
 
 			for i := 0; i < len(tt.messages); i++ {
-				m := heap.Pop(pq).(*Item)
+				m := pq.Peek().(*Item)
+				assert.Equal(t, tt.expected[i], m.ID)
+
+				m = heap.Pop(pq).(*Item)
 
 				assert.Equal(t, pq.Len(), len(tt.messages)-(i+1))
 
@@ -99,4 +102,32 @@ func TestPriorityQueueUpdatePriority(t *testing.T) {
 
 	m = heap.Pop(pq).(*Item)
 	assert.Equal(t, uint64(2), m.ID)
+}
+
+func TestPriorityQueuePeek(t *testing.T) {
+	pq := NewPriorityQueue()
+
+	heap.Push(pq, &Item{ID: 4, Priority: 4})
+	m := pq.Peek().(*Item)
+	assert.Equal(t, uint64(4), m.ID)
+
+	heap.Push(pq, &Item{ID: 5, Priority: 5})
+	m = pq.Peek().(*Item)
+	assert.Equal(t, uint64(4), m.ID)
+
+	heap.Push(pq, &Item{ID: 3, Priority: 3})
+	m = pq.Peek().(*Item)
+	assert.Equal(t, uint64(3), m.ID)
+
+	heap.Push(pq, &Item{ID: 6, Priority: 6})
+	m = pq.Peek().(*Item)
+	assert.Equal(t, uint64(3), m.ID)
+
+	heap.Push(pq, &Item{ID: 2, Priority: 2})
+	m = pq.Peek().(*Item)
+	assert.Equal(t, uint64(2), m.ID)
+
+	heap.Push(pq, &Item{ID: 1, Priority: 1})
+	m = pq.Peek().(*Item)
+	assert.Equal(t, uint64(1), m.ID)
 }

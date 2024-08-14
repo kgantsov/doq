@@ -49,9 +49,7 @@ func (pq *PriorityQueue) Push(x any) {
 }
 
 func (pq *PriorityQueue) Peek() any {
-	n := len(pq.items)
-	item := pq.items[n-1]
-	return item
+	return pq.items[0]
 }
 
 func (pq *PriorityQueue) Pop() any {

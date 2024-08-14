@@ -40,7 +40,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts := badger.DefaultOptions("/tmp/badger")
+			opts := badger.DefaultOptions("/tmp/badger1")
 			db, err := badger.Open(opts)
 			if err != nil {
 				log.Fatal().Msg(err.Error())
@@ -69,7 +69,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 }
 
 func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger")
+	opts := badger.DefaultOptions("/tmp/badger2")
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -84,7 +84,7 @@ func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
 }
 
 func TestBadgerPriorityQueueChangePriority(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger")
+	opts := badger.DefaultOptions("/tmp/badger3")
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -178,7 +178,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 }
 
 func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger")
+	opts := badger.DefaultOptions("/tmp/badger4")
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
