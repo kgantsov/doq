@@ -15,14 +15,16 @@ func (m *Item) UpdatePriority(newPriority int64) {
 }
 
 type PriorityQueue struct {
+	minFirst  bool
 	items     []*Item
 	idToIndex map[uint64]int
 }
 
-func NewPriorityQueue() *PriorityQueue {
+func NewPriorityQueue(minFirst bool) *PriorityQueue {
 	return &PriorityQueue{
 		items:     []*Item{},
 		idToIndex: make(map[uint64]int),
+		minFirst:  minFirst,
 	}
 }
 
@@ -30,9 +32,17 @@ func (pq PriorityQueue) Len() int { return len(pq.items) }
 
 func (pq PriorityQueue) Less(i, j int) bool {
 	if pq.items[i].Priority == pq.items[j].Priority {
-		return pq.items[i].ID < pq.items[j].ID
+		if pq.minFirst {
+			return pq.items[i].ID < pq.items[j].ID
+		} else {
+			return pq.items[i].ID > pq.items[j].ID
+		}
 	}
-	return pq.items[i].Priority < pq.items[j].Priority
+	if pq.minFirst {
+		return pq.items[i].Priority < pq.items[j].Priority
+	} else {
+		return pq.items[i].Priority > pq.items[j].Priority
+	}
 }
 
 func (pq PriorityQueue) Swap(i, j int) {
@@ -68,6 +78,18 @@ func (pq *PriorityQueue) GetByID(id uint64) *Item {
 		return nil
 	}
 	return pq.items[index]
+}
+
+func (pq *PriorityQueue) DeleteByID(id uint64) *Item {
+	index, ok := pq.idToIndex[id]
+	if !ok {
+		return nil
+	}
+
+	item := heap.Remove(pq, index).(*Item)
+	delete(pq.idToIndex, id)
+
+	return item
 }
 
 func (pq *PriorityQueue) UpdatePriority(id uint64, priority int64) {
