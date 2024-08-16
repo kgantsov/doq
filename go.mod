@@ -4,13 +4,12 @@ go 1.22.2
 
 require (
 	github.com/ansrivas/fiberprometheus/v2 v2.7.0
-	github.com/danielgtaylor/huma/v2 v2.19.0
+	github.com/danielgtaylor/huma/v2 v2.21.0
 	github.com/dgraph-io/badger/v4 v4.2.0
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/hashicorp/raft v1.7.0
 	github.com/hashicorp/raft-boltdb v0.0.0-20231211162105-6c830fa4535e
 	github.com/rs/zerolog v1.33.0
-	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.9.0
 )
 
@@ -37,7 +36,6 @@ require (
 	github.com/hashicorp/go-msgpack/v2 v2.1.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.0 // indirect
 	github.com/klauspost/compress v1.17.8 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

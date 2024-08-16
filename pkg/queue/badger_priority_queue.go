@@ -12,6 +12,7 @@ import (
 )
 
 var ErrEmptyQueue = fmt.Errorf("queue is empty")
+var ErrMessageNotFound = fmt.Errorf("message not found")
 
 type Message struct {
 	ID       uint64
@@ -41,13 +42,17 @@ type BadgerPriorityQueue struct {
 	sequesnce *badger.Sequence
 
 	mu sync.Mutex
+
+	ackQueue   *PriorityQueue
+	ackQueueMu sync.Mutex
 }
 
 func NewBadgerPriorityQueue(db *badger.DB, queueName string) *BadgerPriorityQueue {
 	bpq := &BadgerPriorityQueue{
-		pq:        NewPriorityQueue(),
+		pq:        NewPriorityQueue(true),
 		db:        db,
 		queueName: queueName,
+		ackQueue:  NewPriorityQueue(false),
 	}
 
 	seq, err := bpq.db.GetSequence(bpq.getQueueSequenceKey(), 1)
@@ -120,7 +125,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(priority int64, content string) (*Messag
 	return msg, nil
 }
 
-func (bpq *BadgerPriorityQueue) Dequeue() (*Message, error) {
+func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -151,7 +156,25 @@ func (bpq *BadgerPriorityQueue) Dequeue() (*Message, error) {
 			return err
 		})
 
-		return txn.Delete(bpq.GetKey(queueItem.ID))
+		if ack {
+			// in case of autoAck, we need to remove the message from the queue
+			return txn.Delete(bpq.GetKey(queueItem.ID))
+		} else {
+			// in case of manual ack, we need to keep the message in the queue
+			// so we can ack it later and add it to the ackQueue
+			bpq.ackQueueMu.Lock()
+			defer bpq.ackQueueMu.Unlock()
+
+			heap.Push(
+				bpq.ackQueue,
+				&Item{
+					ID:       queueItem.ID,
+					Priority: time.Now().UTC().Add(time.Duration(5) * time.Minute).Unix(),
+				},
+			)
+		}
+
+		return nil
 	})
 
 	if err != nil {
@@ -225,6 +248,32 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 	// Update in-memory heap
 	queueItem.UpdatePriority(newPriority)
 	bpq.pq.UpdatePriority(queueItem.ID, queueItem.Priority)
+	return nil
+}
+
+func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
+	bpq.ackQueueMu.Lock()
+	defer bpq.ackQueueMu.Unlock()
+
+	queueItem := bpq.ackQueue.GetByID(id)
+
+	if queueItem == nil {
+		return ErrMessageNotFound
+	}
+
+	err := bpq.db.Update(func(txn *badger.Txn) error {
+		err := txn.Delete(bpq.GetKey(queueItem.ID))
+		if err != nil {
+			return err
+		}
+		bpq.ackQueue.DeleteByID(queueItem.ID)
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

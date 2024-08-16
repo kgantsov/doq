@@ -31,7 +31,11 @@ func EnqueueProxy(ctx context.Context, client *http.Client, host string, queueNa
 		return nil, huma.Error400BadRequest("Failed to marshal body", err)
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s:8000/API/v1/queues/%s", u.Hostname(), queueName), bytes.NewBuffer(bodyB))
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages", u.Hostname(), queueName),
+		bytes.NewBuffer(bodyB),
+	)
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to create a request", err)
 	}
@@ -54,13 +58,19 @@ func EnqueueProxy(ctx context.Context, client *http.Client, host string, queueNa
 	return &data, nil
 }
 
-func DequeueProxy(ctx context.Context, client *http.Client, host string, queueName string) (*DequeueOutputBody, error) {
+func DequeueProxy(
+	ctx context.Context, client *http.Client, host string, queueName string, ack bool,
+) (*DequeueOutputBody, error) {
 	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to parse host", err)
 	}
 
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("http://%s:8000/API/v1/queues/%s", u.Hostname(), queueName), nil)
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages?ack=%s", u.Hostname(), queueName, fmt.Sprint(ack)),
+		nil,
+	)
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to create a request", err)
 	}
@@ -74,6 +84,43 @@ func DequeueProxy(ctx context.Context, client *http.Client, host string, queueNa
 	defer resp.Body.Close()
 
 	var data DequeueOutputBody
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, huma.Error400BadRequest("Failed to decode response", err)
+	}
+
+	return &data, nil
+}
+
+func DequeueAck(
+	ctx context.Context,
+	client *http.Client,
+	host string,
+	queueName string,
+	id uint64,
+) (*AckOutputBody, error) {
+	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to parse host", err)
+	}
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages/%d/ack", u.Hostname(), queueName, id),
+		nil,
+	)
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to create a request", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, huma.Error503ServiceUnavailable("Failed to proxy ack request", err)
+	}
+	defer resp.Body.Close()
+
+	var data AckOutputBody
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, huma.Error400BadRequest("Failed to decode response", err)
 	}
@@ -101,7 +148,7 @@ func UpdatePriorityProxy(
 
 	req, err := http.NewRequest(
 		"PUT",
-		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/%d/priority", u.Hostname(), queueName, id),
+		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages/%d/priority", u.Hostname(), queueName, id),
 		bytes.NewBuffer(bodyB),
 	)
 	if err != nil {
@@ -170,7 +217,7 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 	queueName := input.QueueName
 
 	if !h.node.IsLeader() {
-		respBody, err := DequeueProxy(ctx, h.httpClient, h.node.Leader, queueName)
+		respBody, err := DequeueProxy(ctx, h.httpClient, h.node.Leader, queueName, input.Ack)
 		if err != nil {
 			return nil, huma.Error503ServiceUnavailable("Failed to proxy dequeue request", err)
 		}
@@ -186,7 +233,7 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 		return res, nil
 	}
 
-	msg, err := h.node.Dequeue(queueName)
+	msg, err := h.node.Dequeue(queueName, input.Ack)
 
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to dequeue a message from a queue", err)
@@ -197,6 +244,41 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 	res.Body.ID = msg.ID
 	res.Body.Priority = msg.Priority
 	res.Body.Content = msg.Content
+	return res, nil
+}
+
+func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) {
+	queueName := input.QueueName
+
+	if !h.node.IsLeader() {
+		respBody, err := DequeueAck(ctx, h.httpClient, h.node.Leader, queueName, input.ID)
+		if err != nil {
+			return nil, huma.Error503ServiceUnavailable("Failed to proxy acknowledge request", err)
+		}
+		res := &AckOutput{
+			Status: http.StatusOK,
+			Body: AckOutputBody{
+				Status: "ACKNOWLEDGED",
+				ID:     respBody.ID,
+			},
+		}
+		return res, nil
+	}
+
+	err := h.node.Ack(queueName, input.ID)
+
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to acknowledge a message from a queue", err)
+	}
+
+	res := &AckOutput{
+		Status: http.StatusOK,
+		Body: AckOutputBody{
+			Status: "ACKNOWLEDGED",
+			ID:     input.ID,
+		},
+	}
+
 	return res, nil
 }
 

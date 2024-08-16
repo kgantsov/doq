@@ -16,6 +16,7 @@ type Command struct {
 	QueueName string `json:"queue_name"`
 	Priority  int64  `json:"priority"`
 	Content   string `json:"content"`
+	Ack       bool   `json:"ack,omitempty"`
 }
 
 type FSM struct {
@@ -74,7 +75,7 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 			}
 		}
 
-		msg, err := q.Dequeue()
+		msg, err := q.Dequeue(c.Ack)
 
 		log.Debug().Msgf("Node %s Dequeued a message: %+v %v", f.NodeID, msg, err)
 
@@ -96,6 +97,42 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 			ID:        msg.ID,
 			Priority:  msg.Priority,
 			Content:   msg.Content,
+			error:     nil,
+		}
+	case "ack":
+		q, err := f.queueManager.GetQueue(c.QueueName)
+		if err != nil {
+			return &FSMResponse{
+				QueueName: c.QueueName,
+				error:     fmt.Errorf("Failed to get a queue: %s", c.QueueName),
+			}
+		}
+
+		err = q.Ack(c.ID)
+
+		log.Debug().Msgf("Node %s Acked a message: %v", f.NodeID, err)
+
+		if err != nil {
+			if err == queue.ErrEmptyQueue {
+				return &FSMResponse{
+					QueueName: c.QueueName,
+					error:     fmt.Errorf("Queue is empty: %s", c.QueueName),
+				}
+			} else if err == queue.ErrMessageNotFound {
+				return &FSMResponse{
+					QueueName: c.QueueName,
+					error:     fmt.Errorf("Message not found: %s", c.QueueName),
+				}
+			}
+			return &FSMResponse{
+				QueueName: c.QueueName,
+				error:     fmt.Errorf("Failed to ack a message from a queue: %s", c.QueueName),
+			}
+		}
+
+		return &FSMResponse{
+			QueueName: c.QueueName,
+			ID:        c.ID,
 			error:     nil,
 		}
 	case "updatePriority":

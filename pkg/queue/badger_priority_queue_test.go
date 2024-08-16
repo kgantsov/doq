@@ -55,7 +55,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 			assert.Equal(t, len(tt.messages), pq.Len())
 
 			for i := 0; i < len(tt.messages); i++ {
-				m, err := pq.Dequeue()
+				m, err := pq.Dequeue(true)
 				assert.Nil(t, err)
 
 				assert.Equal(t, len(tt.messages)-(i+1), pq.Len())
@@ -78,7 +78,7 @@ func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
 
 	pq := NewBadgerPriorityQueue(db, "test_queue")
 
-	m, err := pq.Dequeue()
+	m, err := pq.Dequeue(true)
 	assert.EqualError(t, err, ErrEmptyQueue.Error())
 	assert.Nil(t, m)
 }
@@ -148,28 +148,28 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(55), m4.Priority)
 
-	m, err := pq.Dequeue()
+	m, err := pq.Dequeue(true)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test 2", m.Content)
 
-	m, err = pq.Dequeue()
+	m, err = pq.Dequeue(true)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test 3", m.Content)
 
-	m, err = pq.Dequeue()
+	m, err = pq.Dequeue(true)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test 5", m.Content)
 
-	m, err = pq.Dequeue()
+	m, err = pq.Dequeue(true)
 
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test 4", m.Content)
 
-	m, err = pq.Dequeue()
+	m, err = pq.Dequeue(true)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test 1", m.Content)
@@ -195,13 +195,13 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 	assert.Equal(t, "delayed message 1", m1.Content)
 	assert.Equal(t, priority, m1.Priority)
 
-	m1, err = pq.Dequeue()
+	m1, err = pq.Dequeue(true)
 	assert.Nil(t, m1)
 	assert.EqualError(t, err, ErrEmptyQueue.Error())
 
 	time.Sleep(1 * time.Second)
 
-	m1, err = pq.Dequeue()
+	m1, err = pq.Dequeue(true)
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed message 1", m1.Content)
 	assert.Equal(t, priority, m1.Priority)
