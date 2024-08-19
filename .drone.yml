@@ -1,0 +1,69 @@
+kind: pipeline
+name: default
+
+steps:
+- name: test
+  image: golang:1.22.2
+  volumes:
+  - name: deps
+    path: /go
+  commands:
+  - go test ./... -cover -coverprofile coverage.out
+  when:
+    event:
+      exclude:
+      - tag
+
+- name: codecov
+  image: robertstettner/drone-codecov
+  settings:
+    token:
+      from_secret: CODECOV_TOKEN
+  when:
+    event:
+      exclude:
+      - tag
+
+- name: build
+  image: golang:1.22.2
+  volumes:
+  - name: deps
+    path: /go
+  commands:
+    - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/doq cmd/server/main.go
+    - tar -czf dist/doq-${DRONE_TAG##v}-linux-amd64.tar.gz dist/doq
+    - CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o dist/doq cmd/server/main.go
+    - tar -czf dist/doq-${DRONE_TAG##v}-darwin-arm64.tar.gz dist/doq
+    - rm -f dist/doq
+  when:
+    event:
+      - tag
+
+- name: publish
+  image: plugins/github-release
+  volumes:
+  - name: deps
+    path: /go
+  settings:
+    api_key:
+      from_secret: github_token
+    files: dist/*
+  when:
+    event:
+      - tag
+
+- name: build and push the service
+  image: plugins/docker
+  settings:
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    repo: kgantsov/doq
+    context: .
+    dockerfile: ./Dockerfile
+    auto_tag: true
+
+volumes:
+- name: deps
+  temp: {}
