@@ -174,6 +174,8 @@ func TestPriorityQueueUpdatePriority(t *testing.T) {
 
 	m = heap.Pop(pq).(*Item)
 	assert.Equal(t, uint64(2), m.ID)
+
+	pq.UpdatePriority(400, 0)
 }
 
 func TestPriorityQueuePeek(t *testing.T) {
@@ -202,4 +204,56 @@ func TestPriorityQueuePeek(t *testing.T) {
 	heap.Push(pq, &Item{ID: 1, Priority: 1})
 	m = pq.Peek().(*Item)
 	assert.Equal(t, uint64(1), m.ID)
+}
+
+func TestGetByID(t *testing.T) {
+	pq := NewPriorityQueue(true)
+
+	heap.Push(pq, &Item{ID: 4, Priority: 40})
+	heap.Push(pq, &Item{ID: 5, Priority: 50})
+	heap.Push(pq, &Item{ID: 3, Priority: 30})
+
+	m := pq.GetByID(4)
+	assert.Equal(t, uint64(4), m.ID)
+	assert.Equal(t, int64(40), m.Priority)
+
+	m = pq.GetByID(3)
+	assert.Equal(t, uint64(3), m.ID)
+	assert.Equal(t, int64(30), m.Priority)
+
+	m = pq.GetByID(5)
+	assert.Equal(t, uint64(5), m.ID)
+	assert.Equal(t, int64(50), m.Priority)
+
+	m = pq.GetByID(1)
+	assert.Nil(t, m)
+}
+
+func TestDeleteByID(t *testing.T) {
+	pq := NewPriorityQueue(true)
+
+	heap.Push(pq, &Item{ID: 4, Priority: 40})
+	heap.Push(pq, &Item{ID: 5, Priority: 50})
+	heap.Push(pq, &Item{ID: 3, Priority: 30})
+
+	m := pq.GetByID(4)
+	assert.Equal(t, uint64(4), m.ID)
+	assert.Equal(t, int64(40), m.Priority)
+
+	m = pq.DeleteByID(4)
+
+	m = pq.GetByID(4)
+	assert.Nil(t, m)
+
+	m = pq.GetByID(3)
+	assert.Equal(t, uint64(3), m.ID)
+	assert.Equal(t, int64(30), m.Priority)
+
+	m = pq.DeleteByID(3)
+
+	m = pq.GetByID(3)
+	assert.Nil(t, m)
+
+	m = pq.DeleteByID(1)
+	assert.Nil(t, m)
 }
