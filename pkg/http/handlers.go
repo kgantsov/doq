@@ -1,12 +1,8 @@
 package http
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/rs/zerolog/log"
@@ -14,163 +10,10 @@ import (
 
 type (
 	Handler struct {
-		node       Node
-		httpClient *http.Client
+		node  Node
+		proxy *Proxy
 	}
 )
-
-func EnqueueProxy(ctx context.Context, client *http.Client, host string, queueName string, body *EnqueueInputBody) (*EnqueueOutputBody, error) {
-	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to parse host", err)
-	}
-
-	bodyB, err := json.Marshal(body)
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to marshal body", err)
-	}
-
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages", u.Hostname(), queueName),
-		bytes.NewBuffer(bodyB),
-	)
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to create a request", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, huma.Error503ServiceUnavailable("Failed to proxy enqueue request", err)
-	}
-	defer resp.Body.Close()
-
-	log.Info().Msgf("Response status: %d", resp.StatusCode)
-	log.Info().Msgf("Response body: %s", resp.Body)
-	var data EnqueueOutputBody
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, huma.Error400BadRequest("Failed to decode response", err)
-	}
-
-	return &data, nil
-}
-
-func DequeueProxy(
-	ctx context.Context, client *http.Client, host string, queueName string, ack bool,
-) (*DequeueOutputBody, error) {
-	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to parse host", err)
-	}
-
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages?ack=%s", u.Hostname(), queueName, fmt.Sprint(ack)),
-		nil,
-	)
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to create a request", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, huma.Error503ServiceUnavailable("Failed to proxy enqueue request", err)
-	}
-	defer resp.Body.Close()
-
-	var data DequeueOutputBody
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, huma.Error400BadRequest("Failed to decode response", err)
-	}
-
-	return &data, nil
-}
-
-func DequeueAck(
-	ctx context.Context,
-	client *http.Client,
-	host string,
-	queueName string,
-	id uint64,
-) (*AckOutputBody, error) {
-	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to parse host", err)
-	}
-
-	req, err := http.NewRequest(
-		"POST",
-		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages/%d/ack", u.Hostname(), queueName, id),
-		nil,
-	)
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to create a request", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, huma.Error503ServiceUnavailable("Failed to proxy ack request", err)
-	}
-	defer resp.Body.Close()
-
-	var data AckOutputBody
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, huma.Error400BadRequest("Failed to decode response", err)
-	}
-
-	return &data, nil
-}
-
-func UpdatePriorityProxy(
-	ctx context.Context,
-	client *http.Client,
-	host string,
-	queueName string,
-	id uint64,
-	body *UpdatePriorityInputBody,
-) (*UpdatePriorityOutputBody, error) {
-	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to parse host", err)
-	}
-
-	bodyB, err := json.Marshal(body)
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to marshal body", err)
-	}
-
-	req, err := http.NewRequest(
-		"PUT",
-		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages/%d/priority", u.Hostname(), queueName, id),
-		bytes.NewBuffer(bodyB),
-	)
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to create a request", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, huma.Error503ServiceUnavailable("Failed to proxy enqueue request", err)
-	}
-	defer resp.Body.Close()
-
-	log.Info().Msgf("Response status: %d", resp.StatusCode)
-	log.Info().Msgf("Response body: %s", resp.Body)
-	var data UpdatePriorityOutputBody
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, huma.Error400BadRequest("Failed to decode response", err)
-	}
-
-	return &data, nil
-}
 
 func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOutput, error) {
 	queueName := input.QueueName
@@ -180,20 +23,14 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 	log.Info().Msgf("Leader is: %s", h.node.Leader())
 
 	if !h.node.IsLeader() {
-		respBody, err := EnqueueProxy(ctx, h.httpClient, h.node.Leader(), queueName, &input.Body)
+		respBody, err := h.proxy.Enqueue(ctx, h.node.Leader(), queueName, &input.Body)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to proxy enqueue request")
-			return nil, huma.Error503ServiceUnavailable("Failed to proxy enqueue request", err)
+			return nil, err
 		}
 
 		res := &EnqueueOutput{
 			Status: http.StatusOK,
-			Body: EnqueueOutputBody{
-				Status:   "ENQUEUED",
-				ID:       respBody.ID,
-				Priority: respBody.Priority,
-				Content:  respBody.Content,
-			},
+			Body:   *respBody,
 		}
 		return res, nil
 	}
@@ -216,18 +53,13 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 	queueName := input.QueueName
 
 	if !h.node.IsLeader() {
-		respBody, err := DequeueProxy(ctx, h.httpClient, h.node.Leader(), queueName, input.Ack)
+		respBody, err := h.proxy.Dequeue(ctx, h.node.Leader(), queueName, input.Ack)
 		if err != nil {
-			return nil, huma.Error503ServiceUnavailable("Failed to proxy dequeue request", err)
+			return nil, err
 		}
 		res := &DequeueOutput{
 			Status: http.StatusOK,
-			Body: DequeueOutputBody{
-				Status:   "DEQUEUED",
-				ID:       respBody.ID,
-				Priority: respBody.Priority,
-				Content:  respBody.Content,
-			},
+			Body:   *respBody,
 		}
 		return res, nil
 	}
@@ -250,16 +82,13 @@ func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) 
 	queueName := input.QueueName
 
 	if !h.node.IsLeader() {
-		respBody, err := DequeueAck(ctx, h.httpClient, h.node.Leader(), queueName, input.ID)
+		respBody, err := h.proxy.Ack(ctx, h.node.Leader(), queueName, input.ID)
 		if err != nil {
-			return nil, huma.Error503ServiceUnavailable("Failed to proxy acknowledge request", err)
+			return nil, err
 		}
 		res := &AckOutput{
 			Status: http.StatusOK,
-			Body: AckOutputBody{
-				Status: "ACKNOWLEDGED",
-				ID:     respBody.ID,
-			},
+			Body:   *respBody,
 		}
 		return res, nil
 	}
@@ -288,23 +117,16 @@ func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput
 	log.Info().Msgf("Leader is: %s", h.node.Leader())
 
 	if !h.node.IsLeader() {
-		respBody, err := UpdatePriorityProxy(
-			ctx, h.httpClient, h.node.Leader(), queueName, input.ID, &input.Body,
+		respBody, err := h.proxy.UpdatePriority(
+			ctx, h.node.Leader(), queueName, input.ID, &input.Body,
 		)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to proxy update priority request")
-			return nil, huma.Error503ServiceUnavailable(
-				"Failed to proxy update priority request", err,
-			)
+			return nil, err
 		}
 
 		res := &UpdatePriorityOutput{
 			Status: http.StatusOK,
-			Body: UpdatePriorityOutputBody{
-				Status:   "UPDATED",
-				ID:       respBody.ID,
-				Priority: respBody.Priority,
-			},
+			Body:   *respBody,
 		}
 		return res, nil
 	}

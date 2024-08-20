@@ -59,7 +59,12 @@ func NewHttpService(addr string, node Node) *Service {
 		Transport: netTransport,
 	}
 
-	h := &Handler{node: node, httpClient: httpClient}
+	proxy := NewProxy(httpClient)
+
+	h := &Handler{
+		node:  node,
+		proxy: proxy,
+	}
 	h.ConfigureMiddleware(router)
 	h.RegisterRoutes(api)
 
@@ -145,9 +150,4 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 // Start starts the service.
 func (s *Service) Start() error {
 	return s.router.Listen(fmt.Sprintf(":%s", s.addr))
-}
-
-// Close closes the service.
-func (s *Service) Close() {
-	// s.e.Shutdown()
 }

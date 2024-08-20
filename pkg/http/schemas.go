@@ -45,7 +45,7 @@ type AckInput struct {
 }
 
 type AckOutputBody struct {
-	Status string `json:"status" example:"DEQUEUED" doc:"Status of the dequeue operation"`
+	Status string `json:"status" example:"ACKNOWLEDGED" doc:"Status of the dequeue operation"`
 	ID     uint64 `json:"id" doc:"ID of the message"`
 }
 
