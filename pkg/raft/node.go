@@ -21,7 +21,7 @@ type Node struct {
 
 	Raft         *raft.Raft
 	QueueManager *queue.QueueManager
-	Leader       string
+	leader       string
 
 	peers []string
 
@@ -104,12 +104,16 @@ func (node *Node) monitorLeadership() {
 
 	for {
 		leader := string(node.Raft.Leader())
-		if leader != node.Leader {
-			node.Leader = leader
+		if leader != node.leader {
+			node.leader = leader
 			log.Printf("Node %s leader is now %s", node.id, leader)
 		}
 		time.Sleep(1 * time.Second)
 	}
+}
+
+func (n *Node) Leader() string {
+	return n.leader
 }
 
 func (n *Node) IsLeader() bool {

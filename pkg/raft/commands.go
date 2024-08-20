@@ -88,9 +88,9 @@ func (n *Node) Ack(QueueName string, id uint64) error {
 	return nil
 }
 
-// func (n *Node) GetByID(id uint64) (*queue.Message, error) {
-
-// }
+func (n *Node) GetByID(id uint64) (*queue.Message, error) {
+	return nil, nil
+}
 
 func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error {
 	cmd := Command{

@@ -16,12 +16,7 @@ import (
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 
-	// Default level for this example is info, unless debug flag is present
-	// zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	// if *debug {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	// }
-
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	if len(os.Args) < 4 {
@@ -44,7 +39,6 @@ func main() {
 	node := raft.NewNode(db, nodeID, httpPort, raftPort, peers)
 
 	node.Initialize()
-	// node.StartHTTPServer(httpPort)
 	h := http.NewHttpService(httpPort, node)
 	if err := h.Start(); err != nil {
 		log.Error().Msgf("failed to start HTTP service: %s", err.Error())

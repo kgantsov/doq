@@ -9,13 +9,12 @@ import (
 	"net/url"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/kgantsov/doq/pkg/raft"
 	"github.com/rs/zerolog/log"
 )
 
 type (
 	Handler struct {
-		node       *raft.Node
+		node       Node
 		httpClient *http.Client
 	}
 )
@@ -178,10 +177,10 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 	priority := input.Body.Priority
 	content := input.Body.Content
 
-	log.Info().Msgf("Leader is: %s", h.node.Leader)
+	log.Info().Msgf("Leader is: %s", h.node.Leader())
 
 	if !h.node.IsLeader() {
-		respBody, err := EnqueueProxy(ctx, h.httpClient, h.node.Leader, queueName, &input.Body)
+		respBody, err := EnqueueProxy(ctx, h.httpClient, h.node.Leader(), queueName, &input.Body)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to proxy enqueue request")
 			return nil, huma.Error503ServiceUnavailable("Failed to proxy enqueue request", err)
@@ -217,7 +216,7 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 	queueName := input.QueueName
 
 	if !h.node.IsLeader() {
-		respBody, err := DequeueProxy(ctx, h.httpClient, h.node.Leader, queueName, input.Ack)
+		respBody, err := DequeueProxy(ctx, h.httpClient, h.node.Leader(), queueName, input.Ack)
 		if err != nil {
 			return nil, huma.Error503ServiceUnavailable("Failed to proxy dequeue request", err)
 		}
@@ -251,7 +250,7 @@ func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) 
 	queueName := input.QueueName
 
 	if !h.node.IsLeader() {
-		respBody, err := DequeueAck(ctx, h.httpClient, h.node.Leader, queueName, input.ID)
+		respBody, err := DequeueAck(ctx, h.httpClient, h.node.Leader(), queueName, input.ID)
 		if err != nil {
 			return nil, huma.Error503ServiceUnavailable("Failed to proxy acknowledge request", err)
 		}
@@ -286,11 +285,11 @@ func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput
 	queueName := input.QueueName
 	priority := input.Body.Priority
 
-	log.Info().Msgf("Leader is: %s", h.node.Leader)
+	log.Info().Msgf("Leader is: %s", h.node.Leader())
 
 	if !h.node.IsLeader() {
 		respBody, err := UpdatePriorityProxy(
-			ctx, h.httpClient, h.node.Leader, queueName, input.ID, &input.Body,
+			ctx, h.httpClient, h.node.Leader(), queueName, input.ID, &input.Body,
 		)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to proxy update priority request")

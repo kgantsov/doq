@@ -16,7 +16,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"github.com/kgantsov/doq/pkg/raft"
+	"github.com/kgantsov/doq/pkg/queue"
 )
 
 // Service provides HTTP service.
@@ -27,8 +27,18 @@ type Service struct {
 	addr   string
 }
 
+type Node interface {
+	Leader() string
+	IsLeader() bool
+	Enqueue(queueName string, priority int64, content string) (*queue.Message, error)
+	Dequeue(QueueName string, ack bool) (*queue.Message, error)
+	Ack(QueueName string, id uint64) error
+	GetByID(id uint64) (*queue.Message, error)
+	UpdatePriority(queueName string, id uint64, priority int64) error
+}
+
 // New returns an uninitialized HTTP service.
-func NewHttpService(addr string, node *raft.Node) *Service {
+func NewHttpService(addr string, node Node) *Service {
 
 	router := fiber.New()
 	api := humafiber.New(
