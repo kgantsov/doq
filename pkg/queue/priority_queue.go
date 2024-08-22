@@ -46,9 +46,11 @@ func (pq PriorityQueue) Less(i, j int) bool {
 }
 
 func (pq PriorityQueue) Swap(i, j int) {
-	pq.items[i], pq.items[j] = pq.items[j], pq.items[i]
-	pq.idToIndex[pq.items[i].ID] = i
-	pq.idToIndex[pq.items[j].ID] = j
+	if len(pq.items) > 0 {
+		pq.items[i], pq.items[j] = pq.items[j], pq.items[i]
+		pq.idToIndex[pq.items[i].ID] = i
+		pq.idToIndex[pq.items[j].ID] = j
+	}
 }
 
 func (pq *PriorityQueue) Push(x any) {
@@ -63,6 +65,10 @@ func (pq *PriorityQueue) Peek() any {
 }
 
 func (pq *PriorityQueue) Pop() any {
+	if len(pq.items) == 0 {
+		return nil
+	}
+
 	old := pq.items
 	n := len(old)
 	item := old[n-1]

@@ -1,7 +1,6 @@
 package queue
 
 import (
-	"container/heap"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -37,22 +36,22 @@ func MessageFromBytes(data []byte) (*Message, error) {
 type BadgerPriorityQueue struct {
 	queueName string
 
-	pq        *PriorityQueue
+	pq        Queue
 	db        *badger.DB
 	sequesnce *badger.Sequence
 
 	mu sync.Mutex
 
-	ackQueue   *PriorityQueue
+	ackQueue   Queue
 	ackQueueMu sync.Mutex
 }
 
 func NewBadgerPriorityQueue(db *badger.DB, queueName string) *BadgerPriorityQueue {
 	bpq := &BadgerPriorityQueue{
-		pq:        NewPriorityQueue(true),
+		pq:        NewDelayedPriorityQueue(true),
 		db:        db,
 		queueName: queueName,
-		ackQueue:  NewPriorityQueue(false),
+		ackQueue:  NewDelayedPriorityQueue(false),
 	}
 
 	seq, err := bpq.db.GetSequence(bpq.getQueueSequenceKey(), 1)
@@ -121,7 +120,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(priority int64, content string) (*Messag
 		return msg, err
 	}
 
-	heap.Push(bpq.pq, queueItem)
+	bpq.pq.Enqueue("default", queueItem)
 	return msg, nil
 }
 
@@ -133,15 +132,10 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 		return nil, ErrEmptyQueue
 	}
 
-	queueItem := bpq.pq.Peek().(*Item)
-	log.Debug().Msgf("Message %d Priority %d Time %d", queueItem.ID, queueItem.Priority, time.Now().UTC().Unix())
-	if int64(queueItem.Priority) > time.Now().UTC().Unix() {
-		// Delayed message handling
-		// If a priority is in the future, return nil
+	queueItem := bpq.pq.Dequeue()
+	if queueItem == nil {
 		return nil, ErrEmptyQueue
 	}
-
-	queueItem = heap.Pop(bpq.pq).(*Item)
 
 	var msg *Message
 
@@ -165,8 +159,8 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 			bpq.ackQueueMu.Lock()
 			defer bpq.ackQueueMu.Unlock()
 
-			heap.Push(
-				bpq.ackQueue,
+			bpq.ackQueue.Enqueue(
+				"default",
 				&Item{
 					ID:       queueItem.ID,
 					Priority: time.Now().UTC().Add(time.Duration(5) * time.Minute).Unix(),
@@ -190,7 +184,7 @@ func (bpq *BadgerPriorityQueue) GetByID(id uint64) (*Message, error) {
 
 	var msg *Message
 
-	queueItem := bpq.pq.GetByID(id)
+	queueItem := bpq.pq.GetByID("default", id)
 
 	err := bpq.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(bpq.GetKey(queueItem.ID))
@@ -214,7 +208,7 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
-	queueItem := bpq.pq.GetByID(id)
+	queueItem := bpq.pq.GetByID("default", id)
 
 	// Update BadgerDB
 	err := bpq.db.Update(func(txn *badger.Txn) error {
@@ -247,7 +241,7 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 
 	// Update in-memory heap
 	queueItem.UpdatePriority(newPriority)
-	bpq.pq.UpdatePriority(queueItem.ID, queueItem.Priority)
+	bpq.pq.UpdatePriority("default", id, newPriority)
 	return nil
 }
 
@@ -255,7 +249,7 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 	bpq.ackQueueMu.Lock()
 	defer bpq.ackQueueMu.Unlock()
 
-	queueItem := bpq.ackQueue.GetByID(id)
+	queueItem := bpq.ackQueue.GetByID("default", id)
 
 	if queueItem == nil {
 		return ErrMessageNotFound
@@ -266,7 +260,7 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 		if err != nil {
 			return err
 		}
-		bpq.ackQueue.DeleteByID(queueItem.ID)
+		bpq.ackQueue.DeleteByID("default", queueItem.ID)
 
 		return nil
 	})
@@ -281,5 +275,5 @@ func (bpq *BadgerPriorityQueue) Len() int {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
-	return bpq.pq.Len()
+	return int(bpq.pq.Len())
 }

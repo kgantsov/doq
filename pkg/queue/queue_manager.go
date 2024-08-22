@@ -11,20 +11,20 @@ import (
 type QueueManager struct {
 	db *badger.DB
 
-	queues map[string]Queue
+	queues map[string]*BadgerPriorityQueue
 	mu     sync.Mutex
 }
 
 func NewQueueManager(db *badger.DB) *QueueManager {
-	return &QueueManager{db: db, queues: make(map[string]Queue)}
+	return &QueueManager{db: db, queues: make(map[string]*BadgerPriorityQueue)}
 }
 
-func (qm *QueueManager) DeclareQueue(queue_name string) (Queue, error) {
+func (qm *QueueManager) DeclareQueue(queue_name string) (*BadgerPriorityQueue, error) {
 	q := NewBadgerPriorityQueue(qm.db, queue_name)
 	return q, nil
 }
 
-func (qm *QueueManager) GetQueue(queue_name string) (Queue, error) {
+func (qm *QueueManager) GetQueue(queue_name string) (*BadgerPriorityQueue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
 

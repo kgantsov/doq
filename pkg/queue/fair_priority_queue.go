@@ -65,6 +65,8 @@ type FairPriorityQueue struct {
 	queues      map[string]*LinkedListNode
 	roundRobin  *LinkedList
 	currentNone *LinkedListNode
+
+	totalMessages uint64
 }
 
 // FairPriorityQueue creates a new FairQueue
@@ -87,6 +89,7 @@ func (fq *FairPriorityQueue) Enqueue(group string, item *Item) {
 		fq.roundRobin.Append(node)
 	}
 	heap.Push(fq.queues[group].Qeueue(), item)
+	fq.totalMessages++
 }
 
 // Dequeue removes and returns the next message in a fair way
@@ -119,5 +122,37 @@ func (fq *FairPriorityQueue) Dequeue() *Item {
 		fq.currentNone = fq.currentNone.next
 	}
 
+	fq.totalMessages--
 	return item
+}
+
+func (fq *FairPriorityQueue) GetByID(group string, id uint64) *Item {
+	if _, exists := fq.queues[group]; !exists {
+		return nil
+	}
+
+	return fq.queues[group].Qeueue().GetByID(id)
+}
+
+func (fq *FairPriorityQueue) DeleteByID(group string, id uint64) *Item {
+	if _, exists := fq.queues[group]; !exists {
+		return nil
+	}
+
+	item := fq.queues[group].Qeueue().DeleteByID(id)
+	fq.totalMessages--
+
+	return item
+}
+
+func (fq *FairPriorityQueue) UpdatePriority(group string, id uint64, priority int64) {
+	if _, exists := fq.queues[group]; !exists {
+		return
+	}
+
+	fq.queues[group].Qeueue().UpdatePriority(id, priority)
+}
+
+func (fq *FairPriorityQueue) Len() uint64 {
+	return fq.totalMessages
 }
