@@ -17,7 +17,7 @@ func NewLinkedListNode(group string, queue *PriorityQueue) *LinkedListNode {
 	return node
 }
 
-func (n *LinkedListNode) Qeueue() *PriorityQueue {
+func (n *LinkedListNode) Queue() *PriorityQueue {
 	return n.queue
 }
 
@@ -88,7 +88,7 @@ func (fq *FairPriorityQueue) Enqueue(group string, item *Item) {
 		fq.queues[group] = node
 		fq.roundRobin.Append(node)
 	}
-	heap.Push(fq.queues[group].Qeueue(), item)
+	heap.Push(fq.queues[group].Queue(), item)
 	fq.totalMessages++
 }
 
@@ -104,15 +104,15 @@ func (fq *FairPriorityQueue) Dequeue() *Item {
 		fq.currentNone = fq.roundRobin.head
 	}
 
-	if fq.currentNone.Qeueue().Len() == 0 {
+	if fq.currentNone.Queue().Len() == 0 {
 		return nil
 	}
 
 	// Get the message from the group's queue
-	item := heap.Pop(fq.currentNone.Qeueue()).(*Item)
+	item := heap.Pop(fq.currentNone.Queue()).(*Item)
 
 	// If the group's queue is empty, remove the group from the round-robin list
-	if fq.currentNone.Qeueue().Len() == 0 {
+	if fq.currentNone.Queue().Len() == 0 {
 		next := fq.currentNone.next
 		fq.roundRobin.Remove(fq.currentNone)
 		delete(fq.queues, fq.currentNone.group)
@@ -131,7 +131,7 @@ func (fq *FairPriorityQueue) GetByID(group string, id uint64) *Item {
 		return nil
 	}
 
-	return fq.queues[group].Qeueue().GetByID(id)
+	return fq.queues[group].Queue().GetByID(id)
 }
 
 func (fq *FairPriorityQueue) DeleteByID(group string, id uint64) *Item {
@@ -139,7 +139,7 @@ func (fq *FairPriorityQueue) DeleteByID(group string, id uint64) *Item {
 		return nil
 	}
 
-	item := fq.queues[group].Qeueue().DeleteByID(id)
+	item := fq.queues[group].Queue().DeleteByID(id)
 	fq.totalMessages--
 
 	return item
@@ -150,7 +150,7 @@ func (fq *FairPriorityQueue) UpdatePriority(group string, id uint64, priority in
 		return
 	}
 
-	fq.queues[group].Qeueue().UpdatePriority(id, priority)
+	fq.queues[group].Queue().UpdatePriority(id, priority)
 }
 
 func (fq *FairPriorityQueue) Len() uint64 {

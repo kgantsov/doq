@@ -116,3 +116,49 @@ func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error
 
 	return nil
 }
+
+func (n *Node) CreateQueue(queueType, queueName string) error {
+	cmd := Command{
+		Op:        "createQueue",
+		QueueType: queueType,
+		QueueName: queueName,
+	}
+	data, err := json.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+
+	f := n.Raft.Apply(data, 5*time.Second)
+	if f.Error() != nil {
+		return f.Error()
+	}
+
+	r := f.Response().(*FSMResponse)
+	if r.error != nil {
+		return r.error
+	}
+
+	return nil
+}
+func (n *Node) DeleteQueue(queueName string) error {
+	cmd := Command{
+		Op:        "deleteQueue",
+		QueueName: queueName,
+	}
+	data, err := json.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+
+	f := n.Raft.Apply(data, 5*time.Second)
+	if f.Error() != nil {
+		return f.Error()
+	}
+
+	r := f.Response().(*FSMResponse)
+	if r.error != nil {
+		return r.error
+	}
+
+	return nil
+}

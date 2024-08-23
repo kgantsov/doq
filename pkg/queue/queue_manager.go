@@ -1,12 +1,15 @@
 package queue
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/rs/zerolog/log"
 )
+
+var ErrQueueNotFound = fmt.Errorf("queue not found")
 
 type QueueManager struct {
 	db *badger.DB
@@ -19,9 +22,21 @@ func NewQueueManager(db *badger.DB) *QueueManager {
 	return &QueueManager{db: db, queues: make(map[string]*BadgerPriorityQueue)}
 }
 
-func (qm *QueueManager) DeclareQueue(queue_name string) (*BadgerPriorityQueue, error) {
-	q := NewBadgerPriorityQueue(qm.db, queue_name)
+func (qm *QueueManager) Create(queueType, queueName string) (*BadgerPriorityQueue, error) {
+	q := NewBadgerPriorityQueue(qm.db)
+	err := q.Create(queueType, queueName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	qm.queues[queueName] = q
+
 	return q, nil
+}
+
+func (qm *QueueManager) Delete(queueName string) error {
+	return nil
 }
 
 func (qm *QueueManager) GetQueue(queue_name string) (*BadgerPriorityQueue, error) {
@@ -30,14 +45,7 @@ func (qm *QueueManager) GetQueue(queue_name string) (*BadgerPriorityQueue, error
 
 	q, ok := qm.queues[queue_name]
 	if !ok {
-		q, err := qm.DeclareQueue(queue_name)
-		if err != nil {
-			return nil, err
-		}
-
-		qm.queues[queue_name] = q
-
-		return q, nil
+		return nil, ErrQueueNotFound
 	}
 	return q, nil
 }

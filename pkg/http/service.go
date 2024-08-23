@@ -30,6 +30,8 @@ type Service struct {
 type Node interface {
 	Leader() string
 	IsLeader() bool
+	CreateQueue(queueType, queueName string) error
+	DeleteQueue(queueName string) error
 	Enqueue(queueName string, priority int64, content string) (*queue.Message, error)
 	Dequeue(QueueName string, ack bool) (*queue.Message, error)
 	Ack(QueueName string, id uint64) error
@@ -100,12 +102,37 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 	huma.Register(
 		api,
 		huma.Operation{
+			OperationID: "create-queue",
+			Method:      http.MethodPost,
+			Path:        "/API/v1/queues/",
+			Summary:     "Create a queue",
+			Description: "Create a new queue",
+			Tags:        []string{"Queues"},
+		},
+		h.CreateQueue,
+	)
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "delete-queue",
+			Method:      http.MethodDelete,
+			Path:        "/API/v1/queues/:queue_name",
+			Summary:     "Delete a queue",
+			Description: "Delete a queue",
+			Tags:        []string{"Queues"},
+		},
+		h.DeleteQueue,
+	)
+
+	huma.Register(
+		api,
+		huma.Operation{
 			OperationID: "enqueue",
 			Method:      http.MethodPost,
 			Path:        "/API/v1/queues/:queue_name/messages",
 			Summary:     "Enqueue a message",
 			Description: "Put a message in the queue",
-			Tags:        []string{"Queues"},
+			Tags:        []string{"Messages"},
 		},
 		h.Enqueue,
 	)
@@ -117,7 +144,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Path:        "/API/v1/queues/:queue_name/messages",
 			Summary:     "Dequeue a message",
 			Description: "Get and remove the most prioritized message from the queue",
-			Tags:        []string{"Queues"},
+			Tags:        []string{"Messages"},
 		},
 		h.Dequeue,
 	)
@@ -129,7 +156,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Path:        "/API/v1/queues/:queue_name/messages/:id/ack",
 			Summary:     "Acknowledge a message",
 			Description: "Acknowledge the message",
-			Tags:        []string{"Queues"},
+			Tags:        []string{"Messages"},
 		},
 		h.Ack,
 	)
@@ -141,7 +168,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Path:        "/API/v1/queues/:queue_name/messages/:id/priority",
 			Summary:     "Update the priority of a message",
 			Description: "Update the priority of a message in the queue",
-			Tags:        []string{"Queues"},
+			Tags:        []string{"Messages"},
 		},
 		h.UpdatePriority,
 	)

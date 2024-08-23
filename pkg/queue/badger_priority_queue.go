@@ -13,6 +13,21 @@ import (
 var ErrEmptyQueue = fmt.Errorf("queue is empty")
 var ErrMessageNotFound = fmt.Errorf("message not found")
 
+type QueueConfig struct {
+	Name string
+	Type string
+}
+
+func (qc *QueueConfig) ToBytes() ([]byte, error) {
+	return json.Marshal(qc)
+}
+
+func QueueConfigFromBytes(data []byte) (*QueueConfig, error) {
+	var qc QueueConfig
+	err := json.Unmarshal(data, &qc)
+	return &qc, err
+}
+
 type Message struct {
 	ID       uint64
 	Priority int64
@@ -34,7 +49,7 @@ func MessageFromBytes(data []byte) (*Message, error) {
 }
 
 type BadgerPriorityQueue struct {
-	queueName string
+	config *QueueConfig
 
 	pq        Queue
 	db        *badger.DB
@@ -46,15 +61,26 @@ type BadgerPriorityQueue struct {
 	ackQueueMu sync.Mutex
 }
 
-func NewBadgerPriorityQueue(db *badger.DB, queueName string) *BadgerPriorityQueue {
+func NewBadgerPriorityQueue(db *badger.DB) *BadgerPriorityQueue {
+
 	bpq := &BadgerPriorityQueue{
-		pq:        NewDelayedPriorityQueue(true),
-		db:        db,
-		queueName: queueName,
-		ackQueue:  NewDelayedPriorityQueue(false),
+		db:       db,
+		ackQueue: NewDelayedPriorityQueue(false),
 	}
 
-	seq, err := bpq.db.GetSequence(bpq.getQueueSequenceKey(), 1)
+	return bpq
+}
+func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
+	var queue Queue
+	if queueType == "fair" {
+		queue = NewFairPriorityQueue()
+	} else {
+		queue = NewDelayedPriorityQueue(true)
+	}
+	bpq.config = &QueueConfig{Name: queueName, Type: queueType}
+	bpq.pq = queue
+
+	seq, err := bpq.db.GetSequence(bpq.getQueueSequenceKey(bpq.config.Name), 1)
 
 	if err != nil {
 		log.Warn().Err(err).Msgf("Failed to get sequence: %s", err)
@@ -64,19 +90,27 @@ func NewBadgerPriorityQueue(db *badger.DB, queueName string) *BadgerPriorityQueu
 
 	bpq.sequesnce = seq
 
-	return bpq
+	return nil
 }
 
 func (bpq *BadgerPriorityQueue) getQueuePrefix() []byte {
-	return addPrefix([]byte("queues:"), []byte(bpq.queueName))
+	return addPrefix([]byte("queues:"), []byte(bpq.config.Name))
 }
 
-func (bpq *BadgerPriorityQueue) getQueueSequenceKey() []byte {
-	return addPrefix([]byte("sequences:"), []byte(bpq.queueName))
+func (bpq *BadgerPriorityQueue) getMessagesPrefix() []byte {
+	return addPrefix([]byte("messages:"), []byte(bpq.config.Name))
 }
 
-func (bpq *BadgerPriorityQueue) GetKey(id uint64) []byte {
-	return addPrefix(bpq.getQueuePrefix(), uint64ToBytes(id))
+func (bpq *BadgerPriorityQueue) getQueueSequenceKey(queueName string) []byte {
+	return addPrefix([]byte("sequences:"), []byte(queueName))
+}
+
+func (bpq *BadgerPriorityQueue) GetQueueKey(queueName string) []byte {
+	return addPrefix([]byte("queues:"), []byte(queueName))
+}
+
+func (bpq *BadgerPriorityQueue) GetMessagesKey(id uint64) []byte {
+	return addPrefix(bpq.getMessagesPrefix(), uint64ToBytes(id))
 }
 
 func (bpq *BadgerPriorityQueue) GetNextID() (uint64, error) {
@@ -87,6 +121,48 @@ func (bpq *BadgerPriorityQueue) GetNextID() (uint64, error) {
 	}
 
 	return num, nil
+}
+
+func (bpq *BadgerPriorityQueue) Create(queueType, queueName string) error {
+	bpq.mu.Lock()
+	defer bpq.mu.Unlock()
+
+	err := bpq.db.Update(func(txn *badger.Txn) error {
+		data, err := bpq.config.ToBytes()
+		if err != nil {
+			return err
+		}
+		return txn.Set(bpq.GetQueueKey(queueName), data)
+	})
+	if err != nil {
+		return err
+	}
+
+	return bpq.Init(queueType, queueName)
+}
+
+func (bpq *BadgerPriorityQueue) Load(queueName string) error {
+	bpq.mu.Lock()
+	defer bpq.mu.Unlock()
+
+	var qc *QueueConfig
+
+	err := bpq.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(bpq.GetQueueKey(queueName))
+		if err != nil {
+			return err
+		}
+
+		return item.Value(func(val []byte) error {
+			qc, err = QueueConfigFromBytes(val)
+			return err
+		})
+	})
+	if err != nil {
+		return err
+	}
+
+	return bpq.Init(qc.Type, qc.Name)
 }
 
 func (bpq *BadgerPriorityQueue) Enqueue(priority int64, content string) (*Message, error) {
@@ -114,7 +190,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(priority int64, content string) (*Messag
 		if err != nil {
 			return err
 		}
-		return txn.Set(bpq.GetKey(msg.ID), data)
+		return txn.Set(bpq.GetMessagesKey(msg.ID), data)
 	})
 	if err != nil {
 		return msg, err
@@ -140,7 +216,7 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 	var msg *Message
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
-		item, err := txn.Get(bpq.GetKey(queueItem.ID))
+		item, err := txn.Get(bpq.GetMessagesKey(queueItem.ID))
 		if err != nil {
 			return err
 		}
@@ -152,7 +228,7 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 
 		if ack {
 			// in case of autoAck, we need to remove the message from the queue
-			return txn.Delete(bpq.GetKey(queueItem.ID))
+			return txn.Delete(bpq.GetMessagesKey(queueItem.ID))
 		} else {
 			// in case of manual ack, we need to keep the message in the queue
 			// so we can ack it later and add it to the ackQueue
@@ -187,7 +263,7 @@ func (bpq *BadgerPriorityQueue) GetByID(id uint64) (*Message, error) {
 	queueItem := bpq.pq.GetByID("default", id)
 
 	err := bpq.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(bpq.GetKey(queueItem.ID))
+		item, err := txn.Get(bpq.GetMessagesKey(queueItem.ID))
 		if err != nil {
 			return err
 		}
@@ -213,7 +289,7 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 	// Update BadgerDB
 	err := bpq.db.Update(func(txn *badger.Txn) error {
 		var msg *Message
-		item, err := txn.Get(bpq.GetKey(id))
+		item, err := txn.Get(bpq.GetMessagesKey(id))
 		if err != nil {
 			return err
 		}
@@ -233,7 +309,7 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 		if err != nil {
 			return err
 		}
-		return txn.Set(bpq.GetKey(queueItem.ID), data)
+		return txn.Set(bpq.GetMessagesKey(queueItem.ID), data)
 	})
 	if err != nil {
 		return err
@@ -256,7 +332,7 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 	}
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
-		err := txn.Delete(bpq.GetKey(queueItem.ID))
+		err := txn.Delete(bpq.GetMessagesKey(queueItem.ID))
 		if err != nil {
 			return err
 		}

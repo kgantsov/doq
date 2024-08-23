@@ -194,6 +194,13 @@ func (n *testNode) IsLeader() bool {
 	return true
 }
 
+func (n *testNode) CreateQueue(queueType, queueName string) error {
+	return nil
+}
+func (n *testNode) DeleteQueue(queueName string) error {
+	return nil
+}
+
 func (n *testNode) Enqueue(queueName string, priority int64, content string) (*queue.Message, error) {
 	n.nextID++
 	message := &queue.Message{ID: n.nextID, Priority: priority, Content: content}

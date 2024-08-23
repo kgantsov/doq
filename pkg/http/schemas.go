@@ -1,5 +1,38 @@
 package http
 
+type CreateQueueInputBody struct {
+	Name string `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	Type string `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+}
+
+type CreateQueueInput struct {
+	Body CreateQueueInputBody
+}
+
+type CreateQueueOutputBody struct {
+	Status string `json:"status" example:"CREATED" doc:"Status of the create operation"`
+	Name   string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	Type   string `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+}
+
+type CreateQueueOutput struct {
+	Status int
+	Body   CreateQueueOutputBody
+}
+
+type DeleteQueueInput struct {
+	QueueName string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+}
+
+type DeleteQueueOutputBody struct {
+	Status string `json:"status" example:"DELETED" doc:"Status of the delete operation"`
+}
+
+type DeleteQueueOutput struct {
+	Status int
+	Body   DeleteQueueOutputBody
+}
+
 type EnqueueInputBody struct {
 	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Content  string `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`

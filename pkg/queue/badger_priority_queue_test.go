@@ -46,7 +46,8 @@ func TestBadgerPriorityQueue(t *testing.T) {
 				log.Fatal().Msg(err.Error())
 			}
 
-			pq := NewBadgerPriorityQueue(db, "test_queue")
+			pq := NewBadgerPriorityQueue(db)
+			pq.Create("delayed", "test_queue")
 
 			for i, m := range tt.messages {
 				pq.Enqueue(m.Priority, m.Content)
@@ -68,6 +69,22 @@ func TestBadgerPriorityQueue(t *testing.T) {
 	}
 }
 
+func TestBadgerPriorityQueueLoad(t *testing.T) {
+	opts := badger.DefaultOptions("/tmp/badger212312")
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	defer db.Close()
+
+	pq := NewBadgerPriorityQueue(db)
+	pq.Create("delayed", "test_queue_stored")
+
+	m, err := pq.Dequeue(true)
+	assert.EqualError(t, err, ErrEmptyQueue.Error())
+	assert.Nil(t, m)
+}
+
 func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
 	opts := badger.DefaultOptions("/tmp/badger2")
 	db, err := badger.Open(opts)
@@ -76,11 +93,25 @@ func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
 	}
 	defer db.Close()
 
-	pq := NewBadgerPriorityQueue(db, "test_queue")
+	pq := NewBadgerPriorityQueue(db)
+	err = pq.Create("fair", "test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, "fair", pq.config.Type)
+	assert.Equal(t, "test_queue", pq.config.Name)
 
-	m, err := pq.Dequeue(true)
-	assert.EqualError(t, err, ErrEmptyQueue.Error())
-	assert.Nil(t, m)
+	m1, err := pq.Enqueue(10, "test 1")
+	assert.Nil(t, err)
+
+	m1, err = pq.GetByID(m1.ID)
+	assert.Nil(t, err)
+	assert.Equal(t, "test 1", m1.Content)
+	assert.Equal(t, int64(10), m1.Priority)
+
+	pq1 := NewBadgerPriorityQueue(db)
+	err = pq1.Load("test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, "fair", pq.config.Type)
+	assert.Equal(t, "test_queue", pq.config.Name)
 }
 
 func TestBadgerPriorityQueueChangePriority(t *testing.T) {
@@ -90,7 +121,8 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(db, "test_queue")
+	pq := NewBadgerPriorityQueue(db)
+	pq.Create("delayed", "test_queue")
 
 	m1, err := pq.Enqueue(10, "test 1")
 	assert.Nil(t, err)
@@ -184,7 +216,8 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(db, "test_queue_1")
+	pq := NewBadgerPriorityQueue(db)
+	pq.Create("delayed", "test_queue_1")
 
 	priority := time.Now().UTC().Add(1 * time.Second).Unix()
 	m1, err := pq.Enqueue(priority, "delayed message 1")
@@ -214,7 +247,8 @@ func TestBadgerPriorityQueueAck(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(db, "test_queue")
+	pq := NewBadgerPriorityQueue(db)
+	pq.Create("delayed", "test_queue")
 
 	m1, err := pq.Enqueue(10, "test 1")
 	assert.Nil(t, err)

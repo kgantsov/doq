@@ -13,6 +13,7 @@ import (
 type Command struct {
 	ID        uint64 `json:"id,omitempty"`
 	Op        string `json:"op"`
+	QueueType string `json:"queue_type"`
 	QueueName string `json:"queue_name"`
 	Priority  int64  `json:"priority"`
 	Content   string `json:"content"`
@@ -172,6 +173,35 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 			ID:        c.ID,
 			Priority:  c.Priority,
 			Content:   "",
+			error:     nil,
+		}
+	case "createQueue":
+		_, err := f.queueManager.Create(c.QueueType, c.QueueName)
+		if err != nil {
+			return &FSMResponse{
+				QueueName: c.QueueName,
+				error:     fmt.Errorf("Failed to create a queue: %s", c.QueueName),
+			}
+		}
+
+		log.Debug().Msgf("Node %s Created a queue: %s", f.NodeID, c.QueueName)
+		return &FSMResponse{
+			QueueName: c.QueueName,
+			error:     nil,
+		}
+	case "deleteQueue":
+		err := f.queueManager.Delete(c.QueueName)
+		if err != nil {
+			return &FSMResponse{
+				QueueName: c.QueueName,
+				error:     fmt.Errorf("Failed to delete a queue: %s", c.QueueName),
+			}
+		}
+
+		log.Debug().Msgf("Node %s Deleted a queue: %s", f.NodeID, c.QueueName)
+
+		return &FSMResponse{
+			QueueName: c.QueueName,
 			error:     nil,
 		}
 	}

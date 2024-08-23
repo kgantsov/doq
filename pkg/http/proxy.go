@@ -22,6 +22,87 @@ func NewProxy(client *http.Client) *Proxy {
 	}
 }
 
+func (p *Proxy) CreateQueue(
+	ctx context.Context, host string, body *CreateQueueInputBody,
+) (*CreateQueueOutputBody, error) {
+	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to parse host", err)
+	}
+
+	bodyB, err := json.Marshal(body)
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to marshal body", err)
+	}
+
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf("http://%s:8000/API/v1/queues", u.Hostname()),
+		bytes.NewBuffer(bodyB),
+	)
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to create a request", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, huma.Error503ServiceUnavailable("Failed to proxy create queue request", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, huma.Error400BadRequest("Failed to create a queue", nil)
+	}
+
+	log.Info().Msgf("Response status: %d", resp.StatusCode)
+	log.Info().Msgf("Response body: %s", resp.Body)
+	var data CreateQueueOutputBody
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, huma.Error400BadRequest("Failed to decode response", err)
+	}
+
+	return &data, nil
+}
+
+func (p *Proxy) DeleteQueue(
+	ctx context.Context, host string, queueName string,
+) (*DeleteQueueOutputBody, error) {
+	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to parse host", err)
+	}
+
+	req, err := http.NewRequest(
+		"DELETE",
+		fmt.Sprintf("http://%s:8000/API/v1/queues/%s", u.Hostname(), queueName),
+		nil,
+	)
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to create a request", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, huma.Error503ServiceUnavailable("Failed to proxy delete queue request", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, huma.Error400BadRequest("Failed to delete a queue", nil)
+	}
+
+	var data DeleteQueueOutputBody
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, huma.Error400BadRequest("Failed to decode response", err)
+	}
+
+	return &data, nil
+}
+
 func (p *Proxy) Enqueue(ctx context.Context, host string, queueName string, body *EnqueueInputBody) (*EnqueueOutputBody, error) {
 	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
 	if err != nil {
