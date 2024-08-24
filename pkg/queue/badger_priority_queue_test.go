@@ -1,12 +1,14 @@
 package queue
 
 import (
+	"os"
 	"testing"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBadgerPriorityQueue(t *testing.T) {
@@ -69,8 +71,11 @@ func TestBadgerPriorityQueue(t *testing.T) {
 	}
 }
 
-func TestBadgerPriorityQueueLoad(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger212312")
+func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
+	dirname, err := os.MkdirTemp("", "store")
+	require.NoError(t, err)
+
+	opts := badger.DefaultOptions(dirname)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -85,8 +90,11 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	assert.Nil(t, m)
 }
 
-func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger2")
+func TestBadgerPriorityQueueLoad(t *testing.T) {
+	dirname, err := os.MkdirTemp("", "store")
+	require.NoError(t, err)
+
+	opts := badger.DefaultOptions(dirname)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -94,24 +102,67 @@ func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
 	defer db.Close()
 
 	pq := NewBadgerPriorityQueue(db)
-	err = pq.Create("fair", "test_queue")
+	err = pq.Create("delayed", "test_queue")
 	assert.Nil(t, err)
-	assert.Equal(t, "fair", pq.config.Type)
+	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
 
-	m1, err := pq.Enqueue(10, "test 1")
-	assert.Nil(t, err)
-
-	m1, err = pq.GetByID(m1.ID)
-	assert.Nil(t, err)
-	assert.Equal(t, "test 1", m1.Content)
-	assert.Equal(t, int64(10), m1.Priority)
+	pq.Enqueue(10, "test 1")
+	pq.Enqueue(5, "test 2")
+	pq.Enqueue(8, "test 3")
+	pq.Enqueue(1, "test 4")
 
 	pq1 := NewBadgerPriorityQueue(db)
-	err = pq1.Load("test_queue")
+	err = pq1.Load("test_queue", true)
 	assert.Nil(t, err)
-	assert.Equal(t, "fair", pq.config.Type)
+	assert.Equal(t, "delayed", pq1.config.Type)
+	assert.Equal(t, "test_queue", pq1.config.Name)
+
+	m, err := pq1.Dequeue(true)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), m.Priority)
+	assert.Equal(t, "test 4", m.Content)
+
+	m, err = pq1.Dequeue(true)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(5), m.Priority)
+	assert.Equal(t, "test 2", m.Content)
+
+	m, err = pq1.Dequeue(true)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(8), m.Priority)
+	assert.Equal(t, "test 3", m.Content)
+
+	m, err = pq1.Dequeue(true)
+	assert.Nil(t, err)
+	assert.Equal(t, int64(10), m.Priority)
+	assert.Equal(t, "test 1", m.Content)
+}
+
+func TestBadgerPriorityQueueDelete(t *testing.T) {
+	dirname, err := os.MkdirTemp("", "store")
+	require.NoError(t, err)
+
+	opts := badger.DefaultOptions(dirname)
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	defer db.Close()
+
+	pq := NewBadgerPriorityQueue(db)
+	err = pq.Create("delayed", "test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
+
+	pq.Enqueue(10, "test 1")
+	pq.Enqueue(5, "test 2")
+	pq.Enqueue(8, "test 3")
+	pq.Enqueue(1, "test 4")
+
+	err = pq.Delete()
+	assert.Nil(t, err)
 }
 
 func TestBadgerPriorityQueueChangePriority(t *testing.T) {

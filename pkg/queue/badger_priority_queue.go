@@ -93,20 +93,16 @@ func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) getQueuePrefix() []byte {
-	return addPrefix([]byte("queues:"), []byte(bpq.config.Name))
-}
-
 func (bpq *BadgerPriorityQueue) getMessagesPrefix() []byte {
-	return addPrefix([]byte("messages:"), []byte(bpq.config.Name))
+	return []byte(fmt.Sprintf("messages:%s:", bpq.config.Name))
 }
 
 func (bpq *BadgerPriorityQueue) getQueueSequenceKey(queueName string) []byte {
-	return addPrefix([]byte("sequences:"), []byte(queueName))
+	return []byte(fmt.Sprintf("sequences:%s:", bpq.config.Name))
 }
 
 func (bpq *BadgerPriorityQueue) GetQueueKey(queueName string) []byte {
-	return addPrefix([]byte("queues:"), []byte(queueName))
+	return []byte(fmt.Sprintf("queues:%s:", queueName))
 }
 
 func (bpq *BadgerPriorityQueue) GetMessagesKey(id uint64) []byte {
@@ -127,6 +123,8 @@ func (bpq *BadgerPriorityQueue) Create(queueType, queueName string) error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
+	bpq.config = &QueueConfig{Name: queueName, Type: queueType}
+
 	err := bpq.db.Update(func(txn *badger.Txn) error {
 		data, err := bpq.config.ToBytes()
 		if err != nil {
@@ -141,7 +139,37 @@ func (bpq *BadgerPriorityQueue) Create(queueType, queueName string) error {
 	return bpq.Init(queueType, queueName)
 }
 
-func (bpq *BadgerPriorityQueue) Load(queueName string) error {
+func (bpq *BadgerPriorityQueue) Delete() error {
+	bpq.mu.Lock()
+	defer bpq.mu.Unlock()
+
+	err := bpq.db.Update(func(txn *badger.Txn) error {
+		err := txn.Delete(bpq.GetQueueKey(bpq.config.Name))
+		if err != nil {
+			return err
+		}
+
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = true
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		prefix := bpq.getMessagesPrefix()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			return txn.Delete(item.Key())
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (bpq *BadgerPriorityQueue) Load(queueName string, loadMessages bool) error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -153,16 +181,44 @@ func (bpq *BadgerPriorityQueue) Load(queueName string) error {
 			return err
 		}
 
-		return item.Value(func(val []byte) error {
+		err = item.Value(func(val []byte) error {
 			qc, err = QueueConfigFromBytes(val)
 			return err
 		})
+
+		if err != nil {
+			return err
+		}
+
+		bpq.Init(qc.Type, qc.Name)
+
+		if loadMessages {
+			it := txn.NewIterator(badger.DefaultIteratorOptions)
+			defer it.Close()
+
+			prefix := bpq.getMessagesPrefix()
+			for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+				item := it.Item()
+				err := item.Value(func(val []byte) error {
+					msg, err := MessageFromBytes(val)
+					if err != nil {
+						return err
+					}
+					bpq.pq.Enqueue("default", &Item{ID: msg.ID, Priority: msg.Priority})
+					return nil
+				})
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	return bpq.Init(qc.Type, qc.Name)
+	return nil
 }
 
 func (bpq *BadgerPriorityQueue) Enqueue(priority int64, content string) (*Message, error) {

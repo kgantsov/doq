@@ -178,12 +178,14 @@ type testNode struct {
 	leader   string
 	messages []*queue.Message
 	acks     map[uint64]bool
+	queues   map[string]*queue.DelayedPriorityQueue
 }
 
 func newTestNode() *testNode {
 	return &testNode{
 		messages: []*queue.Message{},
 		acks:     make(map[uint64]bool),
+		queues:   make(map[string]*queue.DelayedPriorityQueue),
 	}
 }
 
@@ -195,9 +197,11 @@ func (n *testNode) IsLeader() bool {
 }
 
 func (n *testNode) CreateQueue(queueType, queueName string) error {
+	n.queues[queueName] = queue.NewDelayedPriorityQueue(true)
 	return nil
 }
 func (n *testNode) DeleteQueue(queueName string) error {
+	delete(n.queues, queueName)
 	return nil
 }
 

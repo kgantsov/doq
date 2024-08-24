@@ -21,6 +21,9 @@ func TestNewQueueManager(t *testing.T) {
 	queue1, err := queueManager.Create("delayed", "queue_1")
 	assert.Nil(t, err)
 
+	queue1, err = queueManager.Create("delayed", "queue_1")
+	assert.Nil(t, err)
+
 	q1m1, err := queue1.Enqueue(10, "queue 1 message 1")
 	assert.Nil(t, err)
 	q1m2, err := queue1.Enqueue(5, "queue 1 message 2")

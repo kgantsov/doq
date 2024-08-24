@@ -23,7 +23,15 @@ func NewQueueManager(db *badger.DB) *QueueManager {
 }
 
 func (qm *QueueManager) Create(queueType, queueName string) (*BadgerPriorityQueue, error) {
-	q := NewBadgerPriorityQueue(qm.db)
+	qm.mu.Lock()
+	defer qm.mu.Unlock()
+
+	q, ok := qm.queues[queueName]
+	if ok {
+		return q, nil
+	}
+
+	q = NewBadgerPriorityQueue(qm.db)
 	err := q.Create(queueType, queueName)
 
 	if err != nil {
@@ -36,16 +44,30 @@ func (qm *QueueManager) Create(queueType, queueName string) (*BadgerPriorityQueu
 }
 
 func (qm *QueueManager) Delete(queueName string) error {
-	return nil
-}
-
-func (qm *QueueManager) GetQueue(queue_name string) (*BadgerPriorityQueue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
 
-	q, ok := qm.queues[queue_name]
+	q, ok := qm.queues[queueName]
 	if !ok {
-		return nil, ErrQueueNotFound
+		q = NewBadgerPriorityQueue(qm.db)
+		q.Load(queueName, false)
+	}
+
+	return q.Delete()
+}
+
+func (qm *QueueManager) GetQueue(queueName string) (*BadgerPriorityQueue, error) {
+	qm.mu.Lock()
+	defer qm.mu.Unlock()
+
+	q, ok := qm.queues[queueName]
+	if !ok {
+		q = NewBadgerPriorityQueue(qm.db)
+		err := q.Load(queueName, true)
+		if err != nil {
+			return nil, ErrQueueNotFound
+		}
+		return q, nil
 	}
 	return q, nil
 }

@@ -104,7 +104,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "create-queue",
 			Method:      http.MethodPost,
-			Path:        "/API/v1/queues/",
+			Path:        "/API/v1/queues",
 			Summary:     "Create a queue",
 			Description: "Create a new queue",
 			Tags:        []string{"Queues"},
