@@ -32,7 +32,7 @@ type Node interface {
 	IsLeader() bool
 	CreateQueue(queueType, queueName string) error
 	DeleteQueue(queueName string) error
-	Enqueue(queueName string, priority int64, content string) (*queue.Message, error)
+	Enqueue(queueName string, group string, priority int64, content string) (*queue.Message, error)
 	Dequeue(QueueName string, ack bool) (*queue.Message, error)
 	Ack(QueueName string, id uint64) error
 	GetByID(id uint64) (*queue.Message, error)
@@ -123,7 +123,6 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		},
 		h.DeleteQueue,
 	)
-
 	huma.Register(
 		api,
 		huma.Operation{

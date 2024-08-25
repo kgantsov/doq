@@ -15,6 +15,7 @@ type Command struct {
 	Op        string `json:"op"`
 	QueueType string `json:"queue_type"`
 	QueueName string `json:"queue_name"`
+	Group     string `json:"group"`
 	Priority  int64  `json:"priority"`
 	Content   string `json:"content"`
 	Ack       bool   `json:"ack,omitempty"`
@@ -49,7 +50,7 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 			}
 		}
 
-		msg, err := queue.Enqueue(c.Priority, c.Content)
+		msg, err := queue.Enqueue(c.Group, c.Priority, c.Content)
 
 		log.Debug().Msgf("Node %s Enqueued a message: %+v %v", f.NodeID, msg, err)
 

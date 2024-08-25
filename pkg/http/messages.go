@@ -17,6 +17,7 @@ type (
 
 func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOutput, error) {
 	queueName := input.QueueName
+	group := input.Body.Group
 	priority := input.Body.Priority
 	content := input.Body.Content
 
@@ -35,7 +36,7 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 		return res, nil
 	}
 
-	msg, err := h.node.Enqueue(queueName, priority, content)
+	msg, err := h.node.Enqueue(queueName, group, priority, content)
 
 	if err != nil {
 		return nil, huma.Error409Conflict("Failed to enqueue a message", err)

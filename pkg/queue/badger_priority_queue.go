@@ -29,6 +29,7 @@ func QueueConfigFromBytes(data []byte) (*QueueConfig, error) {
 }
 
 type Message struct {
+	Group    string
 	ID       uint64
 	Priority int64
 	Content  string
@@ -204,7 +205,7 @@ func (bpq *BadgerPriorityQueue) Load(queueName string, loadMessages bool) error 
 					if err != nil {
 						return err
 					}
-					bpq.pq.Enqueue("default", &Item{ID: msg.ID, Priority: msg.Priority})
+					bpq.pq.Enqueue(msg.Group, &Item{ID: msg.ID, Priority: msg.Priority})
 					return nil
 				})
 				if err != nil {
@@ -221,9 +222,13 @@ func (bpq *BadgerPriorityQueue) Load(queueName string, loadMessages bool) error 
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) Enqueue(priority int64, content string) (*Message, error) {
+func (bpq *BadgerPriorityQueue) Enqueue(group string, priority int64, content string) (*Message, error) {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
+
+	if bpq.config.Type != "fair" {
+		group = "default"
+	}
 
 	nextID, err := bpq.GetNextID()
 	if err != nil {
@@ -252,7 +257,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(priority int64, content string) (*Messag
 		return msg, err
 	}
 
-	bpq.pq.Enqueue("default", queueItem)
+	bpq.pq.Enqueue(group, queueItem)
 	return msg, nil
 }
 
@@ -316,10 +321,8 @@ func (bpq *BadgerPriorityQueue) GetByID(id uint64) (*Message, error) {
 
 	var msg *Message
 
-	queueItem := bpq.pq.GetByID("default", id)
-
 	err := bpq.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(bpq.GetMessagesKey(queueItem.ID))
+		item, err := txn.Get(bpq.GetMessagesKey(id))
 		if err != nil {
 			return err
 		}
@@ -340,7 +343,7 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
-	queueItem := bpq.pq.GetByID("default", id)
+	group := "default"
 
 	// Update BadgerDB
 	err := bpq.db.Update(func(txn *badger.Txn) error {
@@ -359,21 +362,31 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 			return err
 		}
 
+		group = msg.Group
+		queueItem := bpq.pq.GetByID(group, id)
+
 		msg.UpdatePriority(newPriority)
 
 		data, err := msg.ToBytes()
 		if err != nil {
 			return err
 		}
-		return txn.Set(bpq.GetMessagesKey(queueItem.ID), data)
+		err = txn.Set(bpq.GetMessagesKey(queueItem.ID), data)
+
+		if err != nil {
+			return err
+		}
+
+		queueItem.UpdatePriority(newPriority)
+
+		return nil
 	})
 	if err != nil {
 		return err
 	}
 
 	// Update in-memory heap
-	queueItem.UpdatePriority(newPriority)
-	bpq.pq.UpdatePriority("default", id, newPriority)
+	bpq.pq.UpdatePriority(group, id, newPriority)
 	return nil
 }
 

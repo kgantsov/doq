@@ -7,10 +7,13 @@ import (
 	"github.com/kgantsov/doq/pkg/queue"
 )
 
-func (n *Node) Enqueue(queueName string, priority int64, content string) (*queue.Message, error) {
+func (n *Node) Enqueue(
+	queueName string, group string, priority int64, content string,
+) (*queue.Message, error) {
 	cmd := Command{
 		Op:        "enqueue",
 		QueueName: queueName,
+		Group:     group,
 		Priority:  priority,
 		Content:   content,
 	}

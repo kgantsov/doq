@@ -14,10 +14,6 @@ import (
 func TestEnqueueDequeue(t *testing.T) {
 	_, api := humatest.New(t)
 
-	// var httpClient = &http.Client{
-	// 	Timeout: time.Second * 10,
-	// }
-
 	h := &Handler{
 		node: newTestNode(),
 	}
@@ -205,9 +201,11 @@ func (n *testNode) DeleteQueue(queueName string) error {
 	return nil
 }
 
-func (n *testNode) Enqueue(queueName string, priority int64, content string) (*queue.Message, error) {
+func (n *testNode) Enqueue(
+	queueName string, group string, priority int64, content string,
+) (*queue.Message, error) {
 	n.nextID++
-	message := &queue.Message{ID: n.nextID, Priority: priority, Content: content}
+	message := &queue.Message{ID: n.nextID, Group: group, Priority: priority, Content: content}
 	n.messages = append(n.messages, message)
 	return message, nil
 }

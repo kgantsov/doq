@@ -34,6 +34,7 @@ type DeleteQueueOutput struct {
 }
 
 type EnqueueInputBody struct {
+	Group    string `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
 	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Content  string `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
 }
@@ -46,6 +47,7 @@ type EnqueueInput struct {
 type EnqueueOutputBody struct {
 	Status   string `json:"status" example:"ENQUEUED" doc:"Status of the enqueue operation"`
 	ID       uint64 `json:"id" doc:"ID of the message"`
+	Group    string `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
 	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Content  string `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
 }
@@ -63,6 +65,7 @@ type DequeueInput struct {
 type DequeueOutputBody struct {
 	Status   string `json:"status" example:"DEQUEUED" doc:"Status of the dequeue operation"`
 	ID       uint64 `json:"id" doc:"ID of the message"`
+	Group    string `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
 	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Content  string `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
 }
