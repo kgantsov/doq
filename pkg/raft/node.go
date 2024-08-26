@@ -25,16 +25,18 @@ type Node struct {
 
 	peers []string
 
-	db *badger.DB
+	db      *badger.DB
+	raftDir string
 }
 
-func NewNode(db *badger.DB, id, address, raftPort string, peers []string) *Node {
+func NewNode(db *badger.DB, raftDir string, id, address, raftPort string, peers []string) *Node {
 	return &Node{
 		id:       id,
 		address:  address,
 		raftPort: raftPort,
 		peers:    peers,
 		db:       db,
+		raftDir:  raftDir,
 	}
 }
 
@@ -56,14 +58,14 @@ func (node *Node) Initialize() {
 	replicas := []string{replica1, replica2}
 
 	queueManager := queue.NewQueueManager(node.db)
-	raftDir := fmt.Sprintf("raft/%s", node.id)
-	os.MkdirAll(raftDir, 0700)
+
+	os.MkdirAll(node.raftDir, 0700)
 
 	raftPort := fmt.Sprintf("%s:%s", node.id, node.raftPort)
 
-	log.Debug().Msgf("=====> Node %s listens on: %s IS LEADER: %t", node.id, raftPort, leader == node.id)
-
-	raftNode, err := createRaftNode(nodeID, raftDir, raftPort, queueManager, leader == node.id)
+	raftNode, err := createRaftNode(
+		nodeID, node.raftDir, raftPort, queueManager, leader == node.id,
+	)
 	if err != nil {
 		log.Fatal().Msgf("failed to create raft node: %s", err.Error())
 	}

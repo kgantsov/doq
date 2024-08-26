@@ -36,7 +36,8 @@ func main() {
 	defer db.Close()
 
 	log.Info().Msgf("Starting node %s with HTTP on %s and Raft on %s", nodeID, httpPort, raftPort)
-	node := raft.NewNode(db, nodeID, httpPort, raftPort, peers)
+	raftDir := fmt.Sprintf("raft/%s", nodeID)
+	node := raft.NewNode(db, raftDir, nodeID, httpPort, raftPort, peers)
 
 	node.Initialize()
 	h := http.NewHttpService(httpPort, node)

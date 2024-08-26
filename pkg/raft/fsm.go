@@ -40,15 +40,17 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 		return &FSMResponse{QueueName: c.QueueName, error: err}
 	}
 
+	log.Info().Msgf("Node %s Received a command: %+v", f.NodeID, c)
+
 	switch c.Op {
 	case "enqueue":
 		return f.enqueueApply(c)
 	case "dequeue":
-		f.dequeueApply(c)
+		return f.dequeueApply(c)
 	case "ack":
-		f.ackApply(c)
+		return f.ackApply(c)
 	case "updatePriority":
-		f.updatePriorityApply(c)
+		return f.updatePriorityApply(c)
 	case "createQueue":
 		return f.createQueueApply(c)
 	case "deleteQueue":
