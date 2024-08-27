@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/rs/zerolog/log"
@@ -24,11 +23,7 @@ func NewProxy(client *http.Client) *Proxy {
 
 func (p *Proxy) CreateQueue(
 	ctx context.Context, host string, body *CreateQueueInputBody,
-) (*CreateQueueOutputBody, error) {
-	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to parse host", err)
-	}
+) (*CreateQueueOutputBody, huma.StatusError) {
 
 	bodyB, err := json.Marshal(body)
 	if err != nil {
@@ -37,7 +32,7 @@ func (p *Proxy) CreateQueue(
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("http://%s:8000/API/v1/queues", u.Hostname()),
+		fmt.Sprintf("%s/API/v1/queues", host),
 		bytes.NewBuffer(bodyB),
 	)
 	if err != nil {
@@ -68,15 +63,10 @@ func (p *Proxy) CreateQueue(
 
 func (p *Proxy) DeleteQueue(
 	ctx context.Context, host string, queueName string,
-) (*DeleteQueueOutputBody, error) {
-	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to parse host", err)
-	}
-
+) (*DeleteQueueOutputBody, huma.StatusError) {
 	req, err := http.NewRequest(
 		"DELETE",
-		fmt.Sprintf("http://%s:8000/API/v1/queues/%s", u.Hostname(), queueName),
+		fmt.Sprintf("%s/API/v1/queues/%s", host, queueName),
 		nil,
 	)
 	if err != nil {
@@ -103,12 +93,7 @@ func (p *Proxy) DeleteQueue(
 	return &data, nil
 }
 
-func (p *Proxy) Enqueue(ctx context.Context, host string, queueName string, body *EnqueueInputBody) (*EnqueueOutputBody, error) {
-	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to parse host", err)
-	}
-
+func (p *Proxy) Enqueue(ctx context.Context, host string, queueName string, body *EnqueueInputBody) (*EnqueueOutputBody, huma.StatusError) {
 	bodyB, err := json.Marshal(body)
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to marshal body", err)
@@ -116,7 +101,7 @@ func (p *Proxy) Enqueue(ctx context.Context, host string, queueName string, body
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages", u.Hostname(), queueName),
+		fmt.Sprintf("%s/API/v1/queues/%s/messages", host, queueName),
 		bytes.NewBuffer(bodyB),
 	)
 	if err != nil {
@@ -147,15 +132,15 @@ func (p *Proxy) Enqueue(ctx context.Context, host string, queueName string, body
 
 func (p *Proxy) Dequeue(
 	ctx context.Context, host string, queueName string, ack bool,
-) (*DequeueOutputBody, error) {
-	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to parse host", err)
-	}
-
+) (*DequeueOutputBody, huma.StatusError) {
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages?ack=%s", u.Hostname(), queueName, fmt.Sprint(ack)),
+		fmt.Sprintf(
+			"%s/API/v1/queues/%s/messages?ack=%s",
+			host,
+			queueName,
+			fmt.Sprint(ack),
+		),
 		nil,
 	)
 	if err != nil {
@@ -187,15 +172,12 @@ func (p *Proxy) Ack(
 	host string,
 	queueName string,
 	id uint64,
-) (*AckOutputBody, error) {
-	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to parse host", err)
-	}
-
+) (*AckOutputBody, huma.StatusError) {
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages/%d/ack", u.Hostname(), queueName, id),
+		fmt.Sprintf(
+			"%s/API/v1/queues/%s/messages/%d/ack", host, queueName, id,
+		),
 		nil,
 	)
 	if err != nil {
@@ -229,12 +211,7 @@ func (p *Proxy) UpdatePriority(
 	queueName string,
 	id uint64,
 	body *UpdatePriorityInputBody,
-) (*UpdatePriorityOutputBody, error) {
-	u, err := url.ParseRequestURI(fmt.Sprintf("http://%s", host))
-	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to parse host", err)
-	}
-
+) (*UpdatePriorityOutputBody, huma.StatusError) {
 	bodyB, err := json.Marshal(body)
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to marshal body", err)
@@ -242,7 +219,12 @@ func (p *Proxy) UpdatePriority(
 
 	req, err := http.NewRequest(
 		"PUT",
-		fmt.Sprintf("http://%s:8000/API/v1/queues/%s/messages/%d/priority", u.Hostname(), queueName, id),
+		fmt.Sprintf(
+			"%s/API/v1/queues/%s/messages/%d/priority",
+			host,
+			queueName,
+			id,
+		),
 		bytes.NewBuffer(bodyB),
 	)
 	if err != nil {

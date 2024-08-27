@@ -144,6 +144,10 @@ func (bpq *BadgerPriorityQueue) Delete() error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
+	if bpq.config == nil {
+		return ErrQueueNotFound
+	}
+
 	err := bpq.db.Update(func(txn *badger.Txn) error {
 		err := txn.Delete(bpq.GetQueueKey(bpq.config.Name))
 		if err != nil {

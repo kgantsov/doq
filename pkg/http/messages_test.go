@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
@@ -186,7 +187,9 @@ func newTestNode() *testNode {
 }
 
 func (n *testNode) Leader() string {
-	return n.leader
+	u, _ := url.ParseRequestURI(fmt.Sprintf("http://%s", n.leader))
+
+	return fmt.Sprintf("http://%s:8000/API/v1/queues", u.Hostname())
 }
 func (n *testNode) IsLeader() bool {
 	return true
