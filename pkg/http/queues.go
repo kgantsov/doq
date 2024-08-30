@@ -5,14 +5,11 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/rs/zerolog/log"
 )
 
 func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*CreateQueueOutput, error) {
 	queueName := input.Body.Name
 	queueType := input.Body.Type
-
-	log.Info().Msgf("Leader is: %s", h.node.Leader())
 
 	if !h.node.IsLeader() {
 		respBody, err := h.proxy.CreateQueue(ctx, h.node.Leader(), &input.Body)

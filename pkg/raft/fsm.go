@@ -40,7 +40,7 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 		return &FSMResponse{QueueName: c.QueueName, error: err}
 	}
 
-	log.Info().Msgf("Node %s Received a command: %+v", f.NodeID, c)
+	log.Debug().Msgf("Node %s Received a command: %+v", f.NodeID, c)
 
 	switch c.Op {
 	case "enqueue":

@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
-	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -20,8 +19,6 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 	group := input.Body.Group
 	priority := input.Body.Priority
 	content := input.Body.Content
-
-	log.Info().Msgf("Leader is: %s", h.node.Leader())
 
 	if !h.node.IsLeader() {
 		respBody, err := h.proxy.Enqueue(ctx, h.node.Leader(), queueName, &input.Body)
@@ -114,8 +111,6 @@ func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) 
 func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput) (*UpdatePriorityOutput, error) {
 	queueName := input.QueueName
 	priority := input.Body.Priority
-
-	log.Info().Msgf("Leader is: %s", h.node.Leader())
 
 	if !h.node.IsLeader() {
 		respBody, err := h.proxy.UpdatePriority(
