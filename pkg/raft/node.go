@@ -3,6 +3,7 @@ package raft
 import (
 	"fmt"
 	"hash/crc32"
+	"net/url"
 	"os"
 	"sort"
 	"time"
@@ -115,7 +116,9 @@ func (node *Node) monitorLeadership() {
 }
 
 func (n *Node) Leader() string {
-	return n.leader
+	u, _ := url.ParseRequestURI(fmt.Sprintf("http://%s", n.leader))
+
+	return fmt.Sprintf("http://%s:8000", u.Hostname())
 }
 
 func (n *Node) IsLeader() bool {
