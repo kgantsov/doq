@@ -10,7 +10,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
-	raftboltdb "github.com/hashicorp/raft-boltdb"
+	badgerdb "github.com/kgantsov/doq/pkg/badger-store"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/rs/zerolog/log"
 )
@@ -173,22 +173,23 @@ func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueM
 		return nil, err
 	}
 
+	var logStore raft.LogStore
+	var stableStore raft.StableStore
+	badgerDB, err := badgerdb.New(badgerdb.Options{
+		Path: raftDir,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("new store: %s", err)
+	}
+	logStore = badgerDB
+	stableStore = badgerDB
+
 	snapshots, err := raft.NewFileSnapshotStore(raftDir, 1, os.Stderr)
 	if err != nil {
 		return nil, err
 	}
 
-	logStore, err := raftboltdb.NewBoltStore(fmt.Sprintf("%s/raft-log.bolt", raftDir))
-	if err != nil {
-		return nil, err
-	}
-
-	stableStore, err := raftboltdb.NewBoltStore(fmt.Sprintf("%s/raft-stable.bolt", raftDir))
-	if err != nil {
-		return nil, err
-	}
-
-	fsm := &FSM{queueManager: queueManager, NodeID: nodeID}
+	fsm := &FSM{queueManager: queueManager, NodeID: nodeID, store: badgerDB}
 
 	r, err := raft.NewRaft(config, fsm, logStore, stableStore, snapshots, transport)
 	if err != nil {

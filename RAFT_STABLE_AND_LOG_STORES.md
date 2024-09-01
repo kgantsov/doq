@@ -130,3 +130,94 @@ default ✓ [======================================] 10 VUs  10s
 running (10.0s), 000/100 VUs, 46719 complete and 0 interrupted iterations
 default ✓ [======================================] 100 VUs  10s
 ```
+
+### Benchmark results for DOQ with [BadgerDB](https://github.com/dgraph-io/badger) as a Stable Store and Log Store
+
+#### Run 10 users for 10 seconds
+
+```bash
+> $ k6 run -u 10 -d 10s queue.js
+
+          /\      |‾‾| /‾‾/   /‾‾/
+     /\  /  \     |  |/  /   /  /
+    /  \/    \    |     (   /   ‾‾\
+   /          \   |  |\  \ |  (‾)  |
+  / __________ \  |__| \__\ \_____/ .io
+
+     execution: local
+        script: queue.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 10 max VUs, 40s max duration (incl. graceful stop):
+              * default: 10 looping VUs for 10s (gracefulStop: 30s)
+
+
+     ✓ enqueued
+
+     checks.........................: 100.00% ✓ 184292       ✗ 0
+     data_received..................: 134 MB  13 MB/s
+     data_sent......................: 52 MB   5.2 MB/s
+     http_req_blocked...............: avg=827ns    min=0s    med=0s       max=6.35ms  p(90)=1µs   p(95)=1µs
+     http_req_connecting............: avg=14ns     min=0s    med=0s       max=317µs   p(90)=0s    p(95)=0s
+     http_req_duration..............: avg=497.87µs min=59µs  med=381µs    max=84.48ms p(90)=688µs p(95)=952µs
+       { expected_response:true }...: avg=497.87µs min=59µs  med=381µs    max=84.48ms p(90)=688µs p(95)=952µs
+     http_req_failed................: 0.00%   ✓ 0            ✗ 184293
+     http_req_receiving.............: avg=16.1µs   min=5µs   med=8µs      max=27.29ms p(90)=17µs  p(95)=34µs
+     http_req_sending...............: avg=4.6µs    min=1µs   med=2µs      max=19.87ms p(90)=5µs   p(95)=8µs
+     http_req_tls_handshaking.......: avg=0s       min=0s    med=0s       max=0s      p(90)=0s    p(95)=0s
+     http_req_waiting...............: avg=477.16µs min=48µs  med=365µs    max=84.42ms p(90)=664µs p(95)=911µs
+     http_reqs......................: 184293  18420.898228/s
+     iteration_duration.............: avg=538.93µs min=625ns med=413.08µs max=84.56ms p(90)=739µs p(95)=1.03ms
+     iterations.....................: 184292  18420.798274/s
+     vus............................: 10      min=10         max=10
+     vus_max........................: 10      min=10         max=10
+
+
+running (10.0s), 00/10 VUs, 184292 complete and 0 interrupted iterations
+default ✓ [======================================] 10 VUs  10s
+```
+
+
+#### Run 100 users for 10 seconds
+
+```bash
+> $ k6 run -u 100 -d 10s queue.js
+
+          /\      |‾‾| /‾‾/   /‾‾/
+     /\  /  \     |  |/  /   /  /
+    /  \/    \    |     (   /   ‾‾\
+   /          \   |  |\  \ |  (‾)  |
+  / __________ \  |__| \__\ \_____/ .io
+
+     execution: local
+        script: queue.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 40s max duration (incl. graceful stop):
+              * default: 100 looping VUs for 10s (gracefulStop: 30s)
+
+
+     ✓ enqueued
+
+     checks.........................: 100.00% ✓ 204645       ✗ 0
+     data_received..................: 149 MB  15 MB/s
+     data_sent......................: 58 MB   5.7 MB/s
+     http_req_blocked...............: avg=2.09µs  min=0s    med=0s     max=15.37ms p(90)=1µs    p(95)=2µs
+     http_req_connecting............: avg=688ns   min=0s    med=0s     max=2.41ms  p(90)=0s     p(95)=0s
+     http_req_duration..............: avg=4.76ms  min=64µs  med=4.3ms  max=70.89ms p(90)=7.91ms p(95)=9.4ms
+       { expected_response:true }...: avg=4.76ms  min=64µs  med=4.3ms  max=70.89ms p(90)=7.91ms p(95)=9.4ms
+     http_req_failed................: 0.00%   ✓ 0            ✗ 204646
+     http_req_receiving.............: avg=43.38µs min=5µs   med=9µs    max=39.91ms p(90)=26µs   p(95)=63µs
+     http_req_sending...............: avg=11.74µs min=1µs   med=3µs    max=31.57ms p(90)=7µs    p(95)=13µs
+     http_req_tls_handshaking.......: avg=0s      min=0s    med=0s     max=0s      p(90)=0s     p(95)=0s
+     http_req_waiting...............: avg=4.71ms  min=51µs  med=4.28ms max=70.88ms p(90)=7.82ms p(95)=9.33ms
+     http_reqs......................: 204646  20449.001502/s
+     iteration_duration.............: avg=4.87ms  min=833ns med=4.35ms max=70.92ms p(90)=8.11ms p(95)=9.58ms
+     iterations.....................: 204645  20448.901578/s
+     vus............................: 100     min=100        max=100
+     vus_max........................: 100     min=100        max=100
+
+
+running (10.0s), 000/100 VUs, 204645 complete and 0 interrupted iterations
+default ✓ [======================================] 100 VUs  10s
+```

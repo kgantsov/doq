@@ -8,6 +8,8 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/rs/zerolog/log"
+
+	badgerdb "github.com/kgantsov/doq/pkg/badger-store"
 )
 
 type Command struct {
@@ -24,6 +26,7 @@ type Command struct {
 type FSM struct {
 	NodeID       string
 	queueManager *queue.QueueManager
+	store        badgerdb.Store
 }
 
 type FSMResponse struct {
@@ -237,7 +240,7 @@ func (f *FSM) deleteQueueApply(c Command) *FSMResponse {
 }
 
 func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
-	return &FSMSnapshot{queueManager: f.queueManager}, nil
+	return &FSMSnapshot{queueManager: f.queueManager, store: f.store}, nil
 }
 
 func (f *FSM) Restore(rc io.ReadCloser) error {
@@ -252,14 +255,15 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 
 type FSMSnapshot struct {
 	queueManager *queue.QueueManager
+	store        badgerdb.Store
 }
 
 func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
-	// if err := f.store.CopyLogs(sink); err != nil {
-	// 	log.Debug().Msg("Error copying logs to sink")
-	// 	sink.Cancel()
-	// 	return err
-	// }
+	if err := f.store.CopyLogs(sink); err != nil {
+		log.Debug().Msg("Error copying logs to sink")
+		sink.Cancel()
+		return err
+	}
 	return nil
 }
 
