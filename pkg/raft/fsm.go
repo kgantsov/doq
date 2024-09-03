@@ -1,9 +1,11 @@
 package raft
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/queue"
@@ -27,6 +29,8 @@ type FSM struct {
 	NodeID       string
 	queueManager *queue.QueueManager
 	store        badgerdb.Store
+
+	mu sync.Mutex
 }
 
 type FSMResponse struct {
@@ -38,6 +42,9 @@ type FSMResponse struct {
 }
 
 func (f *FSM) Apply(raftLog *raft.Log) interface{} {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
 	var c Command
 	if err := json.Unmarshal(raftLog.Data, &c); err != nil {
 		return &FSMResponse{QueueName: c.QueueName, error: err}
@@ -240,16 +247,63 @@ func (f *FSM) deleteQueueApply(c Command) *FSMResponse {
 }
 
 func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
 	return &FSMSnapshot{queueManager: f.queueManager, store: f.store}, nil
 }
 
 func (f *FSM) Restore(rc io.ReadCloser) error {
-	// var store map[string]string
-	// if err := json.NewDecoder(rc).Decode(&store); err != nil {
-	// 	return err
-	// }
+	defer rc.Close()
 
-	// f.queueManager = queue.NewQueueManager()
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	scanner := bufio.NewScanner(rc)
+	linesTotal := 0
+	linesRestored := 0
+	log.Error().Msgf("Restoring snapshot")
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		linesTotal++
+
+		var c Command
+		if err := json.Unmarshal(line, &c); err != nil {
+			log.Warn().Msgf("Failed to unmarshal command: %v %v", err, line)
+			continue
+		}
+
+		switch c.Op {
+		case "enqueue":
+			f.enqueueApply(c)
+		case "dequeue":
+			f.dequeueApply(c)
+		case "ack":
+			f.ackApply(c)
+		case "updatePriority":
+			f.updatePriorityApply(c)
+		case "createQueue":
+			f.createQueueApply(c)
+		case "deleteQueue":
+			f.deleteQueueApply(c)
+		default:
+			log.Warn().Msgf("Unrecognized command op: %s", c.Op)
+			continue
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Info().Msgf(
+			"Error while reading snapshot: %v. Restored %d out of %d lines",
+			err,
+			linesRestored,
+			linesTotal,
+		)
+		return err
+	}
+
+	log.Warn().Msgf("Restored %d out of %d lines", linesRestored, linesTotal)
+
 	return nil
 }
 

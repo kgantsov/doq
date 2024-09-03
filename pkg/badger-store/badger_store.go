@@ -168,7 +168,7 @@ func (b *BadgerStore) LastIndex() (uint64, error) {
 }
 
 // GetLog is used to retrieve a log from badger at a given index.
-func (b *BadgerStore) GetLog(idx uint64, log *raft.Log) error {
+func (b *BadgerStore) GetLog(idx uint64, raftLog *raft.Log) error {
 	txn := b.db.NewTransaction(false)
 	defer txn.Discard()
 
@@ -182,7 +182,7 @@ func (b *BadgerStore) GetLog(idx uint64, log *raft.Log) error {
 	if val == nil || err != nil {
 		return raft.ErrLogNotFound
 	}
-	return DecodeMsgPack(val, log)
+	return DecodeMsgPack(val, raftLog)
 }
 
 // StoreLog is used to store a single raft log
@@ -342,7 +342,7 @@ func (b *BadgerStore) Get(k []byte) ([]byte, error) {
 
 	val, err := item.ValueCopy(nil)
 
-	if val == nil {
+	if val == nil || err != nil {
 		return nil, ErrKeyNotFound
 	}
 	return append([]byte(nil), val...), nil
