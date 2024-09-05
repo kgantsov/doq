@@ -39,6 +39,18 @@ steps:
     event:
       - tag
 
+- name: build and push the service
+  image: plugins/docker
+  settings:
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    repo: kgantsov/doq
+    context: .
+    dockerfile: ./Dockerfile
+    auto_tag: true
+
 - name: publish
   image: plugins/github-release
   volumes:
@@ -51,18 +63,6 @@ steps:
   when:
     event:
       - tag
-
-- name: build and push the service
-  image: plugins/docker
-  settings:
-    username:
-      from_secret: docker_username
-    password:
-      from_secret: docker_password
-    repo: kgantsov/doq
-    context: .
-    dockerfile: ./Dockerfile
-    auto_tag: true
 
 volumes:
 - name: deps
