@@ -24,6 +24,8 @@ type Node struct {
 	QueueManager *queue.QueueManager
 	leader       string
 
+	leaderChangeFn func(bool)
+
 	peers []string
 
 	db      *badger.DB
@@ -32,13 +34,18 @@ type Node struct {
 
 func NewNode(db *badger.DB, raftDir string, id, address, raftPort string, peers []string) *Node {
 	return &Node{
-		id:       id,
-		address:  address,
-		raftPort: raftPort,
-		peers:    peers,
-		db:       db,
-		raftDir:  raftDir,
+		id:             id,
+		address:        address,
+		raftPort:       raftPort,
+		peers:          peers,
+		db:             db,
+		raftDir:        raftDir,
+		leaderChangeFn: func(bool) {},
 	}
+}
+
+func (node *Node) SetLeaderChangeFunc(leaderChangeFn func(bool)) {
+	node.leaderChangeFn = leaderChangeFn
 }
 
 func (node *Node) Initialize() {
@@ -56,7 +63,12 @@ func (node *Node) Initialize() {
 	leader := nodes[nodeIndex]
 	replica1 := nodes[(nodeIndex+1)%numNodes]
 	replica2 := nodes[(nodeIndex+2)%numNodes]
-	replicas := []string{replica1, replica2}
+	var replicas []string
+	if len(nodes) > 2 {
+		replicas = []string{replica1, replica2}
+	}
+
+	log.Debug().Msgf("=====> TEST Initialize %+v ::: %+v", nodes, replicas)
 
 	queueManager := queue.NewQueueManager(node.db)
 
@@ -99,6 +111,7 @@ func (node *Node) Initialize() {
 	}
 
 	go node.monitorLeadership()
+	go node.ListenToLeaderChanges()
 
 }
 
@@ -112,6 +125,12 @@ func (node *Node) monitorLeadership() {
 			log.Printf("Node %s leader is now %s", node.id, leader)
 		}
 		time.Sleep(1 * time.Second)
+	}
+}
+
+func (node *Node) ListenToLeaderChanges() {
+	for isLeader := range node.Raft.LeaderCh() {
+		node.leaderChangeFn(isLeader)
 	}
 }
 
