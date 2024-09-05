@@ -10,7 +10,21 @@ services:
     ports:
       - "9000"
       - "8001:8000"
-    command: ["go", "run", "main.go", "node-1", "8000", "9000", "node-2", "node-3"]
+    command: [
+      "go",
+      "run",
+      "main.go",
+      "-dataDir",
+      "/usr/local/doq/data",
+      "-id",
+      "node-1",
+      "-httpAddr",
+      "8000",
+      "-raftAddr",
+      "9000",
+      "-peers",
+      "node-2,node-3"
+    ]
   node-2:
     container_name: node-2
     build: .
@@ -19,7 +33,21 @@ services:
     ports:
       - "9000"
       - "8002:8000"
-    command: ["go", "run", "main.go", "node-2", "8000", "9000", "node-1", "node-3"]
+    command: [
+      "go",
+      "run",
+      "main.go",
+      "-dataDir",
+      "/usr/local/doq/data",
+      "-id",
+      "node-2",
+      "-httpAddr",
+      "8000",
+      "-raftAddr",
+      "9000",
+      "-peers",
+      "node-1,node-3"
+    ]
   node-3:
     container_name: node-3
     build: .
@@ -28,8 +56,21 @@ services:
     ports:
       - "9000"
       - "8003:8000"
-    command: ["go", "run", "main.go", "node-3", "8000", "9000", "node-1", "node-2"]
-
+    command: [
+      "go",
+      "run",
+      "main.go",
+      "-dataDir",
+      "/usr/local/doq/data",
+      "-id",
+      "node-3",
+      "-httpAddr",
+      "8000",
+      "-raftAddr",
+      "9000",
+      "-peers",
+      "node-1,node-2"
+    ]
   python:
     container_name: shell
     build:
