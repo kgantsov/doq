@@ -33,7 +33,7 @@ var peers string
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	flag.StringVar(&httpPort, "httpAddr", DefaultHTTPPort, "Set the HTTP bind address")
@@ -72,7 +72,7 @@ func main() {
 		}
 
 		nodeID = cl.NodeID()
-		raftPort = cl.RaftAddr()
+		// raftPort = cl.RaftAddr()
 		hosts = cl.Hosts()
 
 	} else {
