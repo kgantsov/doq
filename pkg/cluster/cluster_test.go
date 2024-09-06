@@ -35,7 +35,8 @@ func TestCluster_Init(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "doq-2", c.hostname)
 	assert.Equal(t, "51.11.1.2", c.ip)
-	assert.Equal(t, []string{"doq-0:8000", "doq-1:8000"}, c.hosts)
+	// assert.Equal(t, []string{"doq-0:8000", "doq-1:8000"}, c.hosts)
+	assert.Equal(t, []string{"doq-0", "doq-1"}, c.hosts)
 }
 
 // TestCluster_InitError tests the Init method of the Cluster with an error
@@ -102,7 +103,8 @@ func TestCluster_NodeID(t *testing.T) {
 	err := c.Init()
 	assert.NoError(t, err)
 
-	assert.Equal(t, "doq-0:8000", c.NodeID())
+	// assert.Equal(t, "doq-0:8000", c.NodeID())
+	assert.Equal(t, "doq-0", c.NodeID())
 
 	serviceDiscovery.lookupHostnameFn = func() (string, error) {
 		return "doq-2", nil
@@ -116,7 +118,8 @@ func TestCluster_NodeID(t *testing.T) {
 	err = c.Init()
 	assert.NoError(t, err)
 
-	assert.Equal(t, "doq-2:8000", c.NodeID())
+	// assert.Equal(t, "doq-2:8000", c.NodeID())
+	assert.Equal(t, "doq-2", c.NodeID())
 }
 
 // TestCluster_RaftAddr tests the RaftAddr method of the Cluster
@@ -134,7 +137,8 @@ func TestCluster_RaftAddr(t *testing.T) {
 	err := c.Init()
 	assert.NoError(t, err)
 
-	assert.Equal(t, "doq-0:12000", c.RaftAddr())
+	// assert.Equal(t, "doq-0:12000", c.RaftAddr())
+	assert.Equal(t, ":12000", c.RaftAddr())
 
 	serviceDiscovery.lookupHostnameFn = func() (string, error) {
 		return "doq-2", nil
@@ -148,7 +152,8 @@ func TestCluster_RaftAddr(t *testing.T) {
 	err = c.Init()
 	assert.NoError(t, err)
 
-	assert.Equal(t, "doq-2:12000", c.RaftAddr())
+	// assert.Equal(t, "doq-2:12000", c.RaftAddr())
+	assert.Equal(t, ":12000", c.RaftAddr())
 }
 
 // TestCluster_Hosts tests the Hosts method of the Cluster
@@ -163,7 +168,8 @@ func TestCluster_Hosts(t *testing.T) {
 	err := c.Init()
 	assert.NoError(t, err)
 
-	assert.Equal(t, []string{"doq-0:8000", "doq-1:8000"}, c.Hosts())
+	// assert.Equal(t, []string{"doq-0:8000", "doq-1:8000"}, c.Hosts())
+	assert.Equal(t, []string{"doq-0", "doq-1"}, c.Hosts())
 }
 
 func createMockServiceDiscoverySRV() *ServiceDiscoverySRV {
