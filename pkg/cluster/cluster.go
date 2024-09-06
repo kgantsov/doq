@@ -137,7 +137,7 @@ func (c *Cluster) UpdateServiceEndpointSlice() error {
 		context.TODO(), c.serviceName, metav1.DeleteOptions{},
 	)
 	if err != nil {
-		return err
+		log.Warn().Msgf("Error deleting EndpointSlice: %s", err)
 	}
 
 	name := "http"
