@@ -64,7 +64,7 @@ func main() {
 	if ServiceName != "" {
 		namespace := "default"
 		serviceDiscovery := cluster.NewServiceDiscoverySRV(namespace, ServiceName)
-		cl := cluster.NewCluster(serviceDiscovery, namespace, ServiceName, httpPort)
+		cl = cluster.NewCluster(serviceDiscovery, namespace, ServiceName, httpPort)
 
 		if err := cl.Init(); err != nil {
 			log.Warn().Msgf("Error initialising a cluster: %s", err)
@@ -89,7 +89,7 @@ func main() {
 	defer db.Close()
 
 	log.Info().Msgf(
-		"Starting node %s with HTTP on %s and Raft on %s %+v", nodeID, httpPort, raftPort, hosts,
+		"Starting node (%s) %s with HTTP on %s and Raft on %s %+v", ServiceName, nodeID, httpPort, raftPort, hosts,
 	)
 	node := raft.NewNode(
 		db, filepath.Join(dataDir, nodeID, "raft"), nodeID, httpPort, raftPort, hosts,
