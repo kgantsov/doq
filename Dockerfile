@@ -1,24 +1,26 @@
-FROM golang:1.22.2-bullseye AS builder
+FROM golang:1.22.2 AS builder
 
-RUN apt update && apt install ca-certificates libgnutls30 -y
-
-RUN apt-get install bash
-
-RUN go install github.com/codegangsta/gin@latest
 
 # Copy the code from the host and compile it
-WORKDIR $GOPATH/src/doq
-COPY go.mod .
-COPY go.sum .
-
-# Get dependancies - will also be cached if we won't change mod/sum
+WORKDIR $GOPATH/src/github.com/kgantsov/doq
+COPY ./ ./
 RUN go mod download
-# COPY the source code as the last step
-COPY . .
+WORKDIR $GOPATH/src/github.com/kgantsov/doq/
+WORKDIR $GOPATH/src/github.com/kgantsov/doq/cmd/server
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app .
 
+FROM alpine:latest as alpine
+RUN apk --no-cache add tzdata zip ca-certificates
+WORKDIR /usr/share/zoneinfo
+# -0 means no compression.  Needed because go's
+# tz loader doesn't handle compressed data.
+RUN zip -r -0 /zoneinfo.zip .
 
-WORKDIR $GOPATH/src/doq/cmd/server
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix nocgo -o /server .
+FROM alpine
 
+ENV ZONEINFO /zoneinfo.zip
+COPY --from=alpine /zoneinfo.zip /
 
-WORKDIR $GOPATH/src/doq/cmd/server
+COPY --from=builder /app /
+COPY --from=alpine /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# CMD ["/app --port 8780"]

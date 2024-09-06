@@ -4,7 +4,9 @@ version: '3.8'
 services:
   node-1:
     container_name: node-1
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
     volumes:
       - .:/go/src/doq
     ports:
@@ -27,7 +29,9 @@ services:
     ]
   node-2:
     container_name: node-2
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
     volumes:
       - .:/go/src/doq
     ports:
@@ -50,7 +54,9 @@ services:
     ]
   node-3:
     container_name: node-3
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
     volumes:
       - .:/go/src/doq
     ports:
