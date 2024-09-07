@@ -91,24 +91,24 @@ func (node *Node) Initialize() {
 		log.Info().Msgf("failed to get raft configuration: %v", err)
 	}
 
-	if len(configFuture.Configuration().Servers) == 1 {
-		if leader == node.id {
-			for _, replica := range replicas {
-				peerID := replica
-				peerAddr := fmt.Sprintf("%s:%s", replica, node.raftPort)
-				// peerAddr := replica
+	// if len(configFuture.Configuration().Servers) == 1 {
+	// 	if leader == node.id {
+	for _, replica := range replicas {
+		peerID := replica
+		peerAddr := fmt.Sprintf("%s:%s", replica, node.raftPort)
+		// peerAddr := replica
 
-				log.Debug().Msgf("=====> JOIN Node %s adding peer %s %s", node.id, raft.ServerID(peerID), raft.ServerAddress(peerAddr))
+		log.Debug().Msgf("=====> JOIN Node %s adding peer %s %s", node.id, raft.ServerID(peerID), raft.ServerAddress(peerAddr))
 
-				err := node.Join(peerID, peerAddr)
-				if err != nil {
-					log.Warn().Msgf("Error adding peer %s: %s", peerAddr, err)
-				} else {
-					log.Info().Msgf("Successfully added peer %s", peerAddr)
-				}
-			}
+		err := node.Join(peerID, peerAddr)
+		if err != nil {
+			log.Warn().Msgf("Error adding peer %s: %s", peerAddr, err)
+		} else {
+			log.Info().Msgf("Successfully added peer %s", peerAddr)
 		}
 	}
+	// 	}
+	// }
 
 	go node.monitorLeadership()
 	go node.ListenToLeaderChanges()
