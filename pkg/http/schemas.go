@@ -1,5 +1,19 @@
 package http
 
+type JoinInput struct {
+	Body struct {
+		ID   string `json:"id" example:"dlock-node-0" doc:"ID of a node"`
+		Addr string `json:"addr" example:"localhost:12001" doc:"IP address and a port of a service"`
+	}
+}
+
+type JoinOutput struct {
+	Body struct {
+		ID   string `json:"id" example:"dlock-node-0" doc:"ID of a node"`
+		Addr string `json:"addr" example:"localhost:12001" doc:"IP address and a port of a service"`
+	}
+}
+
 type CreateQueueInputBody struct {
 	Name string `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
 	Type string `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`

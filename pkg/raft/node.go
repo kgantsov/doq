@@ -2,7 +2,6 @@ package raft
 
 import (
 	"fmt"
-	"hash/crc32"
 	"net/url"
 	"os"
 	"sort"
@@ -18,7 +17,7 @@ import (
 type Node struct {
 	id       string
 	address  string
-	raftPort string
+	raftAddr string
 
 	Raft         *raft.Raft
 	QueueManager *queue.QueueManager
@@ -36,7 +35,7 @@ func NewNode(db *badger.DB, raftDir string, id, address, raftPort string, peers 
 	return &Node{
 		id:             id,
 		address:        address,
-		raftPort:       raftPort,
+		raftAddr:       raftPort,
 		peers:          peers,
 		db:             db,
 		raftDir:        raftDir,
@@ -57,58 +56,20 @@ func (node *Node) Initialize() {
 	nodes = sort.StringSlice(nodes)
 
 	nodeID := node.id
-	numNodes := len(nodes)
 
-	nodeIndex := int(crc32.ChecksumIEEE([]byte(nodeID)) % uint32(numNodes))
-	leader := nodes[nodeIndex]
-	replica1 := nodes[(nodeIndex+1)%numNodes]
-	replica2 := nodes[(nodeIndex+2)%numNodes]
-	var replicas []string
-	if len(nodes) > 2 {
-		replicas = []string{replica1, replica2}
-	}
-
-	log.Debug().Msgf("=====> TEST Initialize %+v ::: %+v", nodes, replicas)
+	log.Debug().Msgf("=====> TEST Initialize %+v", nodes)
 
 	queueManager := queue.NewQueueManager(node.db)
 
 	os.MkdirAll(node.raftDir, 0700)
 
-	raftPort := fmt.Sprintf("%s:%s", node.id, node.raftPort)
-
-	raftNode, err := createRaftNode(
-		nodeID, node.raftDir, raftPort, queueManager, leader == node.id,
-	)
+	raftNode, err := createRaftNode(nodeID, node.raftDir, node.raftAddr, queueManager)
 	if err != nil {
-		log.Fatal().Msgf("failed to create raft node: %s", err.Error())
+		log.Fatal().Msgf("failed to create raft node: '%s' %s", node.raftAddr, err.Error())
 	}
 
 	node.Raft = raftNode
 	node.QueueManager = queueManager
-
-	configFuture := node.Raft.GetConfiguration()
-	if err := configFuture.Error(); err != nil {
-		log.Info().Msgf("failed to get raft configuration: %v", err)
-	}
-
-	// if len(configFuture.Configuration().Servers) == 1 {
-	// 	if leader == node.id {
-	for _, replica := range replicas {
-		peerID := replica
-		peerAddr := fmt.Sprintf("%s:%s", replica, node.raftPort)
-		// peerAddr := replica
-
-		log.Debug().Msgf("=====> JOIN Node %s adding peer %s %s", node.id, raft.ServerID(peerID), raft.ServerAddress(peerAddr))
-
-		err := node.Join(peerID, peerAddr)
-		if err != nil {
-			log.Warn().Msgf("Error adding peer %s: %s", peerAddr, err)
-		} else {
-			log.Info().Msgf("Successfully added peer %s", peerAddr)
-		}
-	}
-	// 	}
-	// }
 
 	go node.monitorLeadership()
 	go node.ListenToLeaderChanges()
@@ -182,13 +143,14 @@ func (n *Node) Join(nodeID, addr string) error {
 	return nil
 }
 
-func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueManager, leader bool) (*raft.Raft, error) {
+func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueManager) (*raft.Raft, error) {
 	config := raft.DefaultConfig()
 	config.LocalID = raft.ServerID(nodeID)
 
 	bindAddr := raftPort
 	transport, err := raft.NewTCPTransport(bindAddr, nil, 3, 10*time.Second, os.Stderr)
 	if err != nil {
+		log.Warn().Msgf("failed to create transport: %s", err)
 		return nil, err
 	}
 
@@ -198,6 +160,7 @@ func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueM
 		Path: raftDir,
 	})
 	if err != nil {
+		log.Warn().Msgf("failed to create store: %s", err)
 		return nil, fmt.Errorf("new store: %s", err)
 	}
 	logStore = badgerDB
@@ -205,6 +168,7 @@ func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueM
 
 	snapshots, err := raft.NewFileSnapshotStore(raftDir, 1, os.Stderr)
 	if err != nil {
+		log.Warn().Msgf("failed to create snapshot store: %s", err)
 		return nil, err
 	}
 
@@ -212,49 +176,39 @@ func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueM
 
 	r, err := raft.NewRaft(config, fsm, logStore, stableStore, snapshots, transport)
 	if err != nil {
+		log.Warn().Msgf("failed to create raft: %s", err)
 		return nil, err
 	}
 
-	// configuration := raft.Configuration{Servers: servers}
-	// r.BootstrapCluster(configuration)
-	// time.Sleep(10 * time.Second)
+	configFuture := r.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		log.Info().Msgf("failed to get raft configuration: %v", err)
+	}
 
-	// log.Debug().Msgf("NODE %s %s is a leader: %t", nodeID, bindAddr, leader)
-	if leader {
-		configFuture := r.GetConfiguration()
-		if err := configFuture.Error(); err != nil {
-			log.Info().Msgf("failed to get raft configuration: %v", err)
-		}
+	if len(configFuture.Configuration().Servers) == 0 {
+		servers := make([]raft.Server, 0)
 
-		if len(configFuture.Configuration().Servers) == 0 {
-			servers := make([]raft.Server, 0)
+		servers = append(servers, raft.Server{
+			ID:      config.LocalID,
+			Address: raft.ServerAddress(bindAddr),
+		})
 
-			servers = append(servers, raft.Server{
-				ID: config.LocalID,
-				// Address: transport.LocalAddr(),
-				Address: raft.ServerAddress(bindAddr),
-			})
+		log.Info().Msgf("BootstrapCluster %s joining peers: %v", nodeID, servers)
 
-			log.Info().Msgf("BootstrapCluster %s joining peers: %v", nodeID, servers)
+		configuration := raft.Configuration{Servers: servers}
+		r.BootstrapCluster(configuration)
+		time.Sleep(2 * time.Second)
 
-			configuration := raft.Configuration{Servers: servers}
-			r.BootstrapCluster(configuration)
-			time.Sleep(2 * time.Second)
-
-			for isLeader := range r.LeaderCh() {
-				if isLeader {
-					log.Info().Msgf("Node %s has become a leader", nodeID)
-				} else {
-					log.Info().Msgf("Node %s lost leadership", nodeID)
-				}
-				break
+		for isLeader := range r.LeaderCh() {
+			if isLeader {
+				log.Info().Msgf("Node %s has become a leader", nodeID)
+			} else {
+				log.Info().Msgf("Node %s lost leadership", nodeID)
 			}
-		} else {
-			log.Info().Msgf("Already bootstraped %s %v", nodeID, configFuture.Configuration().Servers)
-			// configuration := raft.Configuration{Servers: configFuture.Configuration().Servers}
-			// r.BootstrapCluster(configuration)
-			// time.Sleep(10 * time.Second)
+			break
 		}
+	} else {
+		log.Info().Msgf("Already bootstraped %s %v", nodeID, configFuture.Configuration().Servers)
 	}
 
 	return r, nil

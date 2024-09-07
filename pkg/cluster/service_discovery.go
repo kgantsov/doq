@@ -43,8 +43,7 @@ func (s *ServiceDiscoverySRV) Lookup() ([]string, error) {
 
 	var hosts []string
 	for _, srv := range addrs {
-		// hosts = append(hosts, fmt.Sprintf("%s:%d", srv.Target, srv.Port))
-		hosts = append(hosts, srv.Target)
+		hosts = append(hosts, fmt.Sprintf("%s:%d", srv.Target, srv.Port))
 	}
 
 	return hosts, nil

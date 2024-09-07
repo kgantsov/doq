@@ -23,7 +23,7 @@ func TestNodeSingleNode(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	n := NewNode(db, tmpRaftDir, "localhost", "9110", "9111", []string{})
+	n := NewNode(db, tmpRaftDir, "localhost", "9110", "localhost:9111", []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -86,7 +86,7 @@ func TestNodeDeleteQueue(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	n := NewNode(db, tmpRaftDir, "localhost", "9120", "9121", []string{})
+	n := NewNode(db, tmpRaftDir, "localhost", "9120", "localhost:9121", []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -109,7 +109,7 @@ func TestNodeSingleNodeAck(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	n := NewNode(db, tmpRaftDir, "localhost", "9130", "9131", []string{})
+	n := NewNode(db, tmpRaftDir, "localhost", "9130", "localhost:9131", []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -151,7 +151,7 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	n := NewNode(db, tmpRaftDir, "localhost", "9140", "9141", []string{})
+	n := NewNode(db, tmpRaftDir, "localhost", "9140", "localhost:9141", []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.

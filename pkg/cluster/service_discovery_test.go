@@ -20,8 +20,7 @@ func TestServiceDiscoverySRV_Lookup(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, hosts, 1)
-	// assert.Equal(t, "test-target:1234", hosts[0])
-	assert.Equal(t, "test-target", hosts[0])
+	assert.Equal(t, "test-target:1234", hosts[0])
 }
 
 // TestServiceDiscoverySRV_IP tests the IP method of the ServiceDiscoverySRV

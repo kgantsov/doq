@@ -28,6 +28,7 @@ type Service struct {
 }
 
 type Node interface {
+	Join(nodeID string, addr string) error
 	Leader() string
 	IsLeader() bool
 	CreateQueue(queueType, queueName string) error
@@ -99,6 +100,18 @@ func (h *Handler) ConfigureMiddleware(router *fiber.App) {
 }
 
 func (h *Handler) RegisterRoutes(api huma.API) {
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "raft-join",
+			Method:      http.MethodPost,
+			Path:        "/join",
+			Summary:     "Join cluster",
+			Description: "An endpoint for joining cluster used that by raft consensus protocol",
+			Tags:        []string{"raft"},
+		},
+		h.Join,
+	)
 	huma.Register(
 		api,
 		huma.Operation{

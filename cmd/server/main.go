@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -19,16 +18,15 @@ import (
 
 const (
 	DefaultHTTPPort = "8000"
-	DefaultRaftPort = "9000"
+	DefaultRaftPort = "localhost:9000"
 )
 
 var httpPort string
 var raftPort string
 var dataDir string
 var nodeID string
+var joinAddr string
 var ServiceName string
-
-var peers string
 
 func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
@@ -39,8 +37,8 @@ func main() {
 	flag.StringVar(&httpPort, "httpAddr", DefaultHTTPPort, "Set the HTTP bind address")
 	flag.StringVar(&raftPort, "raftAddr", DefaultRaftPort, "Set Raft bind address")
 	flag.StringVar(&dataDir, "dataDir", DefaultRaftPort, "Set data directory")
+	flag.StringVar(&joinAddr, "join", "", "Set join address, if any")
 	flag.StringVar(&nodeID, "id", "", "Node ID. If not set, same as Raft bind address")
-	flag.StringVar(&peers, "peers", "", "Comma separated list of peers")
 	flag.StringVar(&ServiceName, "service-name", "", "Name of the service in Kubernetes")
 
 	flag.Usage = func() {
@@ -60,6 +58,7 @@ func main() {
 	hosts := []string{}
 
 	var cl *cluster.Cluster
+	var j *cluster.Joiner
 
 	if ServiceName != "" {
 		namespace := "default"
@@ -72,12 +71,12 @@ func main() {
 		}
 
 		nodeID = cl.NodeID()
-		// raftPort = cl.RaftAddr()
+		raftPort = cl.RaftAddr()
 		hosts = cl.Hosts()
 
 	} else {
-		if len(peers) > 0 {
-			hosts = strings.Split(peers, ",")
+		if joinAddr != "" {
+			hosts = append(hosts, joinAddr)
 		}
 	}
 
@@ -100,6 +99,14 @@ func main() {
 	}
 
 	node.Initialize()
+
+	// If join was specified, make the join request.
+	j = cluster.NewJoiner(nodeID, raftPort, hosts)
+
+	if err := j.Join(); err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
 	h := http.NewHttpService(httpPort, node)
 	if err := h.Start(); err != nil {
 		log.Error().Msgf("failed to start HTTP service: %s", err.Error())

@@ -186,6 +186,10 @@ func newTestNode() *testNode {
 	}
 }
 
+func (n *testNode) Join(nodeID, addr string) error {
+	return nil
+}
+
 func (n *testNode) Leader() string {
 	u, _ := url.ParseRequestURI(fmt.Sprintf("http://%s", n.leader))
 
