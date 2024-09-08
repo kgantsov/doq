@@ -23,9 +23,7 @@ services:
       "-httpAddr",
       "8000",
       "-raftAddr",
-      "9000",
-      "-peers",
-      "node-2,node-3"
+      "node-1:9000",
     ]
   node-2:
     container_name: node-2
@@ -48,9 +46,9 @@ services:
       "-httpAddr",
       "8000",
       "-raftAddr",
-      "9000",
-      "-peers",
-      "node-1,node-3"
+      "node-2:9000",
+      "-join",
+      "node-1:8000"
     ]
   node-3:
     container_name: node-3
@@ -73,9 +71,9 @@ services:
       "-httpAddr",
       "8000",
       "-raftAddr",
-      "9000",
-      "-peers",
-      "node-1,node-2"
+      "node-3:9000",
+      "-join",
+      "node-1:8000"
     ]
   python:
     container_name: shell
