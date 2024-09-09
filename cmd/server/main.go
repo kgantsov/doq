@@ -88,7 +88,12 @@ func main() {
 	defer db.Close()
 
 	log.Info().Msgf(
-		"Starting node (%s) %s with HTTP on %s and Raft on %s %+v", ServiceName, nodeID, httpPort, raftPort, hosts,
+		"Starting node (%s) %s with HTTP on %s and Raft on %s %+v",
+		ServiceName,
+		nodeID,
+		httpPort,
+		raftPort,
+		hosts,
 	)
 	node := raft.NewNode(
 		db, filepath.Join(dataDir, nodeID, "raft"), nodeID, httpPort, raftPort, hosts,
