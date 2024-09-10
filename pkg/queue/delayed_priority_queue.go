@@ -20,6 +20,10 @@ func (pq *DelayedPriorityQueue) Enqueue(group string, item *Item) {
 }
 
 func (pq *DelayedPriorityQueue) Dequeue() *Item {
+	if pq.queue.Len() == 0 {
+		return nil
+	}
+
 	queueItem := pq.queue.Peek().(*Item)
 
 	if int64(queueItem.Priority) > time.Now().UTC().Unix() {

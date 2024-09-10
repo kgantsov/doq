@@ -58,6 +58,8 @@ type BadgerPriorityQueue struct {
 
 	mu sync.Mutex
 
+	ackQueueMonitoringChan chan struct{}
+
 	ackQueue   Queue
 	ackQueueMu sync.Mutex
 }
@@ -91,7 +93,56 @@ func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
 
 	bpq.sequesnce = seq
 
+	bpq.StartAckQueueMonitoring()
+
 	return nil
+}
+
+func (bpq *BadgerPriorityQueue) monitorAckQueue() {
+	ticker := time.NewTicker(1 * time.Second)
+
+	for {
+		select {
+		case <-ticker.C:
+			for {
+				bpq.ackQueueMu.Lock()
+
+				item := bpq.ackQueue.Dequeue()
+				if item == nil {
+					bpq.ackQueueMu.Unlock()
+					break
+				}
+
+				message, err := bpq.GetByID(item.ID)
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to get message by ID: %d", item.ID)
+					bpq.ackQueueMu.Unlock()
+					continue
+				}
+
+				queueItem := &Item{
+					ID:       message.ID,
+					Priority: message.Priority,
+				}
+
+				bpq.pq.Enqueue(message.Group, queueItem)
+				log.Debug().Msgf("Re-enqueued message: %d", message.ID)
+
+				bpq.ackQueueMu.Unlock()
+			}
+		case <-bpq.ackQueueMonitoringChan:
+			return
+		}
+	}
+}
+
+func (bpq *BadgerPriorityQueue) StartAckQueueMonitoring() {
+	bpq.ackQueueMonitoringChan = make(chan struct{})
+	go bpq.monitorAckQueue()
+}
+
+func (bpq *BadgerPriorityQueue) StopAckQueueMonitoring() {
+	close(bpq.ackQueueMonitoringChan)
 }
 
 func (bpq *BadgerPriorityQueue) getMessagesPrefix() []byte {
@@ -99,7 +150,7 @@ func (bpq *BadgerPriorityQueue) getMessagesPrefix() []byte {
 }
 
 func (bpq *BadgerPriorityQueue) getQueueSequenceKey(queueName string) []byte {
-	return []byte(fmt.Sprintf("sequences:%s:", bpq.config.Name))
+	return []byte(fmt.Sprintf("sequences:%s:", queueName))
 }
 
 func (bpq *BadgerPriorityQueue) GetQueueKey(queueName string) []byte {
@@ -149,11 +200,6 @@ func (bpq *BadgerPriorityQueue) Delete() error {
 	}
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
-		err := txn.Delete(bpq.GetQueueKey(bpq.config.Name))
-		if err != nil {
-			return err
-		}
-
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = true
 		it := txn.NewIterator(opts)
@@ -165,11 +211,18 @@ func (bpq *BadgerPriorityQueue) Delete() error {
 			return txn.Delete(item.Key())
 		}
 
+		err := txn.Delete(bpq.GetQueueKey(bpq.config.Name))
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
+	bpq.StopAckQueueMonitoring()
 
 	return nil
 }
@@ -241,13 +294,14 @@ func (bpq *BadgerPriorityQueue) Enqueue(group string, priority int64, content st
 
 	msg := &Message{
 		ID:       nextID,
+		Group:    group,
 		Priority: priority,
 		Content:  content,
 	}
 
 	queueItem := &Item{
-		ID:       nextID,
-		Priority: priority,
+		ID:       msg.ID,
+		Priority: msg.Priority,
 	}
 
 	err = bpq.db.Update(func(txn *badger.Txn) error {
@@ -261,7 +315,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(group string, priority int64, content st
 		return msg, err
 	}
 
-	bpq.pq.Enqueue(group, queueItem)
+	bpq.pq.Enqueue(msg.Group, queueItem)
 	return msg, nil
 }
 
@@ -298,15 +352,14 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 			// in case of manual ack, we need to keep the message in the queue
 			// so we can ack it later and add it to the ackQueue
 			bpq.ackQueueMu.Lock()
-			defer bpq.ackQueueMu.Unlock()
-
 			bpq.ackQueue.Enqueue(
 				"default",
 				&Item{
 					ID:       queueItem.ID,
-					Priority: time.Now().UTC().Add(time.Duration(5) * time.Minute).Unix(),
+					Priority: time.Now().UTC().Add(time.Duration(2) * time.Minute).Unix(),
 				},
 			)
+			bpq.ackQueueMu.Unlock()
 		}
 
 		return nil
