@@ -2,14 +2,14 @@ package http
 
 type JoinInput struct {
 	Body struct {
-		ID   string `json:"id" example:"dlock-node-0" doc:"ID of a node"`
+		ID   string `json:"id" example:"node-0" doc:"ID of a node"`
 		Addr string `json:"addr" example:"localhost:12001" doc:"IP address and a port of a service"`
 	}
 }
 
 type JoinOutput struct {
 	Body struct {
-		ID   string `json:"id" example:"dlock-node-0" doc:"ID of a node"`
+		ID   string `json:"id" example:"node-0" doc:"ID of a node"`
 		Addr string `json:"addr" example:"localhost:12001" doc:"IP address and a port of a service"`
 	}
 }
