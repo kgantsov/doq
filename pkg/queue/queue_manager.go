@@ -53,7 +53,14 @@ func (qm *QueueManager) Delete(queueName string) error {
 		q.Load(queueName, false)
 	}
 
-	return q.Delete()
+	err := q.Delete()
+	if err != nil {
+		return err
+	}
+
+	delete(qm.queues, queueName)
+
+	return nil
 }
 
 func (qm *QueueManager) GetQueue(queueName string) (*BadgerPriorityQueue, error) {
