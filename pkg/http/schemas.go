@@ -25,7 +25,7 @@ type CreateQueueInput struct {
 
 type CreateQueueOutputBody struct {
 	Status string `json:"status" example:"CREATED" doc:"Status of the create operation"`
-	Name   string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	Name   string `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
 	Type   string `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
 }
 
