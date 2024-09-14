@@ -1,8 +1,8 @@
 # doq [![Build Status](https://drone.coroutine.dev/api/badges/kgantsov/doq/status.svg)](https://drone.coroutine.dev/kgantsov/doq) [![codecov](https://codecov.io/gh/kgantsov/doq/graph/badge.svg?token=GMSIM3WYVX)](https://codecov.io/gh/kgantsov/doq)
 
-`doq` is a distributed ordered queue based on the Raft consensus algorithm.
+`doq` is a distributed ordered (by priority) queue based on the Raft consensus algorithm.
 
-The Raft consensus algorithm is a protocol for managing a replicated log across a distributed system to ensure consistency and reliability. Raft is designed to be understandable and practical, offering a robust solution to the consensus problem, which is fundamental for building fault-tolerant distributed systems. 
+The Raft consensus algorithm is a protocol for managing a replicated log across a distributed system to ensure consistency and reliability. Raft is designed to be understandable and practical, offering a robust solution to the consensus problem, which is fundamental for building fault-tolerant distributed systems.
 
 This means that the majority of nodes needs to agre on a value before acknowledging it and returning to a client, which is demostrated in the following diagram:
 
@@ -65,6 +65,10 @@ A statefulset with 3 pods by default will be created as well as two different se
 
 ## Creating and removing queues
 
+There are two types of queues: delayed and fair. The default queue type is delayed. All messages enqueued in delayed queues are delivered based on their priority. The lower the number, the higher the priority. If a message needs to be delivered at a future time, you can set the priority property to a Unix timestamp, and the message won't be delivered until that time.
+
+The fair queue delivers messages fairly based on the group field. For example, imagine you have a queue called transcode where you schedule the transcoding of videos uploaded by your customers. Ideally, the transcoding tasks for one customer shouldn’t block those for other customers, especially if one customer uploads thousands of videos and you only have a limited number of transcode workers. In this case, you would assign the customer’s name or ID to the group field when enqueuing messages. This ensures that when messages are dequeued, they are processed in a round-robin fashion by customer.
+
 To create a delayed queue named `user_indexing_queue` run:
 
 ```bash
@@ -112,6 +116,8 @@ curl --request POST \
   --header 'Accept: application/json, application/problem+json' \
   --header 'Content-Type: application/json'
 ```
+
+If a message was not acked after a some timeout it will go back to a queue.
 
 To change a priority of the message with ID `123` to `12` call:
 ```python
