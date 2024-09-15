@@ -2,6 +2,6 @@ config:
   doq:namespace: default
   doq:replicas: "3"
   doq:image: "kgantsov/doq"
-  doq:tag: "0.1.12"
+  doq:tag: "0.1.13"
   doq:httPort: "8000"
   doq:raftPort: "9000"

@@ -126,13 +126,13 @@ func main() {
 								Name:  pulumi.String(name),
 								Command: pulumi.StringArray{
 									pulumi.String("/app"),
-									pulumi.String("-service-name"),
+									pulumi.String("--cluster.service_name"),
 									pulumi.String(name),
-									pulumi.String("-httpAddr"),
+									pulumi.String("--http.port"),
 									pulumi.String(fmt.Sprintf("%d", httPort)),
-									pulumi.String("-raftAddr"),
+									pulumi.String("--raft.address"),
 									pulumi.String(fmt.Sprintf("%d", raftPort)),
-									pulumi.String("-dataDir"),
+									pulumi.String("--storage.data_dir"),
 									pulumi.String("/usr/local/doq/data"),
 								},
 								Ports: v1.ContainerPortArray{
