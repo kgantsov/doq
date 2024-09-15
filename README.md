@@ -35,14 +35,14 @@ go build -o doq
 Run the first node
 
 ```bash
-./doq -dataDir data -id node-1 -httpAddr 8001 -raftAddr localhost:9001
+./doq --storage.data_dir data --cluster.node_id node-1 --http.port 8001 --raft.address localhost:9001
 ```
 
 Run other nodes
 
 ```bash
-./doq -dataDir data -id node-2 -httpAddr 8002 -raftAddr localhost:9002 -join localhost:8001
-./doq -dataDir data -id node-3 -httpAddr 8003 -raftAddr localhost:9003 -join localhost:8001
+./doq --storage.data_dir data --cluster.node_id node-2 --http.port 8002 --raft.address localhost:9002 --cluster.join_addr localhost:8001
+./doq --storage.data_dir data --cluster.node_id node-3 --http.port 8003 --raft.address localhost:9003 --cluster.join_addr localhost:8001
 ```
 
 You can find swagger docs by opening http://localhost:8001/docs
