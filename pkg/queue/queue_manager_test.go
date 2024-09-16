@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +17,7 @@ func TestNewQueueManager(t *testing.T) {
 	}
 	defer db.Close()
 
-	queueManager := NewQueueManager(db)
+	queueManager := NewQueueManager(db, &config.Config{})
 
 	queue1, err := queueManager.Create("delayed", "queue_1")
 	assert.Nil(t, err)
@@ -66,7 +67,7 @@ func TestQueueManagerGetQueue(t *testing.T) {
 	}
 	defer db.Close()
 
-	queueManager := NewQueueManager(db)
+	queueManager := NewQueueManager(db, &config.Config{})
 
 	queue1, err := queueManager.Create("delayed", "queue_1")
 	assert.Nil(t, err)

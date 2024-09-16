@@ -6,19 +6,21 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/rs/zerolog/log"
 )
 
 var ErrQueueNotFound = fmt.Errorf("queue not found")
 
 type QueueManager struct {
-	db *badger.DB
+	db     *badger.DB
+	config *config.Config
 
 	queues map[string]*BadgerPriorityQueue
 	mu     sync.Mutex
 }
 
-func NewQueueManager(db *badger.DB) *QueueManager {
+func NewQueueManager(db *badger.DB, cfg *config.Config) *QueueManager {
 	return &QueueManager{db: db, queues: make(map[string]*BadgerPriorityQueue)}
 }
 
@@ -80,7 +82,8 @@ func (qm *QueueManager) GetQueue(queueName string) (*BadgerPriorityQueue, error)
 }
 
 func (qm *QueueManager) RunValueLogGC() {
-	ticker := time.NewTicker(5 * time.Minute)
+
+	ticker := time.NewTicker(time.Duration(qm.config.Storage.GCInterval) * time.Second)
 	defer ticker.Stop()
 
 	log.Debug().Msg("Started running value GC")
@@ -88,7 +91,7 @@ func (qm *QueueManager) RunValueLogGC() {
 	for range ticker.C {
 		log.Debug().Msg("Running value GC")
 	again:
-		err := qm.db.RunValueLogGC(0.7)
+		err := qm.db.RunValueLogGC(qm.config.Storage.GCDiscardRatio)
 		if err == nil {
 			goto again
 		}

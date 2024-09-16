@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,7 +24,19 @@ func TestNodeSingleNode(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	n := NewNode(db, tmpRaftDir, "localhost", "9110", "localhost:9111", []string{})
+	cfg := &config.Config{
+		Cluster: config.ClusterConfig{
+			NodeID: "localhost",
+		},
+		Http: config.HttpConfig{
+			Port: "9110",
+		},
+		Raft: config.RaftConfig{
+			Address: "localhost:9111",
+		},
+	}
+
+	n := NewNode(db, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -86,7 +99,19 @@ func TestNodeDeleteQueue(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	n := NewNode(db, tmpRaftDir, "localhost", "9120", "localhost:9121", []string{})
+	cfg := &config.Config{
+		Cluster: config.ClusterConfig{
+			NodeID: "localhost",
+		},
+		Http: config.HttpConfig{
+			Port: "9120",
+		},
+		Raft: config.RaftConfig{
+			Address: "localhost:9121",
+		},
+	}
+
+	n := NewNode(db, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -109,7 +134,19 @@ func TestNodeSingleNodeAck(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	n := NewNode(db, tmpRaftDir, "localhost", "9130", "localhost:9131", []string{})
+	cfg := &config.Config{
+		Cluster: config.ClusterConfig{
+			NodeID: "localhost",
+		},
+		Http: config.HttpConfig{
+			Port: "9130",
+		},
+		Raft: config.RaftConfig{
+			Address: "localhost:9131",
+		},
+	}
+
+	n := NewNode(db, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -151,7 +188,19 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	n := NewNode(db, tmpRaftDir, "localhost", "9140", "localhost:9141", []string{})
+	cfg := &config.Config{
+		Cluster: config.ClusterConfig{
+			NodeID: "localhost",
+		},
+		Http: config.HttpConfig{
+			Port: "9140",
+		},
+		Raft: config.RaftConfig{
+			Address: "localhost:9141",
+		},
+	}
+
+	n := NewNode(db, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.

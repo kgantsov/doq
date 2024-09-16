@@ -10,11 +10,14 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	badgerdb "github.com/kgantsov/doq/pkg/badger-store"
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/rs/zerolog/log"
 )
 
 type Node struct {
+	cfg *config.Config
+
 	id       string
 	address  string
 	raftAddr string
@@ -31,11 +34,11 @@ type Node struct {
 	raftDir string
 }
 
-func NewNode(db *badger.DB, raftDir string, id, address, raftPort string, peers []string) *Node {
+func NewNode(db *badger.DB, raftDir string, cfg *config.Config, peers []string) *Node {
 	return &Node{
-		id:             id,
-		address:        address,
-		raftAddr:       raftPort,
+		id:             cfg.Cluster.NodeID,
+		address:        cfg.Http.Port,
+		raftAddr:       cfg.Raft.Address,
 		peers:          peers,
 		db:             db,
 		raftDir:        raftDir,
@@ -59,7 +62,7 @@ func (node *Node) Initialize() {
 
 	log.Debug().Msgf("=====> TEST Initialize %+v", nodes)
 
-	queueManager := queue.NewQueueManager(node.db)
+	queueManager := queue.NewQueueManager(node.db, node.cfg)
 
 	os.MkdirAll(node.raftDir, 0700)
 
