@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/rs/zerolog/log"
 )
 
@@ -51,6 +52,7 @@ func MessageFromBytes(data []byte) (*Message, error) {
 
 type BadgerPriorityQueue struct {
 	config *QueueConfig
+	cfg    *config.Config
 
 	pq        Queue
 	db        *badger.DB
@@ -64,10 +66,11 @@ type BadgerPriorityQueue struct {
 	ackQueueMu sync.Mutex
 }
 
-func NewBadgerPriorityQueue(db *badger.DB) *BadgerPriorityQueue {
+func NewBadgerPriorityQueue(db *badger.DB, cfg *config.Config) *BadgerPriorityQueue {
 
 	bpq := &BadgerPriorityQueue{
 		db:       db,
+		cfg:      cfg,
 		ackQueue: NewDelayedPriorityQueue(false),
 	}
 
@@ -99,7 +102,9 @@ func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
 }
 
 func (bpq *BadgerPriorityQueue) monitorAckQueue() {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(
+		time.Duration(bpq.cfg.Queue.AcknowledgementCheckInterval) * time.Second,
+	)
 
 	for {
 		select {

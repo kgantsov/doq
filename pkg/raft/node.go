@@ -36,6 +36,7 @@ type Node struct {
 
 func NewNode(db *badger.DB, raftDir string, cfg *config.Config, peers []string) *Node {
 	return &Node{
+		cfg:            cfg,
 		id:             cfg.Cluster.NodeID,
 		address:        cfg.Http.Port,
 		raftAddr:       cfg.Raft.Address,

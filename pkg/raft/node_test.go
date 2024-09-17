@@ -34,6 +34,9 @@ func TestNodeSingleNode(t *testing.T) {
 		Raft: config.RaftConfig{
 			Address: "localhost:9111",
 		},
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+		},
 	}
 
 	n := NewNode(db, tmpRaftDir, cfg, []string{})
@@ -109,6 +112,9 @@ func TestNodeDeleteQueue(t *testing.T) {
 		Raft: config.RaftConfig{
 			Address: "localhost:9121",
 		},
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+		},
 	}
 
 	n := NewNode(db, tmpRaftDir, cfg, []string{})
@@ -143,6 +149,9 @@ func TestNodeSingleNodeAck(t *testing.T) {
 		},
 		Raft: config.RaftConfig{
 			Address: "localhost:9131",
+		},
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
 		},
 	}
 
@@ -197,6 +206,9 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 		},
 		Raft: config.RaftConfig{
 			Address: "localhost:9141",
+		},
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
 		},
 	}
 

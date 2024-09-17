@@ -17,7 +17,14 @@ func TestNewQueueManager(t *testing.T) {
 	}
 	defer db.Close()
 
-	queueManager := NewQueueManager(db, &config.Config{})
+	queueManager := NewQueueManager(
+		db,
+		&config.Config{
+			Queue: config.QueueConfig{
+				AcknowledgementCheckInterval: 1,
+			},
+		},
+	)
 
 	queue1, err := queueManager.Create("delayed", "queue_1")
 	assert.Nil(t, err)
@@ -67,7 +74,14 @@ func TestQueueManagerGetQueue(t *testing.T) {
 	}
 	defer db.Close()
 
-	queueManager := NewQueueManager(db, &config.Config{})
+	queueManager := NewQueueManager(
+		db,
+		&config.Config{
+			Queue: config.QueueConfig{
+				AcknowledgementCheckInterval: 1,
+			},
+		},
+	)
 
 	queue1, err := queueManager.Create("delayed", "queue_1")
 	assert.Nil(t, err)

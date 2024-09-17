@@ -21,7 +21,11 @@ type QueueManager struct {
 }
 
 func NewQueueManager(db *badger.DB, cfg *config.Config) *QueueManager {
-	return &QueueManager{db: db, queues: make(map[string]*BadgerPriorityQueue)}
+	return &QueueManager{
+		db:     db,
+		config: cfg,
+		queues: make(map[string]*BadgerPriorityQueue),
+	}
 }
 
 func (qm *QueueManager) Create(queueType, queueName string) (*BadgerPriorityQueue, error) {
@@ -33,7 +37,7 @@ func (qm *QueueManager) Create(queueType, queueName string) (*BadgerPriorityQueu
 		return q, nil
 	}
 
-	q = NewBadgerPriorityQueue(qm.db)
+	q = NewBadgerPriorityQueue(qm.db, qm.config)
 	err := q.Create(queueType, queueName)
 
 	if err != nil {
@@ -51,7 +55,7 @@ func (qm *QueueManager) Delete(queueName string) error {
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewBadgerPriorityQueue(qm.db)
+		q = NewBadgerPriorityQueue(qm.db, qm.config)
 		q.Load(queueName, false)
 	}
 
@@ -71,7 +75,7 @@ func (qm *QueueManager) GetQueue(queueName string) (*BadgerPriorityQueue, error)
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewBadgerPriorityQueue(qm.db)
+		q = NewBadgerPriorityQueue(qm.db, qm.config)
 		err := q.Load(queueName, true)
 		if err != nil {
 			return nil, ErrQueueNotFound

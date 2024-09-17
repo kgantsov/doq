@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,7 +49,9 @@ func TestBadgerPriorityQueue(t *testing.T) {
 				log.Fatal().Msg(err.Error())
 			}
 
-			pq := NewBadgerPriorityQueue(db)
+			pq := NewBadgerPriorityQueue(
+				db, &config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+			)
 			pq.Create("delayed", "test_queue")
 
 			for i, m := range tt.messages {
@@ -82,7 +85,9 @@ func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
 	}
 	defer db.Close()
 
-	pq := NewBadgerPriorityQueue(db)
+	pq := NewBadgerPriorityQueue(
+		db, &config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+	)
 	pq.Create("delayed", "test_queue_stored")
 
 	m, err := pq.Dequeue(true)
@@ -101,7 +106,9 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	}
 	defer db.Close()
 
-	pq := NewBadgerPriorityQueue(db)
+	pq := NewBadgerPriorityQueue(
+		db, &config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+	)
 	err = pq.Create("delayed", "test_queue")
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed", pq.config.Type)
@@ -112,7 +119,9 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	pq.Enqueue("default", 8, "test 3")
 	pq.Enqueue("default", 1, "test 4")
 
-	pq1 := NewBadgerPriorityQueue(db)
+	pq1 := NewBadgerPriorityQueue(
+		db, &config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+	)
 	err = pq1.Load("test_queue", true)
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed", pq1.config.Type)
@@ -150,7 +159,9 @@ func TestBadgerPriorityQueueDelete(t *testing.T) {
 	}
 	defer db.Close()
 
-	pq := NewBadgerPriorityQueue(db)
+	pq := NewBadgerPriorityQueue(
+		db, &config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+	)
 	err = pq.Create("delayed", "test_queue")
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed", pq.config.Type)
@@ -172,7 +183,9 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(db)
+	pq := NewBadgerPriorityQueue(
+		db, &config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+	)
 	pq.Create("delayed", "test_queue")
 
 	m1, err := pq.Enqueue("default", 10, "test 1")
@@ -267,7 +280,9 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(db)
+	pq := NewBadgerPriorityQueue(
+		db, &config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+	)
 	pq.Create("delayed", "test_queue_1")
 
 	priority := time.Now().UTC().Add(1 * time.Second).Unix()
@@ -298,7 +313,9 @@ func TestBadgerPriorityQueueAck(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(db)
+	pq := NewBadgerPriorityQueue(
+		db, &config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+	)
 	pq.Create("delayed", "test_queue")
 
 	m1, err := pq.Enqueue("default", 10, "test 1")
