@@ -11,11 +11,13 @@ func (n *Node) Enqueue(
 	queueName string, group string, priority int64, content string,
 ) (*queue.Message, error) {
 	cmd := Command{
-		Op:        "enqueue",
-		QueueName: queueName,
-		Group:     group,
-		Priority:  priority,
-		Content:   content,
+		Op: "enqueue",
+		Payload: EnqueuePayload{
+			QueueName: queueName,
+			Group:     group,
+			Priority:  priority,
+			Content:   content,
+		},
 	}
 	data, err := json.Marshal(cmd)
 	if err != nil {
@@ -41,9 +43,11 @@ func (n *Node) Enqueue(
 
 func (n *Node) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 	cmd := Command{
-		Op:        "dequeue",
-		QueueName: QueueName,
-		Ack:       ack,
+		Op: "dequeue",
+		Payload: DequeuePayload{
+			QueueName: QueueName,
+			Ack:       ack,
+		},
 	}
 	data, err := json.Marshal(cmd)
 	if err != nil {
@@ -69,9 +73,11 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 
 func (n *Node) Ack(QueueName string, id uint64) error {
 	cmd := Command{
-		Op:        "ack",
-		QueueName: QueueName,
-		ID:        id,
+		Op: "ack",
+		Payload: AckPayload{
+			QueueName: QueueName,
+			ID:        id,
+		},
 	}
 	data, err := json.Marshal(cmd)
 	if err != nil {
@@ -97,10 +103,12 @@ func (n *Node) GetByID(id uint64) (*queue.Message, error) {
 
 func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error {
 	cmd := Command{
-		ID:        id,
-		Op:        "updatePriority",
-		QueueName: queueName,
-		Priority:  priority,
+		Op: "updatePriority",
+		Payload: UpdatePriorityPayload{
+			ID:        id,
+			QueueName: queueName,
+			Priority:  priority,
+		},
 	}
 	data, err := json.Marshal(cmd)
 	if err != nil {
@@ -122,9 +130,11 @@ func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error
 
 func (n *Node) CreateQueue(queueType, queueName string) error {
 	cmd := Command{
-		Op:        "createQueue",
-		QueueType: queueType,
-		QueueName: queueName,
+		Op: "createQueue",
+		Payload: CreateQueuePayload{
+			QueueType: queueType,
+			QueueName: queueName,
+		},
 	}
 	data, err := json.Marshal(cmd)
 	if err != nil {
@@ -145,8 +155,10 @@ func (n *Node) CreateQueue(queueType, queueName string) error {
 }
 func (n *Node) DeleteQueue(queueName string) error {
 	cmd := Command{
-		Op:        "deleteQueue",
-		QueueName: queueName,
+		Op: "deleteQueue",
+		Payload: DeleteQueuePayload{
+			QueueName: queueName,
+		},
 	}
 	data, err := json.Marshal(cmd)
 	if err != nil {
