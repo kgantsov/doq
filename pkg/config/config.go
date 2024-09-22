@@ -14,6 +14,10 @@ type HttpConfig struct {
 	Port string `mapstructure:"port"`
 }
 
+type GrpcConfig struct {
+	Address string `mapstructure:"address"`
+}
+
 type RaftConfig struct {
 	Address string `mapstructure:"address"`
 }
@@ -35,6 +39,7 @@ type ClusterConfig struct {
 }
 type Config struct {
 	Http    HttpConfig
+	Grpc    GrpcConfig
 	Raft    RaftConfig
 	Storage StorageConfig
 	Queue   QueueConfig
@@ -81,6 +86,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	// Command-line flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is config.yaml)")
 	rootCmd.Flags().String("http.port", "8000", "Port to run the HTTP server on")
+	rootCmd.Flags().String("grpc.address", "", "Address to run the GRPC server on")
 	rootCmd.Flags().String("raft.address", "localhost:9000", "Raft bind address")
 	rootCmd.Flags().String("storage.data_dir", "data", "Data directory")
 	rootCmd.Flags().Int64("storage.gc_interval", 300, "Garbage collection interval in seconds")
@@ -92,6 +98,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 
 	// Bind CLI flags to Viper settings
 	viper.BindPFlag("http.port", rootCmd.Flags().Lookup("http.port"))
+	viper.BindPFlag("grpc.address", rootCmd.Flags().Lookup("grpc.address"))
 	viper.BindPFlag("raft.address", rootCmd.Flags().Lookup("raft.address"))
 	viper.BindPFlag("storage.data_dir", rootCmd.Flags().Lookup("storage.data_dir"))
 	viper.BindPFlag("storage.gc_interval", rootCmd.Flags().Lookup("storage.gc_interval"))

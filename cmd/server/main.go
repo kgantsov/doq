@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/kgantsov/doq/pkg/cluster"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/grpc"
 	"github.com/kgantsov/doq/pkg/http"
 	"github.com/kgantsov/doq/pkg/raft"
 )
@@ -100,6 +102,20 @@ func Run(cmd *cobra.Command, args []string) {
 	}
 
 	node.InitIDGenerator()
+
+	if config.Grpc.Address != "" {
+		lis, err := net.Listen("tcp", config.Grpc.Address)
+		if err != nil {
+			log.Fatal().Msgf("failed to listen: %v", err)
+		}
+
+		grpcServer, err := grpc.NewGRPCServer(node)
+		if err != nil {
+			log.Fatal().Msgf("failed to create GRPC server: %v", err)
+		}
+
+		go grpcServer.Serve(lis)
+	}
 
 	h := http.NewHttpService(config.Http.Port, node)
 	if err := h.Start(); err != nil {

@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package queue;
+
+option go_package = "github.com/kgantsov/doq/pkg/proto;proto";
+
+service DOQ {
+    rpc CreateQueue(CreateQueueRequest) returns (CreateQueueResponse);
+    rpc DeleteQueue(DeleteQueueRequest) returns (DeleteQueueResponse);
+
+    rpc Enqueue(EnqueueRequest) returns (EnqueueResponse) {}
+
+    rpc Dequeue(DequeueRequest) returns (DequeueResponse) {}
+
+    rpc Acknowledge(AcknowledgeRequest) returns (AcknowledgeResponse);
+    rpc UpdatePriority(UpdatePriorityRequest) returns (UpdatePriorityResponse);
+}
+
+message CreateQueueRequest {
+    string name = 1;
+    string type = 2;
+}
+
+message CreateQueueResponse {
+    bool success = 1;
+}
+
+message DeleteQueueRequest {
+    string name = 1;
+}
+
+message DeleteQueueResponse {
+    bool success = 1;
+}
+
+message EnqueueRequest {
+    string queueName = 1;
+    string group = 2;
+    int64 priority = 3;
+    string content = 4;
+}
+
+message EnqueueResponse {
+    bool success = 1;
+    string queueName = 2;
+    uint64 id = 3;
+    string group = 4;
+    int64 priority = 5;
+    string content = 6;
+}
+
+message DequeueRequest {
+    string queueName = 1;
+    bool ack = 2;
+}
+
+message DequeueResponse {
+    bool success = 1;
+    string queueName = 2;
+    uint64 id = 3;
+    string group = 4;
+    int64 priority = 5;
+    string content = 6;
+}
+
+message AcknowledgeRequest {
+    string queueName = 1;
+    uint64 id = 2;
+}
+
+message AcknowledgeResponse {
+    bool success = 1;
+}
+
+message UpdatePriorityRequest {
+    string queueName = 1;
+    uint64 id = 2;
+    int64 priority = 3;
+}
+
+message UpdatePriorityResponse {
+    bool success = 1;
+}
