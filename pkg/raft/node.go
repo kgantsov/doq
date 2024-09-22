@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/bwmarrin/snowflake"
+
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	badgerdb "github.com/kgantsov/doq/pkg/badger-store"
@@ -17,6 +19,8 @@ import (
 
 type Node struct {
 	cfg *config.Config
+
+	idGenerator *snowflake.Node
 
 	id       string
 	address  string
@@ -75,9 +79,46 @@ func (node *Node) Initialize() {
 	node.Raft = raftNode
 	node.QueueManager = queueManager
 
+	idGenerator, err := snowflake.NewNode(1)
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to create snowflake node")
+	}
+
+	node.idGenerator = idGenerator
+
 	go node.monitorLeadership()
 	go node.ListenToLeaderChanges()
 
+}
+
+func (node *Node) InitIDGenerator() error {
+	time.Sleep(2 * time.Second)
+	configFuture := node.Raft.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		log.Info().Msgf("failed to get raft configuration: %v", err)
+		return err
+	}
+
+	index := -1
+	for i, srv := range configFuture.Configuration().Servers {
+		if srv.ID == raft.ServerID(node.id) {
+			index = i
+			break
+		}
+	}
+
+	log.Info().Msgf("Server configuration: %v Node indes: %d", configFuture.Configuration().Servers, index)
+
+	// Create a new snowflake Node with a Node number
+	idGenerator, err := snowflake.NewNode(int64(index + 1))
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to create snowflake node")
+		return err
+	}
+
+	node.idGenerator = idGenerator
+
+	return nil
 }
 
 func (node *Node) monitorLeadership() {
@@ -149,7 +190,10 @@ func (n *Node) Join(nodeID, addr string) error {
 
 func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueManager) (*raft.Raft, error) {
 	config := raft.DefaultConfig()
+	config.SnapshotInterval = 120 * time.Second
+	config.SnapshotThreshold = 8192
 	config.LocalID = raft.ServerID(nodeID)
+	config.LogLevel = "DEBUG"
 
 	bindAddr := raftPort
 	transport, err := raft.NewTCPTransport(bindAddr, nil, 3, 10*time.Second, os.Stderr)
@@ -160,6 +204,7 @@ func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueM
 
 	var logStore raft.LogStore
 	var stableStore raft.StableStore
+
 	badgerDB, err := badgerdb.New(badgerdb.Options{
 		Path: raftDir,
 	})

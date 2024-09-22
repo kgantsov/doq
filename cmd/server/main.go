@@ -99,6 +99,8 @@ func Run(cmd *cobra.Command, args []string) {
 		log.Fatal().Msg(err.Error())
 	}
 
+	node.InitIDGenerator()
+
 	h := http.NewHttpService(config.Http.Port, node)
 	if err := h.Start(); err != nil {
 		log.Error().Msgf("failed to start HTTP service: %s", err.Error())

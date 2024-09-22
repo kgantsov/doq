@@ -4,6 +4,7 @@ go 1.22.2
 
 require (
 	github.com/ansrivas/fiberprometheus/v2 v2.7.0
+	github.com/bwmarrin/snowflake v0.3.0
 	github.com/danielgtaylor/huma/v2 v2.21.0
 	github.com/dgraph-io/badger/v4 v4.2.0
 	github.com/gofiber/fiber/v2 v2.52.5
@@ -35,7 +36,7 @@ require (
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/glog v1.0.0 // indirect
+	github.com/golang/glog v1.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect

@@ -24,6 +24,7 @@ type DeleteQueuePayload struct {
 }
 
 type EnqueuePayload struct {
+	ID        uint64 `json:"id"`
 	QueueName string `json:"queue_name"`
 	Group     string `json:"group"`
 	Priority  int64  `json:"priority"`
@@ -154,7 +155,7 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 		return &FSMResponse{error: err}
 	}
 
-	log.Debug().Msgf("Node %s Received a command: %+v", f.NodeID, c)
+	log.Debug().Msgf("Node [%s] Received a command: %+v", f.NodeID, c)
 
 	switch c.Op {
 	case "enqueue":
@@ -207,7 +208,7 @@ func (f *FSM) enqueueApply(payload EnqueuePayload) *FSMResponse {
 		}
 	}
 
-	msg, err := queue.Enqueue(payload.Group, payload.Priority, payload.Content)
+	msg, err := queue.Enqueue(payload.ID, payload.Group, payload.Priority, payload.Content)
 
 	log.Debug().Msgf("Node %s Enqueued a message: %+v %v", f.NodeID, msg, err)
 
@@ -390,7 +391,7 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 	scanner := bufio.NewScanner(rc)
 	linesTotal := 0
 	linesRestored := 0
-	log.Error().Msgf("Restoring snapshot")
+
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		linesTotal++

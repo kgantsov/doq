@@ -32,17 +32,17 @@ func TestNewQueueManager(t *testing.T) {
 	queue1, err = queueManager.Create("delayed", "queue_1")
 	assert.Nil(t, err)
 
-	q1m1, err := queue1.Enqueue("default", 10, "queue 1 message 1")
+	q1m1, err := queue1.Enqueue(1, "default", 10, "queue 1 message 1")
 	assert.Nil(t, err)
-	q1m2, err := queue1.Enqueue("default", 5, "queue 1 message 2")
+	q1m2, err := queue1.Enqueue(2, "default", 5, "queue 1 message 2")
 	assert.Nil(t, err)
 
 	queue2, err := queueManager.Create("delayed", "queue_2")
 	assert.Nil(t, err)
 
-	q2m1, err := queue2.Enqueue("default", 20, "queue 2 message 1")
+	q2m1, err := queue2.Enqueue(1, "default", 20, "queue 2 message 1")
 	assert.Nil(t, err)
-	q2m2, err := queue2.Enqueue("default", 15, "queue 2 message 2")
+	q2m2, err := queue2.Enqueue(2, "default", 15, "queue 2 message 2")
 	assert.Nil(t, err)
 
 	m, err := queue1.Dequeue(true)
@@ -92,17 +92,17 @@ func TestQueueManagerGetQueue(t *testing.T) {
 	queue1, err = queueManager.GetQueue("queue_1")
 	assert.Nil(t, err)
 
-	q1m1, err := queue1.Enqueue("default", 10, "queue 1 message 1")
+	q1m1, err := queue1.Enqueue(1, "default", 10, "queue 1 message 1")
 	assert.Nil(t, err)
-	q1m2, err := queue1.Enqueue("default", 5, "queue 1 message 2")
+	q1m2, err := queue1.Enqueue(2, "default", 5, "queue 1 message 2")
 	assert.Nil(t, err)
 
 	queue2, err = queueManager.GetQueue("queue_2")
 	assert.Nil(t, err)
 
-	q2m1, err := queue2.Enqueue("default", 20, "queue 2 message 1")
+	q2m1, err := queue2.Enqueue(1, "default", 20, "queue 2 message 1")
 	assert.Nil(t, err)
-	q2m2, err := queue2.Enqueue("default", 15, "queue 2 message 2")
+	q2m2, err := queue2.Enqueue(2, "default", 15, "queue 2 message 2")
 	assert.Nil(t, err)
 
 	m, err := queue1.Dequeue(true)

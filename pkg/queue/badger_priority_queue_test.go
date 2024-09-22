@@ -55,7 +55,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 			pq.Create("delayed", "test_queue")
 
 			for i, m := range tt.messages {
-				pq.Enqueue("default", m.Priority, m.Content)
+				pq.Enqueue(uint64(i+1), "default", m.Priority, m.Content)
 				assert.Equal(t, i+1, pq.Len())
 			}
 			assert.Equal(t, len(tt.messages), pq.Len())
@@ -114,10 +114,10 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
 
-	pq.Enqueue("default", 10, "test 1")
-	pq.Enqueue("default", 5, "test 2")
-	pq.Enqueue("default", 8, "test 3")
-	pq.Enqueue("default", 1, "test 4")
+	pq.Enqueue(1, "default", 10, "test 1")
+	pq.Enqueue(2, "default", 5, "test 2")
+	pq.Enqueue(3, "default", 8, "test 3")
+	pq.Enqueue(4, "default", 1, "test 4")
 
 	pq1 := NewBadgerPriorityQueue(
 		db, &config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
@@ -167,10 +167,10 @@ func TestBadgerPriorityQueueDelete(t *testing.T) {
 	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
 
-	pq.Enqueue("default", 10, "test 1")
-	pq.Enqueue("default", 5, "test 2")
-	pq.Enqueue("default", 8, "test 3")
-	pq.Enqueue("default", 1, "test 4")
+	pq.Enqueue(1, "default", 10, "test 1")
+	pq.Enqueue(2, "default", 5, "test 2")
+	pq.Enqueue(3, "default", 8, "test 3")
+	pq.Enqueue(4, "default", 1, "test 4")
 
 	err = pq.Delete()
 	assert.Nil(t, err)
@@ -188,7 +188,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	)
 	pq.Create("delayed", "test_queue")
 
-	m1, err := pq.Enqueue("default", 10, "test 1")
+	m1, err := pq.Enqueue(1, "default", 10, "test 1")
 	assert.Nil(t, err)
 
 	m1, err = pq.GetByID(m1.ID)
@@ -196,7 +196,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	assert.Equal(t, "test 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	m2, err := pq.Enqueue("default", 20, "test 2")
+	m2, err := pq.Enqueue(2, "default", 20, "test 2")
 	assert.Nil(t, err)
 
 	m2, err = pq.GetByID(m2.ID)
@@ -204,7 +204,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	assert.Equal(t, "test 2", m2.Content)
 	assert.Equal(t, int64(20), m2.Priority)
 
-	m3, err := pq.Enqueue("default", 30, "test 3")
+	m3, err := pq.Enqueue(3, "default", 30, "test 3")
 	assert.Nil(t, err)
 
 	m3, err = pq.GetByID(m3.ID)
@@ -212,7 +212,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	assert.Equal(t, "test 3", m3.Content)
 	assert.Equal(t, int64(30), m3.Priority)
 
-	m4, err := pq.Enqueue("default", 40, "test 4")
+	m4, err := pq.Enqueue(4, "default", 40, "test 4")
 	assert.Nil(t, err)
 
 	m4, err = pq.GetByID(m4.ID)
@@ -220,7 +220,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(40), m4.Priority)
 
-	m5, err := pq.Enqueue("default", 50, "test 5")
+	m5, err := pq.Enqueue(5, "default", 50, "test 5")
 	assert.Nil(t, err)
 
 	m5, err = pq.GetByID(m5.ID)
@@ -286,7 +286,7 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 	pq.Create("delayed", "test_queue_1")
 
 	priority := time.Now().UTC().Add(1 * time.Second).Unix()
-	m1, err := pq.Enqueue("default", priority, "delayed message 1")
+	m1, err := pq.Enqueue(1, "default", priority, "delayed message 1")
 	assert.Nil(t, err)
 
 	m1, err = pq.GetByID(m1.ID)
@@ -318,22 +318,22 @@ func TestBadgerPriorityQueueAck(t *testing.T) {
 	)
 	pq.Create("delayed", "test_queue")
 
-	m1, err := pq.Enqueue("default", 10, "test 1")
+	m1, err := pq.Enqueue(1, "default", 10, "test 1")
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	m2, err := pq.Enqueue("default", 20, "test 2")
+	m2, err := pq.Enqueue(2, "default", 20, "test 2")
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m2.Content)
 	assert.Equal(t, int64(20), m2.Priority)
 
-	m3, err := pq.Enqueue("default", 30, "test 3")
+	m3, err := pq.Enqueue(3, "default", 30, "test 3")
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
 	assert.Equal(t, int64(30), m3.Priority)
 
-	m4, err := pq.Enqueue("default", 40, "test 4")
+	m4, err := pq.Enqueue(4, "default", 40, "test 4")
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(40), m4.Priority)

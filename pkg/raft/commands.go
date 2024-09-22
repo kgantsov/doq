@@ -13,6 +13,7 @@ func (n *Node) Enqueue(
 	cmd := Command{
 		Op: "enqueue",
 		Payload: EnqueuePayload{
+			ID:        uint64(n.idGenerator.Generate().Int64()),
 			QueueName: queueName,
 			Group:     group,
 			Priority:  priority,

@@ -163,7 +163,6 @@ func (b *BadgerStore) LastIndex() (uint64, error) {
 
 		return bytesToUint64(key[len(dbLogs):]), nil
 	}
-
 	return 0, nil
 }
 

@@ -54,9 +54,8 @@ type BadgerPriorityQueue struct {
 	config *QueueConfig
 	cfg    *config.Config
 
-	pq        Queue
-	db        *badger.DB
-	sequesnce *badger.Sequence
+	pq Queue
+	db *badger.DB
 
 	mu sync.Mutex
 
@@ -85,16 +84,6 @@ func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
 	}
 	bpq.config = &QueueConfig{Name: queueName, Type: queueType}
 	bpq.pq = queue
-
-	seq, err := bpq.db.GetSequence(bpq.getQueueSequenceKey(bpq.config.Name), 1)
-
-	if err != nil {
-		log.Warn().Err(err).Msgf("Failed to get sequence: %s", err)
-	}
-
-	defer seq.Release()
-
-	bpq.sequesnce = seq
 
 	bpq.StartAckQueueMonitoring()
 
@@ -154,26 +143,12 @@ func (bpq *BadgerPriorityQueue) getMessagesPrefix() []byte {
 	return []byte(fmt.Sprintf("messages:%s:", bpq.config.Name))
 }
 
-func (bpq *BadgerPriorityQueue) getQueueSequenceKey(queueName string) []byte {
-	return []byte(fmt.Sprintf("sequences:%s:", queueName))
-}
-
 func (bpq *BadgerPriorityQueue) GetQueueKey(queueName string) []byte {
 	return []byte(fmt.Sprintf("queues:%s:", queueName))
 }
 
 func (bpq *BadgerPriorityQueue) GetMessagesKey(id uint64) []byte {
 	return addPrefix(bpq.getMessagesPrefix(), uint64ToBytes(id))
-}
-
-func (bpq *BadgerPriorityQueue) GetNextID() (uint64, error) {
-	num, err := bpq.sequesnce.Next()
-
-	if err != nil {
-		return 0, err
-	}
-
-	return num, nil
 }
 
 func (bpq *BadgerPriorityQueue) Create(queueType, queueName string) error {
@@ -284,7 +259,7 @@ func (bpq *BadgerPriorityQueue) Load(queueName string, loadMessages bool) error 
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) Enqueue(group string, priority int64, content string) (*Message, error) {
+func (bpq *BadgerPriorityQueue) Enqueue(id uint64, group string, priority int64, content string) (*Message, error) {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -292,13 +267,8 @@ func (bpq *BadgerPriorityQueue) Enqueue(group string, priority int64, content st
 		group = "default"
 	}
 
-	nextID, err := bpq.GetNextID()
-	if err != nil {
-		return &Message{}, err
-	}
-
 	msg := &Message{
-		ID:       nextID,
+		ID:       id,
 		Group:    group,
 		Priority: priority,
 		Content:  content,
@@ -309,7 +279,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(group string, priority int64, content st
 		Priority: msg.Priority,
 	}
 
-	err = bpq.db.Update(func(txn *badger.Txn) error {
+	err := bpq.db.Update(func(txn *badger.Txn) error {
 		data, err := msg.ToBytes()
 		if err != nil {
 			return err
