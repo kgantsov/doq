@@ -29,7 +29,13 @@ func Run(cmd *cobra.Command, args []string) {
 
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 
-	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	logLevel, err := zerolog.ParseLevel(config.Logging.LogLevel)
+	if err != nil {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(logLevel)
+	}
+
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	if config.Storage.DataDir == "" {
