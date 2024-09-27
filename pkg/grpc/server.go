@@ -27,6 +27,7 @@ func (s *QueueServer) CreateQueue(ctx context.Context, req *pb.CreateQueueReques
 // DeleteQueue deletes a queue
 func (s *QueueServer) DeleteQueue(ctx context.Context, req *pb.DeleteQueueRequest) (*pb.DeleteQueueResponse, error) {
 	err := s.node.DeleteQueue(req.Name)
+
 	if err != nil {
 		return &pb.DeleteQueueResponse{Success: false}, fmt.Errorf("failed to delete a queue %s", req.Name)
 	}
@@ -95,7 +96,7 @@ func NewQueueServer(node http.Node) *QueueServer {
 
 func NewGRPCServer(node http.Node) (*grpc.Server, error) {
 	grpcServer := grpc.NewServer()
-	pb.RegisterDOQServer(grpcServer, &QueueServer{node: node})
+	pb.RegisterDOQServer(grpcServer, NewQueueServer(node))
 
 	return grpcServer, nil
 }
