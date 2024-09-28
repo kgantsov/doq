@@ -9,8 +9,10 @@ service DOQ {
     rpc DeleteQueue(DeleteQueueRequest) returns (DeleteQueueResponse);
 
     rpc Enqueue(EnqueueRequest) returns (EnqueueResponse) {}
+    rpc EnqueueStream(stream EnqueueRequest) returns (stream EnqueueResponse) {}
 
     rpc Dequeue(DequeueRequest) returns (DequeueResponse) {}
+    rpc DequeueStream(DequeueRequest) returns (stream DequeueResponse) {}
 
     rpc Acknowledge(AcknowledgeRequest) returns (AcknowledgeResponse);
     rpc UpdatePriority(UpdatePriorityRequest) returns (UpdatePriorityResponse);

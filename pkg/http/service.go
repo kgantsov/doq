@@ -31,6 +31,7 @@ type Node interface {
 	Join(nodeID string, addr string) error
 	Leader() string
 	IsLeader() bool
+	GenerateID() uint64
 	CreateQueue(queueType, queueName string) error
 	DeleteQueue(queueName string) error
 	Enqueue(queueName string, group string, priority int64, content string) (*queue.Message, error)

@@ -22,7 +22,9 @@ const (
 	DOQ_CreateQueue_FullMethodName    = "/queue.DOQ/CreateQueue"
 	DOQ_DeleteQueue_FullMethodName    = "/queue.DOQ/DeleteQueue"
 	DOQ_Enqueue_FullMethodName        = "/queue.DOQ/Enqueue"
+	DOQ_EnqueueStream_FullMethodName  = "/queue.DOQ/EnqueueStream"
 	DOQ_Dequeue_FullMethodName        = "/queue.DOQ/Dequeue"
+	DOQ_DequeueStream_FullMethodName  = "/queue.DOQ/DequeueStream"
 	DOQ_Acknowledge_FullMethodName    = "/queue.DOQ/Acknowledge"
 	DOQ_UpdatePriority_FullMethodName = "/queue.DOQ/UpdatePriority"
 )
@@ -34,7 +36,9 @@ type DOQClient interface {
 	CreateQueue(ctx context.Context, in *CreateQueueRequest, opts ...grpc.CallOption) (*CreateQueueResponse, error)
 	DeleteQueue(ctx context.Context, in *DeleteQueueRequest, opts ...grpc.CallOption) (*DeleteQueueResponse, error)
 	Enqueue(ctx context.Context, in *EnqueueRequest, opts ...grpc.CallOption) (*EnqueueResponse, error)
+	EnqueueStream(ctx context.Context, opts ...grpc.CallOption) (DOQ_EnqueueStreamClient, error)
 	Dequeue(ctx context.Context, in *DequeueRequest, opts ...grpc.CallOption) (*DequeueResponse, error)
+	DequeueStream(ctx context.Context, in *DequeueRequest, opts ...grpc.CallOption) (DOQ_DequeueStreamClient, error)
 	Acknowledge(ctx context.Context, in *AcknowledgeRequest, opts ...grpc.CallOption) (*AcknowledgeResponse, error)
 	UpdatePriority(ctx context.Context, in *UpdatePriorityRequest, opts ...grpc.CallOption) (*UpdatePriorityResponse, error)
 }
@@ -74,6 +78,37 @@ func (c *dOQClient) Enqueue(ctx context.Context, in *EnqueueRequest, opts ...grp
 	return out, nil
 }
 
+func (c *dOQClient) EnqueueStream(ctx context.Context, opts ...grpc.CallOption) (DOQ_EnqueueStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &DOQ_ServiceDesc.Streams[0], DOQ_EnqueueStream_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &dOQEnqueueStreamClient{stream}
+	return x, nil
+}
+
+type DOQ_EnqueueStreamClient interface {
+	Send(*EnqueueRequest) error
+	Recv() (*EnqueueResponse, error)
+	grpc.ClientStream
+}
+
+type dOQEnqueueStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *dOQEnqueueStreamClient) Send(m *EnqueueRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *dOQEnqueueStreamClient) Recv() (*EnqueueResponse, error) {
+	m := new(EnqueueResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *dOQClient) Dequeue(ctx context.Context, in *DequeueRequest, opts ...grpc.CallOption) (*DequeueResponse, error) {
 	out := new(DequeueResponse)
 	err := c.cc.Invoke(ctx, DOQ_Dequeue_FullMethodName, in, out, opts...)
@@ -81,6 +116,38 @@ func (c *dOQClient) Dequeue(ctx context.Context, in *DequeueRequest, opts ...grp
 		return nil, err
 	}
 	return out, nil
+}
+
+func (c *dOQClient) DequeueStream(ctx context.Context, in *DequeueRequest, opts ...grpc.CallOption) (DOQ_DequeueStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &DOQ_ServiceDesc.Streams[1], DOQ_DequeueStream_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &dOQDequeueStreamClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type DOQ_DequeueStreamClient interface {
+	Recv() (*DequeueResponse, error)
+	grpc.ClientStream
+}
+
+type dOQDequeueStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *dOQDequeueStreamClient) Recv() (*DequeueResponse, error) {
+	m := new(DequeueResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func (c *dOQClient) Acknowledge(ctx context.Context, in *AcknowledgeRequest, opts ...grpc.CallOption) (*AcknowledgeResponse, error) {
@@ -108,7 +175,9 @@ type DOQServer interface {
 	CreateQueue(context.Context, *CreateQueueRequest) (*CreateQueueResponse, error)
 	DeleteQueue(context.Context, *DeleteQueueRequest) (*DeleteQueueResponse, error)
 	Enqueue(context.Context, *EnqueueRequest) (*EnqueueResponse, error)
+	EnqueueStream(DOQ_EnqueueStreamServer) error
 	Dequeue(context.Context, *DequeueRequest) (*DequeueResponse, error)
+	DequeueStream(*DequeueRequest, DOQ_DequeueStreamServer) error
 	Acknowledge(context.Context, *AcknowledgeRequest) (*AcknowledgeResponse, error)
 	UpdatePriority(context.Context, *UpdatePriorityRequest) (*UpdatePriorityResponse, error)
 	mustEmbedUnimplementedDOQServer()
@@ -127,8 +196,14 @@ func (UnimplementedDOQServer) DeleteQueue(context.Context, *DeleteQueueRequest) 
 func (UnimplementedDOQServer) Enqueue(context.Context, *EnqueueRequest) (*EnqueueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Enqueue not implemented")
 }
+func (UnimplementedDOQServer) EnqueueStream(DOQ_EnqueueStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method EnqueueStream not implemented")
+}
 func (UnimplementedDOQServer) Dequeue(context.Context, *DequeueRequest) (*DequeueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Dequeue not implemented")
+}
+func (UnimplementedDOQServer) DequeueStream(*DequeueRequest, DOQ_DequeueStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method DequeueStream not implemented")
 }
 func (UnimplementedDOQServer) Acknowledge(context.Context, *AcknowledgeRequest) (*AcknowledgeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Acknowledge not implemented")
@@ -203,6 +278,32 @@ func _DOQ_Enqueue_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DOQ_EnqueueStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(DOQServer).EnqueueStream(&dOQEnqueueStreamServer{stream})
+}
+
+type DOQ_EnqueueStreamServer interface {
+	Send(*EnqueueResponse) error
+	Recv() (*EnqueueRequest, error)
+	grpc.ServerStream
+}
+
+type dOQEnqueueStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *dOQEnqueueStreamServer) Send(m *EnqueueResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *dOQEnqueueStreamServer) Recv() (*EnqueueRequest, error) {
+	m := new(EnqueueRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func _DOQ_Dequeue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DequeueRequest)
 	if err := dec(in); err != nil {
@@ -219,6 +320,27 @@ func _DOQ_Dequeue_Handler(srv interface{}, ctx context.Context, dec func(interfa
 		return srv.(DOQServer).Dequeue(ctx, req.(*DequeueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _DOQ_DequeueStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DequeueRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(DOQServer).DequeueStream(m, &dOQDequeueStreamServer{stream})
+}
+
+type DOQ_DequeueStreamServer interface {
+	Send(*DequeueResponse) error
+	grpc.ServerStream
+}
+
+type dOQDequeueStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *dOQDequeueStreamServer) Send(m *DequeueResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _DOQ_Acknowledge_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -289,6 +411,18 @@ var DOQ_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _DOQ_UpdatePriority_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "EnqueueStream",
+			Handler:       _DOQ_EnqueueStream_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "DequeueStream",
+			Handler:       _DOQ_DequeueStream_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "pkg/proto/doq.proto",
 }

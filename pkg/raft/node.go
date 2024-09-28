@@ -91,6 +91,10 @@ func (node *Node) Initialize() {
 
 }
 
+func (node *Node) GenerateID() uint64 {
+	return uint64(node.idGenerator.Generate().Int64())
+}
+
 func (node *Node) InitIDGenerator() error {
 	time.Sleep(2 * time.Second)
 	configFuture := node.Raft.GetConfiguration()

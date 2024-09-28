@@ -44,6 +44,11 @@ func (n *testNode) IsLeader() bool {
 	return true
 }
 
+func (n *testNode) GenerateID() uint64 {
+	n.nextID++
+	return n.nextID
+}
+
 func (n *testNode) CreateQueue(queueType, queueName string) error {
 	n.queues[queueName] = queue.NewDelayedPriorityQueue(true)
 	return nil
