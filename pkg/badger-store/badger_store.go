@@ -2,7 +2,6 @@ package badgerstore
 
 import (
 	"errors"
-	"io"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
@@ -32,12 +31,10 @@ type Store interface {
 	StoreLog(log *raft.Log) error
 	StoreLogs(logs []*raft.Log) error
 	DeleteRange(min, max uint64) error
-	CopyLogs(w io.Writer) error
 	Set(k, v []byte) error
 	Get(k []byte) ([]byte, error)
 	SetUint64(key []byte, val uint64) error
 	GetUint64(key []byte) (uint64, error)
-	DBPath() string
 	RunValueLogGC(discardRatio float64) error
 	Size() (lsm, vlog int64)
 }
@@ -57,9 +54,6 @@ type BadgerStore struct {
 
 // Options contains all the configuration used to open the Badger
 type Options struct {
-	// Path is the file path to the Badger to use
-	Path string
-
 	// NoSync causes the database to skip fsync calls after each
 	// write to the log. This is unsafe, so it should be used
 	// with caution.
@@ -74,7 +68,12 @@ type Options struct {
 
 // NewBadgerStore takes a file path and returns a connected Raft backend.
 func NewBadgerStore(path string) (*BadgerStore, error) {
-	return New(Options{Path: path})
+	db, err := badger.Open(badger.DefaultOptions(path))
+	if err != nil {
+		return nil, err
+	}
+
+	return New(db, Options{})
 }
 
 func addPrefix(prefix []byte, key []byte) []byte {
@@ -82,17 +81,12 @@ func addPrefix(prefix []byte, key []byte) []byte {
 }
 
 // New uses the supplied options to open the Badger and prepare it for use as a raft backend.
-func New(options Options) (*BadgerStore, error) {
+func New(db *badger.DB, options Options) (*BadgerStore, error) {
 	// Try to connect
-	db, err := badger.Open(badger.DefaultOptions(options.Path))
-	if err != nil {
-		return nil, err
-	}
 
 	// Create the new store
 	store := &BadgerStore{
 		db:                      db,
-		path:                    options.Path,
 		msgpackUseNewTimeFormat: options.MsgpackUseNewTimeFormat,
 	}
 	return store, nil
@@ -269,54 +263,6 @@ func (b *BadgerStore) DeleteRange(min, max uint64) error {
 	return nil
 }
 
-func (b *BadgerStore) CopyLogs(w io.Writer) error {
-	txn := b.db.NewTransaction(false)
-	defer txn.Discard()
-
-	opts := badger.DefaultIteratorOptions
-	opts.PrefetchSize = 100
-	opts.PrefetchValues = true
-
-	it := txn.NewIterator(opts)
-	defer it.Close()
-	prefix := []byte(dbLogs)
-	cnt := 0
-
-	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-		item := it.Item()
-		key := item.Key()
-
-		log.Debug().Msgf("Copying key %s %d", key[:len(dbLogs)], bytesToUint64(key[len(dbLogs):]))
-
-		val, err := item.ValueCopy(nil)
-
-		if err != nil || val == nil {
-			log.Debug().Msgf("Error reading key %s %d", key[:len(dbLogs)], bytesToUint64(key[len(dbLogs):]))
-			continue
-		}
-
-		raftLog := &raft.Log{}
-
-		if err := DecodeMsgPack(val, raftLog); err != nil {
-			log.Debug().Msgf("Failed to decode log: %v", err)
-			continue
-		}
-
-		if _, err := w.Write(raftLog.Data); err != nil {
-			log.Debug().Msgf("Error writing key %s %d %v", key[:len(dbLogs)], bytesToUint64(key[len(dbLogs):]), err)
-			continue
-		}
-		if _, err := w.Write([]byte("\n")); err != nil {
-			log.Debug().Msgf("Error writing key %s %d", key[:len(dbLogs)], bytesToUint64(key[len(dbLogs):]))
-			continue
-		}
-		cnt += 1
-	}
-
-	log.Debug().Msgf("Total logs copied: %d", cnt)
-	return nil
-}
-
 // Set is used to set a key/value set outside of the raft log
 func (b *BadgerStore) Set(k, v []byte) error {
 	txn := b.db.NewTransaction(true)
@@ -359,11 +305,6 @@ func (b *BadgerStore) GetUint64(key []byte) (uint64, error) {
 		return 0, err
 	}
 	return bytesToUint64(val), nil
-}
-
-// DBPath returns a path to a DB file
-func (b *BadgerStore) DBPath() string {
-	return b.path
 }
 
 func (b *BadgerStore) RunValueLogGC(discardRatio float64) error {

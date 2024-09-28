@@ -1,17 +1,17 @@
 package raft
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
 	"sync"
 
 	"github.com/hashicorp/raft"
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/rs/zerolog/log"
 
-	badgerdb "github.com/kgantsov/doq/pkg/badger-store"
+	"github.com/dgraph-io/badger/v4"
 )
 
 type CreateQueuePayload struct {
@@ -133,7 +133,8 @@ func (c Command) MarshalJSON() ([]byte, error) {
 type FSM struct {
 	NodeID       string
 	queueManager *queue.QueueManager
-	store        badgerdb.Store
+	db           *badger.DB
+	config       *config.Config
 
 	mu sync.Mutex
 }
@@ -379,7 +380,12 @@ func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	return &FSMSnapshot{queueManager: f.queueManager, store: f.store}, nil
+	return &FSMSnapshot{
+		queueManager: f.queueManager,
+		db:           f.db,
+		config:       f.config,
+		NodeID:       f.NodeID,
+	}, nil
 }
 
 func (f *FSM) Restore(rc io.ReadCloser) error {
@@ -388,95 +394,17 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	scanner := bufio.NewScanner(rc)
-	linesTotal := 0
-	linesRestored := 0
-
-	for scanner.Scan() {
-		line := scanner.Bytes()
-		linesTotal++
-
-		var c Command
-		if err := json.Unmarshal(line, &c); err != nil {
-			log.Warn().Msgf("Failed to unmarshal command: %v %v", err, line)
-			continue
-		}
-
-		switch c.Op {
-		case "enqueue":
-			payload, ok := c.Payload.(EnqueuePayload)
-			if !ok {
-				log.Warn().Msgf("Failed to decode payload: %v", c.Payload)
-				continue
-			}
-			f.enqueueApply(payload)
-		case "dequeue":
-			payload, ok := c.Payload.(DequeuePayload)
-			if !ok {
-				log.Warn().Msgf("Failed to decode payload: %v", c.Payload)
-				continue
-			}
-			f.dequeueApply(payload)
-		case "ack":
-			payload, ok := c.Payload.(AckPayload)
-			if !ok {
-				log.Warn().Msgf("Failed to decode payload: %v", c.Payload)
-				continue
-			}
-			f.ackApply(payload)
-		case "updatePriority":
-			payload, ok := c.Payload.(UpdatePriorityPayload)
-			if !ok {
-				log.Warn().Msgf("Failed to decode payload: %v", c.Payload)
-				continue
-			}
-			f.updatePriorityApply(payload)
-		case "createQueue":
-			payload, ok := c.Payload.(CreateQueuePayload)
-			if !ok {
-				log.Warn().Msgf("Failed to decode payload: %v", c.Payload)
-				continue
-			}
-			f.createQueueApply(payload)
-		case "deleteQueue":
-			payload, ok := c.Payload.(DeleteQueuePayload)
-			if !ok {
-				log.Warn().Msgf("Failed to decode payload: %v", c.Payload)
-				continue
-			}
-			f.deleteQueueApply(payload)
-		default:
-			log.Warn().Msgf("Unrecognized command op: %s", c.Op)
-			continue
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Info().Msgf(
-			"Error while reading snapshot: %v. Restored %d out of %d lines",
-			err,
-			linesRestored,
-			linesTotal,
-		)
-		return err
-	}
-
-	log.Warn().Msgf("Restored %d out of %d lines", linesRestored, linesTotal)
-
 	return nil
 }
 
 type FSMSnapshot struct {
+	NodeID       string
 	queueManager *queue.QueueManager
-	store        badgerdb.Store
+	db           *badger.DB
+	config       *config.Config
 }
 
 func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
-	if err := f.store.CopyLogs(sink); err != nil {
-		log.Debug().Msg("Error copying logs to sink")
-		sink.Cancel()
-		return err
-	}
 	return nil
 }
 

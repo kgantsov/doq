@@ -11,7 +11,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
-	badgerdb "github.com/kgantsov/doq/pkg/badger-store"
+	badgerstore "github.com/kgantsov/doq/pkg/badger-store"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/rs/zerolog/log"
@@ -71,7 +71,7 @@ func (node *Node) Initialize() {
 
 	os.MkdirAll(node.raftDir, 0700)
 
-	raftNode, err := createRaftNode(nodeID, node.raftDir, node.raftAddr, queueManager)
+	raftNode, err := node.createRaftNode(nodeID, node.raftDir, node.raftAddr, queueManager)
 	if err != nil {
 		log.Fatal().Msgf("failed to create raft node: '%s' %s", node.raftAddr, err.Error())
 	}
@@ -192,7 +192,7 @@ func (n *Node) Join(nodeID, addr string) error {
 	return nil
 }
 
-func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueManager) (*raft.Raft, error) {
+func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueManager) (*raft.Raft, error) {
 	config := raft.DefaultConfig()
 	config.SnapshotInterval = 120 * time.Second
 	config.SnapshotThreshold = 8192
@@ -209,9 +209,10 @@ func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueM
 	var logStore raft.LogStore
 	var stableStore raft.StableStore
 
-	badgerDB, err := badgerdb.New(badgerdb.Options{
-		Path: raftDir,
-	})
+	badgerDB, err := badgerstore.New(
+		n.db,
+		badgerstore.Options{},
+	)
 	if err != nil {
 		log.Warn().Msgf("failed to create store: %s", err)
 		return nil, fmt.Errorf("new store: %s", err)
@@ -225,7 +226,7 @@ func createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueM
 		return nil, err
 	}
 
-	fsm := &FSM{queueManager: queueManager, NodeID: nodeID, store: badgerDB}
+	fsm := &FSM{queueManager: queueManager, NodeID: nodeID, db: n.db, config: n.cfg}
 
 	r, err := raft.NewRaft(config, fsm, logStore, stableStore, snapshots, transport)
 	if err != nil {
