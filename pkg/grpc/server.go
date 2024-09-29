@@ -216,8 +216,6 @@ func (s *QueueServer) broadcastMessage(queueName string, message struct{}) {
 		for consumerID, consumerChan := range consumers {
 			log.Debug().Msgf("Broadcasting a message to a consumer %d", consumerID)
 
-			// consumerChan <- message
-
 			timer := s.getTimer(1 * time.Second)
 			select {
 			case consumerChan <- message:
