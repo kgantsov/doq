@@ -10,6 +10,10 @@ import (
 
 var cfgFile string
 
+type ProfilingConfig struct {
+	Enabled bool `mapstructure:"enabled"`
+}
+
 type LoggingConfig struct {
 	LogLevel string `mapstructure:"level"`
 }
@@ -42,13 +46,14 @@ type ClusterConfig struct {
 	JoinAddr    string `mapstructure:"join_addr"`
 }
 type Config struct {
-	Logging LoggingConfig
-	Http    HttpConfig
-	Grpc    GrpcConfig
-	Raft    RaftConfig
-	Storage StorageConfig
-	Queue   QueueConfig
-	Cluster ClusterConfig
+	Profiling ProfilingConfig
+	Logging   LoggingConfig
+	Http      HttpConfig
+	Grpc      GrpcConfig
+	Raft      RaftConfig
+	Storage   StorageConfig
+	Queue     QueueConfig
+	Cluster   ClusterConfig
 }
 
 func LoadConfig() (*Config, error) {
@@ -90,6 +95,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 
 	// Command-line flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is config.yaml)")
+	rootCmd.Flags().Bool("profiling.enabled", false, "Enable profiling")
 	rootCmd.Flags().String("logging.level", "warning", "Log level")
 	rootCmd.Flags().String("http.port", "8000", "Port to run the HTTP server on")
 	rootCmd.Flags().String("grpc.address", "", "Address to run the GRPC server on")
@@ -103,6 +109,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	rootCmd.Flags().Int64("queue.acknowledgement_check_interval", 1, "Acknowledgement check interval in seconds")
 
 	// Bind CLI flags to Viper settings
+	viper.BindPFlag("profiling.enabled", rootCmd.Flags().Lookup("profiling.enabled"))
 	viper.BindPFlag("logging.level", rootCmd.Flags().Lookup("logging.level"))
 	viper.BindPFlag("http.port", rootCmd.Flags().Lookup("http.port"))
 	viper.BindPFlag("grpc.address", rootCmd.Flags().Lookup("grpc.address"))

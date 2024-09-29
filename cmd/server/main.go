@@ -7,7 +7,13 @@ import (
 	"path/filepath"
 	"time"
 
+	netHttp "net/http"
+	_ "net/http/pprof"
+
+	"github.com/pkg/profile"
+
 	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v4/options"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -73,6 +79,11 @@ func Run(cmd *cobra.Command, args []string) {
 	opts := badger.DefaultOptions(
 		filepath.Join(config.Storage.DataDir, config.Cluster.NodeID, "store"),
 	)
+
+	// TODO make it configurable
+	opts = opts.WithCompression(options.None)
+	opts = opts.WithBlockCacheSize(0)
+
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -86,7 +97,7 @@ func Run(cmd *cobra.Command, args []string) {
 		log.Info().Msg("Started running value GC")
 
 		for range ticker.C {
-			log.Info().Msg("Running value GC")
+			log.Debug().Msg("Running value GC")
 		again:
 			err := db.RunValueLogGC(config.Storage.GCDiscardRatio)
 			if err == nil {
@@ -137,6 +148,14 @@ func Run(cmd *cobra.Command, args []string) {
 		}
 
 		go grpcServer.Serve(lis)
+	}
+
+	if config.Profiling.Enabled {
+		defer profile.Start(profile.MemProfile).Stop()
+
+		go func() {
+			netHttp.ListenAndServe(":8080", nil)
+		}()
 	}
 
 	h := http.NewHttpService(config.Http.Port, node)
