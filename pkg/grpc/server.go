@@ -9,6 +9,7 @@ import (
 
 	"github.com/kgantsov/doq/pkg/http"
 	pb "github.com/kgantsov/doq/pkg/proto"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 )
 
@@ -18,6 +19,22 @@ type QueueServer struct {
 
 	queueConsumers map[string]map[uint64]chan struct{}
 	mu             sync.RWMutex
+	timerPool      sync.Pool
+}
+
+// Function to get a timer from the pool
+func (s *QueueServer) getTimer(duration time.Duration) *time.Timer {
+	timer := s.timerPool.Get().(*time.Timer)
+	timer.Reset(duration) // Reset it to the desired duration
+	return timer
+}
+
+// Function to put a timer back in the pool
+func (s *QueueServer) putTimer(timer *time.Timer) {
+	if !timer.Stop() {
+		<-timer.C // Drain the channel if it fired
+	}
+	s.timerPool.Put(timer)
 }
 
 // CreateQueue creates a new queue
@@ -49,6 +66,8 @@ func (s *QueueServer) Enqueue(ctx context.Context, req *pb.EnqueueRequest) (*pb.
 		return &pb.EnqueueResponse{Success: false}, fmt.Errorf("failed to enqueue a message")
 	}
 
+	s.broadcastMessage(req.QueueName, struct{}{})
+
 	return &pb.EnqueueResponse{
 		Success:  true,
 		Id:       message.ID,
@@ -75,6 +94,8 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 			return fmt.Errorf("failed to enqueue a message")
 		}
 
+		s.broadcastMessage(req.QueueName, struct{}{})
+
 		err = stream.Send(&pb.EnqueueResponse{
 			Success:  true,
 			Id:       message.ID,
@@ -85,8 +106,6 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 		if err != nil {
 			return err
 		}
-
-		s.broadcastMessage(req.QueueName, struct{}{})
 	}
 }
 
@@ -128,28 +147,6 @@ func (s *QueueServer) unregisterConsumer(queueName string, id uint64) {
 	}
 }
 
-func (s *QueueServer) dequeueStream(req *pb.DequeueRequest, stream pb.DOQ_DequeueStreamServer) error {
-	message, err := s.node.Dequeue(req.QueueName, req.Ack)
-	if err != nil {
-		return fmt.Errorf("failed to dequeue a message")
-	}
-
-	err = stream.Send(
-		&pb.DequeueResponse{
-			Success:  true,
-			Id:       message.ID,
-			Group:    message.Group,
-			Priority: message.Priority,
-			Content:  message.Content,
-		},
-	)
-
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // DequeueStream implements server-side streaming for dequeuing messages
 func (s *QueueServer) DequeueStream(req *pb.DequeueRequest, stream pb.DOQ_DequeueStreamServer) error {
 	consumerChan := make(chan struct{})
@@ -163,6 +160,7 @@ func (s *QueueServer) DequeueStream(req *pb.DequeueRequest, stream pb.DOQ_Dequeu
 	for {
 		select {
 		case <-stream.Context().Done():
+			log.Debug().Msgf("Dequeue stream for consumer %d closed", consumerID)
 			return nil
 		case <-consumerChan:
 			message, err := s.node.Dequeue(req.QueueName, req.Ack)
@@ -185,9 +183,24 @@ func (s *QueueServer) DequeueStream(req *pb.DequeueRequest, stream pb.DOQ_Dequeu
 			}
 		case <-ticker.C:
 			for {
-				err := s.dequeueStream(req, stream)
+				message, err := s.node.Dequeue(req.QueueName, req.Ack)
 				if err != nil {
 					break
+				}
+
+				err = stream.Send(
+					&pb.DequeueResponse{
+						Success:  true,
+						Id:       message.ID,
+						Group:    message.Group,
+						Priority: message.Priority,
+						Content:  message.Content,
+					},
+				)
+
+				if err != nil {
+					log.Debug().Msgf("Failed to send dequeue response for consumer %d", consumerID)
+					return err
 				}
 			}
 		}
@@ -200,8 +213,19 @@ func (s *QueueServer) broadcastMessage(queueName string, message struct{}) {
 	defer s.mu.RUnlock()
 
 	if consumers, ok := s.queueConsumers[queueName]; ok {
-		for _, consumerChan := range consumers {
-			consumerChan <- message
+		for consumerID, consumerChan := range consumers {
+			log.Debug().Msgf("Broadcasting a message to a consumer %d", consumerID)
+
+			// consumerChan <- message
+
+			timer := s.getTimer(1 * time.Second)
+			select {
+			case consumerChan <- message:
+				log.Debug().Msgf("Message broadcasted to a consumer %d", consumerID)
+				s.putTimer(timer)
+			case <-timer.C:
+				log.Debug().Msgf("Failed to broadcast a message to a consumer %d", consumerID)
+			}
 		}
 	}
 }
@@ -230,6 +254,16 @@ func NewQueueServer(node http.Node) *QueueServer {
 	return &QueueServer{
 		node:           node,
 		queueConsumers: make(map[string]map[uint64]chan struct{}),
+		timerPool: sync.Pool{
+			New: func() interface{} {
+				// Create a new timer, but immediately stop it so it can be reused.
+				t := time.NewTimer(0)
+				if !t.Stop() {
+					<-t.C // drain the channel if it was already fired
+				}
+				return t
+			},
+		},
 	}
 }
 
