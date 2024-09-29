@@ -79,6 +79,22 @@ func Run(cmd *cobra.Command, args []string) {
 	}
 	defer db.Close()
 
+	go func() {
+		ticker := time.NewTicker(time.Duration(config.Storage.GCInterval) * time.Second)
+		defer ticker.Stop()
+
+		log.Info().Msg("Started running value GC")
+
+		for range ticker.C {
+			log.Info().Msg("Running value GC")
+		again:
+			err := db.RunValueLogGC(config.Storage.GCDiscardRatio)
+			if err == nil {
+				goto again
+			}
+		}
+	}()
+
 	log.Info().Msgf(
 		"Starting node (%s) %s with HTTP on %s and Raft on %s %+v",
 		config.Cluster.ServiceName,
