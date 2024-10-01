@@ -34,6 +34,7 @@ func NewQueueStats(windowSize int) *queueStats {
 		ackHistory:     make([]uint64, windowSize),
 		nackHistory:    make([]uint64, windowSize),
 		windowSize:     windowSize,
+		quit:           make(chan struct{}),
 	}
 
 	return stats

@@ -7,7 +7,6 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,7 +52,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 			pq := NewBadgerPriorityQueue(
 				db,
 				&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
-				NewPrometheusMetrics(prometheus.NewRegistry(), "queues"),
+				nil,
 			)
 			pq.Create("delayed", "test_queue")
 
@@ -91,7 +90,7 @@ func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
 	pq := NewBadgerPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
-		NewPrometheusMetrics(prometheus.NewRegistry(), "queues"),
+		nil,
 	)
 	pq.Create("delayed", "test_queue_stored")
 
@@ -114,7 +113,7 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	pq := NewBadgerPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
-		NewPrometheusMetrics(prometheus.NewRegistry(), "queues"),
+		nil,
 	)
 	err = pq.Create("delayed", "test_queue")
 	assert.Nil(t, err)
@@ -129,7 +128,7 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	pq1 := NewBadgerPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
-		NewPrometheusMetrics(prometheus.NewRegistry(), "queues"),
+		nil,
 	)
 	err = pq1.Load("test_queue", true)
 	assert.Nil(t, err)
@@ -171,7 +170,7 @@ func TestBadgerPriorityQueueDelete(t *testing.T) {
 	pq := NewBadgerPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
-		NewPrometheusMetrics(prometheus.NewRegistry(), "queues"),
+		nil,
 	)
 	err = pq.Create("delayed", "test_queue")
 	assert.Nil(t, err)
@@ -197,7 +196,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	pq := NewBadgerPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
-		NewPrometheusMetrics(prometheus.NewRegistry(), "queues"),
+		nil,
 	)
 	pq.Create("delayed", "test_queue")
 
@@ -296,7 +295,7 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 	pq := NewBadgerPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
-		NewPrometheusMetrics(prometheus.NewRegistry(), "queues"),
+		nil,
 	)
 	pq.Create("delayed", "test_queue_1")
 
@@ -331,7 +330,7 @@ func TestBadgerPriorityQueueAck(t *testing.T) {
 	pq := NewBadgerPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
-		NewPrometheusMetrics(prometheus.NewRegistry(), "queues"),
+		nil,
 	)
 	pq.Create("delayed", "test_queue")
 
