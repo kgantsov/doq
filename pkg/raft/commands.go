@@ -129,6 +129,15 @@ func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error
 	return nil
 }
 
+func (n *Node) GetQueueStats(queueName string) (*queue.QueueStats, error) {
+	q, err := n.QueueManager.GetQueue(queueName)
+	if err != nil {
+		return nil, err
+	}
+
+	return q.GetStats(), nil
+}
+
 func (n *Node) CreateQueue(queueType, queueName string) error {
 	cmd := Command{
 		Op: "createQueue",

@@ -5,15 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-type QueueMetrics struct {
-	EnqueueTotal float64
-	DequeueTotal float64
-	AckTotal     float64
-	NackTotal    float64
-	QueueSize    float64
-}
-
-type Metrics struct {
+type PrometheusMetrics struct {
 	enqueueTotal *prometheus.CounterVec
 	dequeueTotal *prometheus.CounterVec
 	ackTotal     *prometheus.CounterVec
@@ -22,9 +14,9 @@ type Metrics struct {
 	registry     *prometheus.Registry
 }
 
-func NewMetrics(registry prometheus.Registerer, subsystem string) *Metrics {
+func NewPrometheusMetrics(registry prometheus.Registerer, subsystem string) *PrometheusMetrics {
 
-	m := &Metrics{}
+	m := &PrometheusMetrics{}
 
 	m.enqueueTotal = promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{

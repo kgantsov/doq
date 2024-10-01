@@ -83,8 +83,8 @@ func (node *Node) Initialize() {
 	queueManager := queue.NewQueueManager(node.db, node.cfg)
 
 	if node.cfg.Prometheus.Enabled {
-		queueManager.SetMetrics(
-			queue.NewMetrics(node.PrometheusRegistry(), "queues"),
+		queueManager.SetPrometheusMetrics(
+			queue.NewPrometheusMetrics(node.PrometheusRegistry(), "queues"),
 		)
 	}
 
