@@ -9,6 +9,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/kgantsov/doq/pkg/queue"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -202,6 +203,10 @@ func (n *testNode) IsLeader() bool {
 func (n *testNode) GenerateID() uint64 {
 	n.nextID++
 	return n.nextID
+}
+
+func (n *testNode) PrometheusRegistry() prometheus.Registerer {
+	return nil
 }
 
 func (n *testNode) CreateQueue(queueType, queueName string) error {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bwmarrin/snowflake"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
@@ -36,10 +37,12 @@ type Node struct {
 
 	db      *badger.DB
 	raftDir string
+
+	prometheusRegistry prometheus.Registerer
 }
 
 func NewNode(db *badger.DB, raftDir string, cfg *config.Config, peers []string) *Node {
-	return &Node{
+	node := &Node{
 		cfg:            cfg,
 		id:             cfg.Cluster.NodeID,
 		address:        cfg.Http.Port,
@@ -49,6 +52,16 @@ func NewNode(db *badger.DB, raftDir string, cfg *config.Config, peers []string) 
 		raftDir:        raftDir,
 		leaderChangeFn: func(bool) {},
 	}
+
+	if cfg.Prometheus.Enabled {
+		node.prometheusRegistry = prometheus.NewRegistry()
+	}
+
+	return node
+}
+
+func (node *Node) PrometheusRegistry() prometheus.Registerer {
+	return node.prometheusRegistry
 }
 
 func (node *Node) SetLeaderChangeFunc(leaderChangeFn func(bool)) {
@@ -68,6 +81,12 @@ func (node *Node) Initialize() {
 	log.Debug().Msgf("=====> TEST Initialize %+v", nodes)
 
 	queueManager := queue.NewQueueManager(node.db, node.cfg)
+
+	if node.cfg.Prometheus.Enabled {
+		queueManager.SetMetrics(
+			queue.NewMetrics(node.PrometheusRegistry(), "queues"),
+		)
+	}
 
 	os.MkdirAll(node.raftDir, 0700)
 

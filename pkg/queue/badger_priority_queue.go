@@ -8,6 +8,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 )
 
@@ -51,8 +52,9 @@ func MessageFromBytes(data []byte) (*Message, error) {
 }
 
 type BadgerPriorityQueue struct {
-	config *QueueConfig
-	cfg    *config.Config
+	config  *QueueConfig
+	cfg     *config.Config
+	Metrics *Metrics
 
 	pq Queue
 	db *badger.DB
@@ -65,12 +67,13 @@ type BadgerPriorityQueue struct {
 	ackQueueMu sync.Mutex
 }
 
-func NewBadgerPriorityQueue(db *badger.DB, cfg *config.Config) *BadgerPriorityQueue {
+func NewBadgerPriorityQueue(db *badger.DB, cfg *config.Config, metrics *Metrics) *BadgerPriorityQueue {
 
 	bpq := &BadgerPriorityQueue{
 		db:       db,
 		cfg:      cfg,
 		ackQueue: NewDelayedPriorityQueue(false),
+		Metrics:  metrics,
 	}
 
 	return bpq
@@ -291,6 +294,12 @@ func (bpq *BadgerPriorityQueue) Enqueue(id uint64, group string, priority int64,
 	}
 
 	bpq.pq.Enqueue(msg.Group, queueItem)
+
+	if bpq.cfg.Prometheus.Enabled {
+		bpq.Metrics.enqueueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+		bpq.Metrics.queueSize.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+	}
+
 	return msg, nil
 }
 
@@ -344,6 +353,10 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 		return nil, err
 	}
 
+	if bpq.cfg.Prometheus.Enabled {
+		bpq.Metrics.dequeueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+		bpq.Metrics.queueSize.With(prometheus.Labels{"queue_name": bpq.config.Name}).Dec()
+	}
 	return msg, nil
 }
 
@@ -445,6 +458,9 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 		return err
 	}
 
+	if bpq.cfg.Prometheus.Enabled {
+		bpq.Metrics.ackTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+	}
 	return nil
 }
 

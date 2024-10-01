@@ -13,8 +13,9 @@ import (
 var ErrQueueNotFound = fmt.Errorf("queue not found")
 
 type QueueManager struct {
-	db     *badger.DB
-	config *config.Config
+	db      *badger.DB
+	config  *config.Config
+	Metrics *Metrics
 
 	queues map[string]*BadgerPriorityQueue
 	mu     sync.Mutex
@@ -28,6 +29,10 @@ func NewQueueManager(db *badger.DB, cfg *config.Config) *QueueManager {
 	}
 }
 
+func (qm *QueueManager) SetMetrics(metrics *Metrics) {
+	qm.Metrics = metrics
+}
+
 func (qm *QueueManager) Create(queueType, queueName string) (*BadgerPriorityQueue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
@@ -37,7 +42,7 @@ func (qm *QueueManager) Create(queueType, queueName string) (*BadgerPriorityQueu
 		return q, nil
 	}
 
-	q = NewBadgerPriorityQueue(qm.db, qm.config)
+	q = NewBadgerPriorityQueue(qm.db, qm.config, qm.Metrics)
 	err := q.Create(queueType, queueName)
 
 	if err != nil {
@@ -55,7 +60,7 @@ func (qm *QueueManager) Delete(queueName string) error {
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewBadgerPriorityQueue(qm.db, qm.config)
+		q = NewBadgerPriorityQueue(qm.db, qm.config, qm.Metrics)
 		q.Load(queueName, false)
 	}
 
@@ -75,7 +80,7 @@ func (qm *QueueManager) GetQueue(queueName string) (*BadgerPriorityQueue, error)
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewBadgerPriorityQueue(qm.db, qm.config)
+		q = NewBadgerPriorityQueue(qm.db, qm.config, qm.Metrics)
 		err := q.Load(queueName, true)
 		if err != nil {
 			return nil, ErrQueueNotFound

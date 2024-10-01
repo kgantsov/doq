@@ -10,6 +10,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humafiber"
 	"github.com/gofiber/fiber/v2"
+
 	"github.com/gofiber/fiber/v2/middleware/healthcheck"
 	"github.com/gofiber/fiber/v2/middleware/helmet"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -17,6 +18,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/kgantsov/doq/pkg/queue"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Service provides HTTP service.
@@ -29,6 +31,7 @@ type Service struct {
 
 type Node interface {
 	Join(nodeID string, addr string) error
+	PrometheusRegistry() prometheus.Registerer
 	Leader() string
 	IsLeader() bool
 	GenerateID() uint64
@@ -92,9 +95,11 @@ func (h *Handler) ConfigureMiddleware(router *fiber.App) {
 
 	router.Use(requestid.New())
 
-	prometheus := fiberprometheus.New("doq")
-	prometheus.RegisterAt(router, "/metrics")
-	router.Use(prometheus.Middleware)
+	prom := fiberprometheus.NewWithRegistry(
+		h.node.PrometheusRegistry(), "doq", "", "", map[string]string{},
+	)
+	prom.RegisterAt(router, "/metrics")
+	router.Use(prom.Middleware)
 
 	router.Get("/service/metrics", monitor.New())
 	router.Use(recover.New())

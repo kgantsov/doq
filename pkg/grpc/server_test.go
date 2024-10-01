@@ -10,6 +10,7 @@ import (
 
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/kgantsov/doq/pkg/queue"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
@@ -47,6 +48,10 @@ func (n *testNode) IsLeader() bool {
 func (n *testNode) GenerateID() uint64 {
 	n.nextID++
 	return n.nextID
+}
+
+func (n *testNode) PrometheusRegistry() prometheus.Registerer {
+	return nil
 }
 
 func (n *testNode) CreateQueue(queueType, queueName string) error {
