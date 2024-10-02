@@ -24,6 +24,7 @@ func TestNewQueueManager(t *testing.T) {
 				AcknowledgementCheckInterval: 1,
 			},
 		},
+		nil,
 	)
 
 	queue1, err := queueManager.Create("delayed", "queue_1")
@@ -81,6 +82,7 @@ func TestQueueManagerGetQueue(t *testing.T) {
 				AcknowledgementCheckInterval: 1,
 			},
 		},
+		nil,
 	)
 
 	queue1, err := queueManager.Create("delayed", "queue_1")

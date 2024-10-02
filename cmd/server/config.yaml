@@ -1,11 +1,11 @@
 prometheus:
-  enabled: false
+  enabled: true
 
 profiling:
   enabled: false
 
 logging:
-  level: "warn"
+  level: "info"
 
 storage:
   gc_interval: 300

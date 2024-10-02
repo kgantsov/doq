@@ -21,16 +21,13 @@ type QueueManager struct {
 	mu     sync.Mutex
 }
 
-func NewQueueManager(db *badger.DB, cfg *config.Config) *QueueManager {
-	qm := &QueueManager{
-		db:     db,
-		config: cfg,
-		queues: make(map[string]*BadgerPriorityQueue),
+func NewQueueManager(db *badger.DB, cfg *config.Config, metrics *PrometheusMetrics) *QueueManager {
+	return &QueueManager{
+		db:                db,
+		config:            cfg,
+		queues:            make(map[string]*BadgerPriorityQueue),
+		PrometheusMetrics: metrics,
 	}
-
-	qm.LoadQueues()
-
-	return qm
 }
 
 func (qm *QueueManager) LoadQueues() {
@@ -62,10 +59,6 @@ func (qm *QueueManager) LoadQueues() {
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to load queues")
 	}
-}
-
-func (qm *QueueManager) SetPrometheusMetrics(metrics *PrometheusMetrics) {
-	qm.PrometheusMetrics = metrics
 }
 
 func (qm *QueueManager) Create(queueType, queueName string) (*BadgerPriorityQueue, error) {

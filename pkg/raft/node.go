@@ -80,13 +80,11 @@ func (node *Node) Initialize() {
 
 	log.Debug().Msgf("=====> TEST Initialize %+v", nodes)
 
-	queueManager := queue.NewQueueManager(node.db, node.cfg)
-
+	var prometheusMetrics *queue.PrometheusMetrics
 	if node.cfg.Prometheus.Enabled {
-		queueManager.SetPrometheusMetrics(
-			queue.NewPrometheusMetrics(node.PrometheusRegistry(), "queues"),
-		)
+		prometheusMetrics = queue.NewPrometheusMetrics(node.PrometheusRegistry(), "queues")
 	}
+	queueManager := queue.NewQueueManager(node.db, node.cfg, prometheusMetrics)
 
 	os.MkdirAll(node.raftDir, 0700)
 
