@@ -1,0 +1,30 @@
+prometheus:
+  enabled: false
+
+profiling:
+  enabled: false
+
+logging:
+  level: "debug"
+
+storage:
+  data_dir: "data"
+  gc_interval: 300
+  gc_discard_ratio: 0.7
+
+queue:
+  acknowledgement_check_interval: 1
+
+cluster:
+  node_id: "node-1"
+  join_addr: "localhost:9000"
+  service_name: "doq"
+
+http:
+  port: 8000
+
+grpc:
+  address: "localhost:10000"
+
+raft:
+  address: "localhost:9000"

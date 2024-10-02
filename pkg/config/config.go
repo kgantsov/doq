@@ -49,6 +49,7 @@ type ClusterConfig struct {
 	ServiceName string `mapstructure:"service_name"`
 	JoinAddr    string `mapstructure:"join_addr"`
 }
+
 type Config struct {
 	Profiling  ProfilingConfig
 	Prometheus PrometheusConfig

@@ -1,0 +1,15 @@
+prometheus:
+  enabled: false
+
+profiling:
+  enabled: false
+
+logging:
+  level: "warn"
+
+storage:
+  gc_interval: 300
+  gc_discard_ratio: 0.7
+
+queue:
+  acknowledgement_check_interval: 1
