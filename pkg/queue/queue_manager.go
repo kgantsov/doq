@@ -22,10 +22,45 @@ type QueueManager struct {
 }
 
 func NewQueueManager(db *badger.DB, cfg *config.Config) *QueueManager {
-	return &QueueManager{
+	qm := &QueueManager{
 		db:     db,
 		config: cfg,
 		queues: make(map[string]*BadgerPriorityQueue),
+	}
+
+	qm.LoadQueues()
+
+	return qm
+}
+
+func (qm *QueueManager) LoadQueues() {
+	prefix := []byte("queues:")
+	err := qm.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 10
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			key := item.Key()
+			queueName := string(key[len(prefix) : len(key)-1])
+
+			log.Debug().Msgf("Loading queue: %s", queueName)
+
+			q := NewBadgerPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
+			err := q.Load(queueName, true)
+			if err != nil {
+				log.Error().Err(err).Str("queue", queueName).Msg("Failed to load queue")
+			}
+			qm.queues[queueName] = q
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to load queues")
 	}
 }
 
@@ -88,6 +123,18 @@ func (qm *QueueManager) GetQueue(queueName string) (*BadgerPriorityQueue, error)
 		return q, nil
 	}
 	return q, nil
+}
+
+func (qm *QueueManager) GetQueues() []*QueueInfo {
+	qm.mu.Lock()
+	defer qm.mu.Unlock()
+
+	queues := make([]*QueueInfo, 0, len(qm.queues))
+	for _, queue := range qm.queues {
+		queues = append(queues, queue.GetStats())
+	}
+
+	return queues
 }
 
 func (qm *QueueManager) RunValueLogGC() {

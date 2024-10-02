@@ -143,3 +143,26 @@ type QueueInfoOutput struct {
 	Status int
 	Body   QueueInfoOutputBody
 }
+
+type QueuesInput struct {
+}
+
+type QueueOutput struct {
+	Name       string  `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	Type       string  `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+	EnqueueRPS float64 `json:"enqueue_rps" doc:"Rate of enqueued messages per second"`
+	DequeueRPS float64 `json:"dequeue_rps" doc:"Rate of dequeued messages per second"`
+	AckRPS     float64 `json:"ack_rps" doc:"Rate of acknowledged messages per second"`
+	Ready      int64   `json:"ready" doc:"Number of ready messages"`
+	Unacked    int64   `json:"unacked" doc:"Number of unacknowledged messages"`
+	Total      int64   `json:"total" doc:"Total number of messages"`
+}
+
+type QueuesOutputBody struct {
+	Queues []QueueOutput `json:"queues"`
+}
+
+type QueuesOutput struct {
+	Status int
+	Body   QueuesOutputBody
+}

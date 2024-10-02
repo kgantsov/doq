@@ -205,6 +205,10 @@ func (n *testNode) GenerateID() uint64 {
 	return n.nextID
 }
 
+func (n *testNode) GetQueues() []*queue.QueueInfo {
+	return []*queue.QueueInfo{}
+}
+
 func (n *testNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 	return &queue.QueueInfo{}, nil
 }

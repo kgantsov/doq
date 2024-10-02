@@ -129,6 +129,10 @@ func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error
 	return nil
 }
 
+func (n *Node) GetQueues() []*queue.QueueInfo {
+	return n.QueueManager.GetQueues()
+}
+
 func (n *Node) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 	q, err := n.QueueManager.GetQueue(queueName)
 	if err != nil {

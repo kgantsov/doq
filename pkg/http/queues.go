@@ -72,6 +72,34 @@ func (h *Handler) DeleteQueue(ctx context.Context, input *DeleteQueueInput) (*De
 	return res, nil
 }
 
+func (h *Handler) Queues(ctx context.Context, input *QueuesInput) (*QueuesOutput, error) {
+	queues := h.node.GetQueues()
+
+	queueOutputs := make([]QueueOutput, 0, len(queues))
+
+	for _, queue := range queues {
+		queueOutputs = append(queueOutputs, QueueOutput{
+			Name:       queue.Name,
+			Type:       queue.Type,
+			EnqueueRPS: queue.Stats.EnqueueRPS,
+			DequeueRPS: queue.Stats.DequeueRPS,
+			AckRPS:     queue.Stats.AckRPS,
+			Ready:      queue.Ready,
+			Unacked:    queue.Unacked,
+			Total:      queue.Total,
+		})
+	}
+
+	res := &QueuesOutput{
+		Status: http.StatusOK,
+		Body: QueuesOutputBody{
+			Queues: queueOutputs,
+		},
+	}
+
+	return res, nil
+}
+
 func (h *Handler) QueueInfo(ctx context.Context, input *QueueInfoInput) (*QueueInfoOutput, error) {
 	queueName := input.QueueName
 

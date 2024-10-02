@@ -16,6 +16,7 @@ var ErrEmptyQueue = fmt.Errorf("queue is empty")
 var ErrMessageNotFound = fmt.Errorf("message not found")
 
 type QueueInfo struct {
+	Name    string
 	Type    string
 	Stats   *QueueStats
 	Ready   int64
@@ -108,6 +109,7 @@ func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
 
 func (bpq *BadgerPriorityQueue) GetStats() *QueueInfo {
 	return &QueueInfo{
+		Name:    bpq.config.Name,
 		Type:    bpq.config.Type,
 		Stats:   bpq.stats.GetRPS(),
 		Ready:   int64(bpq.pq.Len()),
