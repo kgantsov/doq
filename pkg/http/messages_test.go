@@ -205,8 +205,8 @@ func (n *testNode) GenerateID() uint64 {
 	return n.nextID
 }
 
-func (n *testNode) GetQueueStats(queueName string) (*queue.QueueStats, error) {
-	return &queue.QueueStats{}, nil
+func (n *testNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
+	return &queue.QueueInfo{}, nil
 }
 
 func (n *testNode) PrometheusRegistry() prometheus.Registerer {

@@ -72,23 +72,26 @@ func (h *Handler) DeleteQueue(ctx context.Context, input *DeleteQueueInput) (*De
 	return res, nil
 }
 
-func (h *Handler) QueueStats(ctx context.Context, input *QueueStatsInput) (*QueueStatsOutput, error) {
+func (h *Handler) QueueInfo(ctx context.Context, input *QueueInfoInput) (*QueueInfoOutput, error) {
 	queueName := input.QueueName
 
-	stats, err := h.node.GetQueueStats(queueName)
+	queueInfo, err := h.node.GetQueueInfo(queueName)
 
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to get stats for a queue", err)
 	}
 
-	res := &QueueStatsOutput{
+	res := &QueueInfoOutput{
 		Status: http.StatusOK,
-		Body: QueueStatsOutputBody{
-			EnqueueRPS: stats.EnqueueRPS,
-			DequeueRPS: stats.DequeueRPS,
-			AckRPS:     stats.AckRPS,
-			NackRPS:    stats.NackRPS,
-			// QueueSize:    stats.QueueSize,
+		Body: QueueInfoOutputBody{
+			Name:       queueName,
+			Type:       queueInfo.Type,
+			EnqueueRPS: queueInfo.Stats.EnqueueRPS,
+			DequeueRPS: queueInfo.Stats.DequeueRPS,
+			AckRPS:     queueInfo.Stats.AckRPS,
+			Ready:      queueInfo.Ready,
+			Unacked:    queueInfo.Unacked,
+			Total:      queueInfo.Total,
 		},
 	}
 

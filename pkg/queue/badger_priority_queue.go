@@ -15,6 +15,14 @@ import (
 var ErrEmptyQueue = fmt.Errorf("queue is empty")
 var ErrMessageNotFound = fmt.Errorf("message not found")
 
+type QueueInfo struct {
+	Type    string
+	Stats   *QueueStats
+	Ready   int64
+	Unacked int64
+	Total   int64
+}
+
 type QueueConfig struct {
 	Name string
 	Type string
@@ -98,8 +106,14 @@ func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) GetStats() *QueueStats {
-	return bpq.stats.GetRPS()
+func (bpq *BadgerPriorityQueue) GetStats() *QueueInfo {
+	return &QueueInfo{
+		Type:    bpq.config.Type,
+		Stats:   bpq.stats.GetRPS(),
+		Ready:   int64(bpq.pq.Len()),
+		Unacked: int64(bpq.ackQueue.Len()),
+		Total:   int64(bpq.pq.Len() + bpq.ackQueue.Len()),
+	}
 }
 
 func (bpq *BadgerPriorityQueue) monitorAckQueue() {

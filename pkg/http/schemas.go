@@ -124,19 +124,22 @@ type UpdatePriorityOutput struct {
 	Body   UpdatePriorityOutputBody
 }
 
-type QueueStatsInput struct {
+type QueueInfoInput struct {
 	QueueName string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
 }
 
-type QueueStatsOutputBody struct {
+type QueueInfoOutputBody struct {
+	Name       string  `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	Type       string  `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
 	EnqueueRPS float64 `json:"enqueue_rps" doc:"Rate of enqueued messages per second"`
 	DequeueRPS float64 `json:"dequeue_rps" doc:"Rate of dequeued messages per second"`
 	AckRPS     float64 `json:"ack_rps" doc:"Rate of acknowledged messages per second"`
-	NackRPS    float64 `json:"nack_rps" doc:"Rate of not acknowledged messages per second"`
-	QueueSize  float64 `json:"queue_size" doc:"Current size of the queue"`
+	Ready      int64   `json:"ready" doc:"Number of ready messages"`
+	Unacked    int64   `json:"unacked" doc:"Number of unacknowledged messages"`
+	Total      int64   `json:"total" doc:"Total number of messages"`
 }
 
-type QueueStatsOutput struct {
+type QueueInfoOutput struct {
 	Status int
-	Body   QueueStatsOutputBody
+	Body   QueueInfoOutputBody
 }

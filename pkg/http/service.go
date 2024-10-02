@@ -37,7 +37,7 @@ type Node interface {
 	GenerateID() uint64
 	CreateQueue(queueType, queueName string) error
 	DeleteQueue(queueName string) error
-	GetQueueStats(queueName string) (*queue.QueueStats, error)
+	GetQueueInfo(queueName string) (*queue.QueueInfo, error)
 	Enqueue(queueName string, group string, priority int64, content string) (*queue.Message, error)
 	Dequeue(QueueName string, ack bool) (*queue.Message, error)
 	Ack(QueueName string, id uint64) error
@@ -195,14 +195,14 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 	huma.Register(
 		api,
 		huma.Operation{
-			OperationID: "queue-stats",
+			OperationID: "queue-info",
 			Method:      http.MethodGet,
-			Path:        "/API/v1/queues/:queue_name/stats",
-			Summary:     "Stats of a queue",
-			Description: "Get the stats of a queue",
+			Path:        "/API/v1/queues/:queue_name/info",
+			Summary:     "Info of a queue",
+			Description: "Get the information of a queue including stats",
 			Tags:        []string{"Queues"},
 		},
-		h.QueueStats,
+		h.QueueInfo,
 	)
 }
 
