@@ -22,6 +22,7 @@ import (
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/grpc"
 	"github.com/kgantsov/doq/pkg/http"
+	"github.com/kgantsov/doq/pkg/logger"
 	"github.com/kgantsov/doq/pkg/raft"
 )
 
@@ -33,7 +34,8 @@ func Run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
 
 	logLevel, err := zerolog.ParseLevel(config.Logging.LogLevel)
 	if err != nil {
@@ -41,8 +43,6 @@ func Run(cmd *cobra.Command, args []string) {
 	} else {
 		zerolog.SetGlobalLevel(logLevel)
 	}
-
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	if config.Storage.DataDir == "" {
 		log.Info().Msg("No storage directory specified")
@@ -83,6 +83,7 @@ func Run(cmd *cobra.Command, args []string) {
 	// TODO make it configurable
 	opts = opts.WithCompression(options.None)
 	opts = opts.WithBlockCacheSize(0)
+	opts.Logger = &logger.BadgerLogger{}
 
 	db, err := badger.Open(opts)
 	if err != nil {

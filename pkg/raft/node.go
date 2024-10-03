@@ -11,9 +11,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	badgerstore "github.com/kgantsov/doq/pkg/badger-store"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/logger"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/rs/zerolog/log"
 )
@@ -215,6 +217,7 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 	config.SnapshotThreshold = 8192
 	config.LocalID = raft.ServerID(nodeID)
 	config.LogLevel = "DEBUG"
+	config.Logger = logger.NewZeroHCLLogger("raft", hclog.LevelFromString(n.cfg.Logging.LogLevel))
 
 	bindAddr := raftPort
 	transport, err := raft.NewTCPTransport(bindAddr, nil, 3, 10*time.Second, os.Stderr)

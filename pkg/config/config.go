@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -74,8 +73,6 @@ func LoadConfig() (*Config, error) {
 }
 
 func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Command {
-	log.Info().Msgf("Initializing config %s", cfgFile)
-
 	if cfgFile != "" {
 		// Use config file from the flag
 		viper.SetConfigFile(cfgFile)
@@ -90,7 +87,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 
 	// Read the config file if found
 	if err := viper.ReadInConfig(); err == nil {
-		log.Warn().Msgf("Using config file: %s", viper.ConfigFileUsed())
+		// log.Warn().Msgf("Using config file: %s", viper.ConfigFileUsed())
 	}
 
 	var rootCmd = &cobra.Command{
