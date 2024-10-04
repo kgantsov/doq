@@ -41,6 +41,7 @@ type StorageConfig struct {
 
 type QueueConfig struct {
 	AcknowledgementCheckInterval int64 `mapstructure:"acknowledgement_check_interval"`
+	AcknowledgementTimeout       int64 `mapstructure:"acknowledgement_timeout"`
 }
 
 type ClusterConfig struct {
@@ -111,6 +112,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	rootCmd.Flags().String("cluster.service_name", "", "Name of the service in Kubernetes")
 	rootCmd.Flags().String("cluster.join_addr", "", "Set join address, if any")
 	rootCmd.Flags().Int64("queue.acknowledgement_check_interval", 1, "Acknowledgement check interval in seconds")
+	rootCmd.Flags().Int64("queue.acknowledgement_timeout", 60, "Acknowledgement timeout in seconds")
 
 	// Bind CLI flags to Viper settings
 	viper.BindPFlag("profiling.enabled", rootCmd.Flags().Lookup("profiling.enabled"))
@@ -126,6 +128,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	viper.BindPFlag("cluster.service_name", rootCmd.Flags().Lookup("cluster.service_name"))
 	viper.BindPFlag("cluster.join_addr", rootCmd.Flags().Lookup("cluster.join_addr"))
 	viper.BindPFlag("queue.acknowledgement_check_interval", rootCmd.Flags().Lookup("queue.acknowledgement_check_interval"))
+	viper.BindPFlag("queue.acknowledgement_timeout", rootCmd.Flags().Lookup("queue.acknowledgement_timeout"))
 
 	return rootCmd
 }

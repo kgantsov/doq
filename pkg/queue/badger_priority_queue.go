@@ -368,8 +368,10 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 			bpq.ackQueue.Enqueue(
 				"default",
 				&Item{
-					ID:       queueItem.ID,
-					Priority: time.Now().UTC().Add(time.Duration(2) * time.Minute).Unix(),
+					ID: queueItem.ID,
+					Priority: time.Now().UTC().Add(
+						time.Duration(bpq.cfg.Queue.AcknowledgementTimeout) * time.Second,
+					).Unix(),
 				},
 			)
 			bpq.ackQueueMu.Unlock()

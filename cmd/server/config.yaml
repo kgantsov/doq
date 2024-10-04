@@ -13,3 +13,4 @@ storage:
 
 queue:
   acknowledgement_check_interval: 1
+  acknowledgement_timeout: 60
