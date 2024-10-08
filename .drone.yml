@@ -39,7 +39,9 @@ steps:
     event:
       exclude:
       - tag
-  depends_on: [frontend]
+  depends_on:
+  - frontend
+  - test
 
 - name: build
   image: golang:1.22.2
@@ -69,7 +71,6 @@ steps:
     context: .
     dockerfile: ./Dockerfile
     auto_tag: true
-  depends_on: [build]
 
 - name: publish
   image: plugins/github-release
@@ -83,7 +84,7 @@ steps:
   when:
     event:
       - tag
-  depends_on: [build]
+  depends_on: [build and push the service]
 
 volumes:
 - name: ui
