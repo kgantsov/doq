@@ -44,8 +44,8 @@ steps:
     - cp -r admin_ui/dist/* cmd/server
     - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/doq cmd/server/main.go
     - tar -czf dist/doq-${DRONE_TAG##v}-linux-amd64.tar.gz dist/doq
-    - CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o dist/doq cmd/server/main.go
-    - tar -czf dist/doq-${DRONE_TAG##v}-darwin-arm64.tar.gz dist/doq
+    # - CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o dist/doq cmd/server/main.go
+    # - tar -czf dist/doq-${DRONE_TAG##v}-darwin-arm64.tar.gz dist/doq
     - rm -f dist/doq
   when:
     event:
