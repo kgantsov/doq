@@ -1,6 +1,7 @@
 package http
 
 import (
+	"embed"
 	"fmt"
 	"net"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humafiber"
 	"github.com/gofiber/fiber/v2"
 
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/healthcheck"
 	"github.com/gofiber/fiber/v2/middleware/helmet"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -47,9 +49,9 @@ type Node interface {
 }
 
 // New returns an uninitialized HTTP service.
-func NewHttpService(addr string, node Node) *Service {
-
+func NewHttpService(addr string, node Node, indexHtmlFS embed.FS, frontendFS embed.FS) *Service {
 	router := fiber.New()
+
 	api := humafiber.New(
 		router, huma.DefaultConfig("DOQ a distributed priority queue servie", "1.0.0"),
 	)
@@ -76,6 +78,20 @@ func NewHttpService(addr string, node Node) *Service {
 	}
 	h.ConfigureMiddleware(router)
 	h.RegisterRoutes(api)
+
+	// Serve static files from the embedded filesystem
+	router.Use("/assets", filesystem.New(filesystem.Config{
+		Root:       http.FS(frontendFS),
+		PathPrefix: "assets",
+		Browse:     false,
+	}))
+
+	// Serve index.html from the embedded filesystem
+	router.Get("/*", filesystem.New(filesystem.Config{
+		Root:         http.FS(indexHtmlFS),
+		Index:        "index.html",
+		NotFoundFile: "index.html",
+	}))
 
 	return &Service{
 		api:    api,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"net"
 	"os"
@@ -25,6 +26,16 @@ import (
 	"github.com/kgantsov/doq/pkg/logger"
 	"github.com/kgantsov/doq/pkg/raft"
 )
+
+// Embed a single file
+//
+//go:embed index.html
+var indexHtmlFS embed.FS
+
+// Embed a directory
+//
+//go:embed assets/*
+var frontendFS embed.FS
 
 func Run(cmd *cobra.Command, args []string) {
 	// Load the config
@@ -159,7 +170,7 @@ func Run(cmd *cobra.Command, args []string) {
 		}()
 	}
 
-	h := http.NewHttpService(config.Http.Port, node)
+	h := http.NewHttpService(config.Http.Port, node, indexHtmlFS, frontendFS)
 	if err := h.Start(); err != nil {
 		log.Error().Msgf("failed to start HTTP service: %s", err.Error())
 	}

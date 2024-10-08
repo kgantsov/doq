@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"embed"
 	"net/http/httptest"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 func TestNew(t *testing.T) {
 	addr := "8080"
 
-	service := NewHttpService(addr, newTestNode())
+	service := NewHttpService(addr, newTestNode(), embed.FS{}, embed.FS{})
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.router)
