@@ -23,3 +23,10 @@ go.work.sum
 
 .pytest_cache
 __pycache__
+
+.DS_Store
+
+cmd/server/vite.svg
+cmd/server/index.html
+cmd/server/data/
+cmd/server/assets/
