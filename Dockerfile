@@ -1,5 +1,13 @@
-FROM golang:1.22.2 AS builder
+FROM node:16.3.0-alpine3.13 AS frontend
 
+WORKDIR /doq/
+COPY ./ ./
+WORKDIR /doq/admin_ui
+RUN npm install
+RUN npm run build
+
+
+FROM golang:1.22.2 AS builder
 
 # Copy the code from the host and compile it
 WORKDIR $GOPATH/src/github.com/kgantsov/doq
@@ -7,6 +15,8 @@ COPY ./ ./
 RUN go mod download
 WORKDIR $GOPATH/src/github.com/kgantsov/doq/
 WORKDIR $GOPATH/src/github.com/kgantsov/doq/cmd/server
+COPY --from=frontend /doq/admin_ui/dist/ .
+
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /app .
 
 FROM alpine:latest as alpine
