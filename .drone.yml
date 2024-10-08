@@ -2,17 +2,33 @@ kind: pipeline
 name: default
 
 steps:
+- name: frontend
+  image: node:16
+  volumes:
+  - name: deps
+    path: /go
+  commands:
+    - cd admin_ui
+    - npm install
+    - npm run build
+  when:
+    event:
+      exclude:
+        - tag
+
 - name: test
   image: golang:1.22.2
   volumes:
   - name: deps
     path: /go
   commands:
+  - cp -r ./admin_ui/dist/* ./cmd/server
   - go test ./... -cover -coverprofile coverage.out
   when:
     event:
       exclude:
       - tag
+  depends_on: [frontend]
 
 - name: codecov
   image: robertstettner/drone-codecov
@@ -23,6 +39,9 @@ steps:
     event:
       exclude:
       - tag
+  depends_on:
+  - frontend
+  - test
 
 - name: build
   image: golang:1.22.2
@@ -30,6 +49,7 @@ steps:
   - name: deps
     path: /go
   commands:
+    - cp -r admin_ui/dist/* cmd/server
     - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o dist/doq cmd/server/main.go
     - tar -czf dist/doq-${DRONE_TAG##v}-linux-amd64.tar.gz dist/doq
     - CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o dist/doq cmd/server/main.go
@@ -38,6 +58,7 @@ steps:
   when:
     event:
       - tag
+  depends_on: [frontend]
 
 - name: build and push the service
   image: plugins/docker
@@ -63,7 +84,10 @@ steps:
   when:
     event:
       - tag
+  depends_on: [build and push the service]
 
 volumes:
+- name: ui
+  temp: {}
 - name: deps
   temp: {}
