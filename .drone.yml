@@ -11,10 +11,6 @@ steps:
     - cd admin_ui
     - npm install
     - npm run build
-  when:
-    event:
-      exclude:
-        - tag
 
 - name: test
   image: golang:1.22.2
