@@ -28,7 +28,6 @@ steps:
     event:
       exclude:
       - tag
-  depends_on: [frontend]
 
 - name: codecov
   image: robertstettner/drone-codecov
@@ -39,9 +38,6 @@ steps:
     event:
       exclude:
       - tag
-  depends_on:
-  - frontend
-  - test
 
 - name: build
   image: golang:1.22.2
@@ -58,7 +54,6 @@ steps:
   when:
     event:
       - tag
-  depends_on: [frontend]
 
 - name: build and push the service
   image: plugins/docker
@@ -84,7 +79,6 @@ steps:
   when:
     event:
       - tag
-  depends_on: [build and push the service]
 
 volumes:
 - name: ui
