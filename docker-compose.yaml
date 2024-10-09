@@ -11,7 +11,8 @@ services:
       - .:/go/src/doq
     ports:
       - "9000"
-      - "8001:8000"
+      - "8000:8000"
+      - "10000:10000"
     command: [
       "go",
       "run",
@@ -24,6 +25,8 @@ services:
       "8000",
       "--raft.address",
       "node-1:9000",
+      "--grpc.address",
+      "node-1:10000"
     ]
   node-2:
     container_name: node-2
@@ -34,7 +37,8 @@ services:
       - .:/go/src/doq
     ports:
       - "9000"
-      - "8002:8000"
+      - "8001:8000"
+      - "10001:10000"
     command: [
       "go",
       "run",
@@ -48,7 +52,9 @@ services:
       "--raft.address",
       "node-2:9000",
       "--cluster.join_addr",
-      "node-1:8000"
+      "node-1:8000",
+      "--grpc.address",
+      "node-2:10000"
     ]
   node-3:
     container_name: node-3
@@ -59,7 +65,8 @@ services:
       - .:/go/src/doq
     ports:
       - "9000"
-      - "8003:8000"
+      - "8002:8000"
+      - "10002:10000"
     command: [
       "go",
       "run",
@@ -73,10 +80,12 @@ services:
       "--raft.address",
       "node-3:9000",
       "--cluster.join_addr",
-      "node-1:8000"
+      "node-1:8000",
+      "--grpc.address",
+      "node-3:10000"
     ]
-  python:
-    container_name: shell
-    build:
-      context: python
-      dockerfile: Dockerfile
+  # python:
+  #   container_name: shell
+  #   build:
+  #     context: python
+  #     dockerfile: Dockerfile
