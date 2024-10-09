@@ -35,14 +35,14 @@ go build -o doq
 Run the first node
 
 ```bash
-./doq --storage.data_dir data --cluster.node_id node-1 --http.port 8001 --raft.address localhost:9001
+./doq --storage.data_dir data --cluster.node_id node-1 --http.port 8001 --raft.address localhost:9001 --grpc.address localhost:10001
 ```
 
 Run other nodes
 
 ```bash
-./doq --storage.data_dir data --cluster.node_id node-2 --http.port 8002 --raft.address localhost:9002 --cluster.join_addr localhost:8001
-./doq --storage.data_dir data --cluster.node_id node-3 --http.port 8003 --raft.address localhost:9003 --cluster.join_addr localhost:8001
+./doq --storage.data_dir data --cluster.node_id node-2 --http.port 8002 --raft.address localhost:9002 --grpc.address localhost:10002 --cluster.join_addr localhost:8001
+./doq --storage.data_dir data --cluster.node_id node-3 --http.port 8003 --raft.address localhost:9003 --grpc.address localhost:10003 --cluster.join_addr localhost:8001
 ```
 
 You can find swagger docs by opening http://localhost:8001/docs
@@ -126,6 +126,136 @@ curl --request PUT \
   --header 'Accept: application/json, application/problem+json' \
   --header 'Content-Type: application/json' \
   --data '{"priority": 12}'
+```
+
+## GRPC interface
+
+Producing messages
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"time"
+
+	pb "github.com/kgantsov/doq/pkg/proto"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"google.golang.org/grpc"
+)
+
+func main() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
+	// Connect to the gRPC server (leader node)
+	conn, err := grpc.Dial("localhost:10001", grpc.WithInsecure())
+	if err != nil {
+		log.Fatal().Msgf("Failed to connect: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	client.CreateQueue(context.Background(), &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+	})
+
+	// Create a stream for sending messages
+	stream, err := client.EnqueueStream(context.Background())
+	if err != nil {
+		log.Fatal().Msgf("Failed to open stream: %v", err)
+	}
+
+	// Produce messages in a loop
+	for i := 0; i < 1000000; {
+		msg := &pb.EnqueueRequest{
+			QueueName: "test-queue",
+			Content:   fmt.Sprintf("Message content %d", i),
+			Group:     "default",
+			Priority:  10,
+		}
+
+		// Send the message to the queue
+		if err := stream.Send(msg); err != nil {
+			log.Fatal().Msgf("Failed to send message: %v", err)
+		}
+
+		// Receive the acknowledgment from the server
+		ack, err := stream.Recv()
+		if err != nil {
+			log.Fatal().Msgf("Failed to receive acknowledgment: %v", err)
+		}
+		log.Info().Msgf("Sent a message %d %s Success=%v", ack.Id, ack.Content, ack.Success)
+
+		i++
+		// time.Sleep(200 * time.Millisecond) // Simulate delay between messages
+	}
+
+	// Close the stream
+	if err := stream.CloseSend(); err != nil {
+		log.Fatal().Msgf("Failed to close stream: %v", err)
+	}
+}
+```
+
+Consuming messages
+```go
+package main
+
+import (
+	"context"
+	"os"
+	"time"
+
+	pb "github.com/kgantsov/doq/pkg/proto"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"google.golang.org/grpc"
+)
+
+func main() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
+	// Connect to the gRPC server (leader node)
+	conn, err := grpc.Dial("localhost:10001", grpc.WithInsecure())
+	if err != nil {
+		log.Fatal().Msgf("Failed to connect: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	// Open a stream to receive messages from the queue
+	stream, err := client.DequeueStream(context.Background(), &pb.DequeueRequest{
+		QueueName: "test-queue",
+		Ack:       false,
+	})
+	if err != nil {
+		log.Fatal().Msgf("Failed to open stream: %v", err)
+	}
+
+	// Consume messages from the stream
+	for {
+		msg, err := stream.Recv()
+		if err != nil {
+			log.Fatal().Msgf("Failed to receive message: %v", err)
+		}
+
+		// Process the message
+		log.Info().Msgf("Received message: ID=%d, Content=%s", msg.Id, msg.Content)
+
+    // time.Sleep(500 * time.Millisecond) // Simulate message processing time
+
+		client.Acknowledge(context.Background(), &pb.AcknowledgeRequest{
+			QueueName: "test-queue",
+			Id:        msg.Id,
+		})
+	}
+}
+
 ```
 
 
