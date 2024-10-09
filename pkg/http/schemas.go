@@ -104,6 +104,21 @@ type AckOutput struct {
 	Body   AckOutputBody
 }
 
+type NackInput struct {
+	QueueName string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	ID        uint64 `path:"id" example:"123" doc:"ID of the message"`
+}
+
+type NackOutputBody struct {
+	Status string `json:"status" example:"UNACKNOWLEDGED" doc:"Status of the dequeue operation"`
+	ID     uint64 `json:"id" doc:"ID of the message"`
+}
+
+type NackOutput struct {
+	Status int
+	Body   NackOutputBody
+}
+
 type UpdatePriorityInputBody struct {
 	Priority int64 `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 }
@@ -134,6 +149,7 @@ type QueueInfoOutputBody struct {
 	EnqueueRPS float64 `json:"enqueue_rps" doc:"Rate of enqueued messages per second"`
 	DequeueRPS float64 `json:"dequeue_rps" doc:"Rate of dequeued messages per second"`
 	AckRPS     float64 `json:"ack_rps" doc:"Rate of acknowledged messages per second"`
+	NackRPS    float64 `json:"nack_rps" doc:"Rate of unacknowledged messages per second"`
 	Ready      int64   `json:"ready" doc:"Number of ready messages"`
 	Unacked    int64   `json:"unacked" doc:"Number of unacknowledged messages"`
 	Total      int64   `json:"total" doc:"Total number of messages"`
@@ -153,6 +169,7 @@ type QueueOutput struct {
 	EnqueueRPS float64 `json:"enqueue_rps" doc:"Rate of enqueued messages per second"`
 	DequeueRPS float64 `json:"dequeue_rps" doc:"Rate of dequeued messages per second"`
 	AckRPS     float64 `json:"ack_rps" doc:"Rate of acknowledged messages per second"`
+	NackRPS    float64 `json:"nack_rps" doc:"Rate of unacknowledged messages per second"`
 	Ready      int64   `json:"ready" doc:"Number of ready messages"`
 	Unacked    int64   `json:"unacked" doc:"Number of unacknowledged messages"`
 	Total      int64   `json:"total" doc:"Total number of messages"`

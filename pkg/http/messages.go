@@ -108,6 +108,38 @@ func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) 
 	return res, nil
 }
 
+func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, error) {
+	queueName := input.QueueName
+
+	if !h.node.IsLeader() {
+		respBody, err := h.proxy.Nack(ctx, h.node.Leader(), queueName, input.ID)
+		if err != nil {
+			return nil, err
+		}
+		res := &NackOutput{
+			Status: http.StatusOK,
+			Body:   *respBody,
+		}
+		return res, nil
+	}
+
+	err := h.node.Nack(queueName, input.ID)
+
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to acknowledge a message from a queue", err)
+	}
+
+	res := &NackOutput{
+		Status: http.StatusOK,
+		Body: NackOutputBody{
+			Status: "UNACKNOWLEDGED",
+			ID:     input.ID,
+		},
+	}
+
+	return res, nil
+}
+
 func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput) (*UpdatePriorityOutput, error) {
 	queueName := input.QueueName
 	priority := input.Body.Priority

@@ -497,6 +497,37 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 	return nil
 }
 
+func (bpq *BadgerPriorityQueue) Nack(id uint64) error {
+	bpq.ackQueueMu.Lock()
+	defer bpq.ackQueueMu.Unlock()
+
+	item := bpq.ackQueue.GetByID("default", id)
+
+	if item == nil {
+		return ErrMessageNotFound
+	}
+
+	message, err := bpq.GetByID(item.ID)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to get message by ID: %d", item.ID)
+		return err
+	}
+
+	queueItem := &Item{
+		ID:       message.ID,
+		Priority: message.Priority,
+	}
+
+	bpq.pq.Enqueue(message.Group, queueItem)
+
+	bpq.stats.IncrementNack()
+	if bpq.cfg.Prometheus.Enabled {
+		bpq.PrometheusMetrics.nackTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+	}
+
+	return nil
+}
+
 func (bpq *BadgerPriorityQueue) Len() int {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()

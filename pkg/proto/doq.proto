@@ -14,7 +14,8 @@ service DOQ {
     rpc Dequeue(DequeueRequest) returns (DequeueResponse) {}
     rpc DequeueStream(DequeueRequest) returns (stream DequeueResponse) {}
 
-    rpc Acknowledge(AcknowledgeRequest) returns (AcknowledgeResponse);
+    rpc Ack(AckRequest) returns (AckResponse);
+    rpc Nack(NackRequest) returns (NackResponse);
     rpc UpdatePriority(UpdatePriorityRequest) returns (UpdatePriorityResponse);
 }
 
@@ -65,12 +66,21 @@ message DequeueResponse {
     string content = 6;
 }
 
-message AcknowledgeRequest {
+message AckRequest {
     string queueName = 1;
     uint64 id = 2;
 }
 
-message AcknowledgeResponse {
+message AckResponse {
+    bool success = 1;
+}
+
+message NackRequest {
+    string queueName = 1;
+    uint64 id = 2;
+}
+
+message NackResponse {
     bool success = 1;
 }
 

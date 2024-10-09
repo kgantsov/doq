@@ -66,6 +66,7 @@ func (n *testNode) CreateQueue(queueType, queueName string) error {
 	n.queues[queueName] = queue.NewDelayedPriorityQueue(true)
 	return nil
 }
+
 func (n *testNode) DeleteQueue(queueName string) error {
 	_, ok := n.queues[queueName]
 	if !ok {
@@ -89,6 +90,7 @@ func (n *testNode) Enqueue(
 	n.messages = append(n.messages, message)
 	return message, nil
 }
+
 func (n *testNode) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 	if len(n.messages) == 0 {
 		return nil, queue.ErrEmptyQueue
@@ -100,7 +102,16 @@ func (n *testNode) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 
 	return message, nil
 }
+
 func (n *testNode) Ack(QueueName string, id uint64) error {
+	if _, ok := n.acks[id]; !ok {
+		return queue.ErrMessageNotFound
+	}
+	delete(n.acks, id)
+	return nil
+}
+
+func (n *testNode) Nack(QueueName string, id uint64) error {
 	if _, ok := n.acks[id]; !ok {
 		return queue.ErrMessageNotFound
 	}
@@ -273,7 +284,7 @@ func TestDequeue(t *testing.T) {
 }
 
 // Test for Acknowledge function
-func TestAcknowledge(t *testing.T) {
+func TestAck(t *testing.T) {
 	ctx := context.Background()
 	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
 	if err != nil {
@@ -305,8 +316,8 @@ func TestAcknowledge(t *testing.T) {
 	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
 
 	// Test case: Acknowledge message successfully (implement actual logic in the server if needed)
-	req := &pb.AcknowledgeRequest{QueueName: "test-queue", Id: resp.Id}
-	respAck, err := client.Acknowledge(ctx, req)
+	req := &pb.AckRequest{QueueName: "test-queue", Id: resp.Id}
+	respAck, err := client.Ack(ctx, req)
 	if err != nil {
 		t.Fatalf("Acknowledge failed: %v", err)
 	}

@@ -205,6 +205,44 @@ func (p *Proxy) Ack(
 	return &data, nil
 }
 
+func (p *Proxy) Nack(
+	ctx context.Context,
+	host string,
+	queueName string,
+	id uint64,
+) (*NackOutputBody, huma.StatusError) {
+	req, err := http.NewRequest(
+		"POST",
+		fmt.Sprintf(
+			"%s/API/v1/queues/%s/messages/%d/nack", host, queueName, id,
+		),
+		nil,
+	)
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to create a request", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, huma.Error503ServiceUnavailable("Failed to proxy nack request", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, huma.Error400BadRequest("Failed to nack message", nil)
+	}
+
+	var data NackOutputBody
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		log.Warn().Msgf("Failed to decode response: %s", err)
+		return nil, huma.Error400BadRequest("Failed to decode response", err)
+	}
+
+	return &data, nil
+}
+
 func (p *Proxy) UpdatePriority(
 	ctx context.Context,
 	host string,

@@ -20,7 +20,7 @@ def event_loop():
 
 @pytest.fixture(scope="session")
 async def fixt_http_client():
-    async with httpx.AsyncClient(base_url='http://localhost:8001') as client:
+    async with httpx.AsyncClient(base_url='http://localhost:8000') as client:
         yield client
 
 
@@ -71,6 +71,24 @@ async def fixt_regular_queue(fixt_generate_queue):
     group = await fixt_generate_queue(
         type="delayed",
         name="registration"
+    )
+
+    yield group
+
+@pytest.fixture(scope="package")
+async def fixt_regular_queue_manual_ack(fixt_generate_queue):
+    group = await fixt_generate_queue(
+        type="delayed",
+        name="registration-manual-ack"
+    )
+
+    yield group
+
+@pytest.fixture(scope="package")
+async def fixt_regular_queue_manual_nack(fixt_generate_queue):
+    group = await fixt_generate_queue(
+        type="delayed",
+        name="registration-manual-nack"
     )
 
     yield group

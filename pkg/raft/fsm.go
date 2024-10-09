@@ -92,6 +92,12 @@ func (c *Command) UnmarshalJSON(data []byte) error {
 			return err
 		}
 		c.Payload = payload
+	case "nack":
+		var payload NackPayload
+		if err := json.Unmarshal(temp.Payload, &payload); err != nil {
+			return err
+		}
+		c.Payload = payload
 	case "updatePriority":
 		var payload UpdatePriorityPayload
 		if err := json.Unmarshal(temp.Payload, &payload); err != nil {
@@ -177,6 +183,12 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v", c.Payload)}
 		}
 		return f.ackApply(payload)
+	case "nack":
+		payload, ok := c.Payload.(NackPayload)
+		if !ok {
+			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v", c.Payload)}
+		}
+		return f.nackApply(payload)
 	case "updatePriority":
 		payload, ok := c.Payload.(UpdatePriorityPayload)
 		if !ok {
@@ -292,6 +304,44 @@ func (f *FSM) ackApply(payload AckPayload) *FSMResponse {
 		return &FSMResponse{
 			QueueName: payload.QueueName,
 			error:     fmt.Errorf("Failed to ack a message from a queue: %s", payload.QueueName),
+		}
+	}
+
+	return &FSMResponse{
+		QueueName: payload.QueueName,
+		ID:        payload.ID,
+		error:     nil,
+	}
+}
+
+func (f *FSM) nackApply(payload NackPayload) *FSMResponse {
+	q, err := f.queueManager.GetQueue(payload.QueueName)
+	if err != nil {
+		return &FSMResponse{
+			QueueName: payload.QueueName,
+			error:     fmt.Errorf("Failed to get a queue: %s", payload.QueueName),
+		}
+	}
+
+	err = q.Nack(payload.ID)
+
+	log.Debug().Msgf("Node %s Nacked a message: %v", f.NodeID, err)
+
+	if err != nil {
+		if err == queue.ErrEmptyQueue {
+			return &FSMResponse{
+				QueueName: payload.QueueName,
+				error:     fmt.Errorf("Queue is empty: %s", payload.QueueName),
+			}
+		} else if err == queue.ErrMessageNotFound {
+			return &FSMResponse{
+				QueueName: payload.QueueName,
+				error:     fmt.Errorf("Message not found: %s", payload.QueueName),
+			}
+		}
+		return &FSMResponse{
+			QueueName: payload.QueueName,
+			error:     fmt.Errorf("Failed to nack a message from a queue: %s", payload.QueueName),
 		}
 	}
 

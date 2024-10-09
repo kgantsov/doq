@@ -228,14 +228,24 @@ func (s *QueueServer) broadcastMessage(queueName string, message struct{}) {
 	}
 }
 
-// Acknowledge message handling (this could be used to confirm message processing, depending on your requirements)
-func (s *QueueServer) Acknowledge(ctx context.Context, req *pb.AcknowledgeRequest) (*pb.AcknowledgeResponse, error) {
+// Ack message handling (this could be used to confirm message processing, depending on your requirements)
+func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckResponse, error) {
 	err := s.node.Ack(req.QueueName, req.Id)
 	if err != nil {
-		return &pb.AcknowledgeResponse{Success: false}, fmt.Errorf("failed to acknowledge a message")
+		return &pb.AckResponse{Success: false}, fmt.Errorf("failed to ack a message")
 	}
 
-	return &pb.AcknowledgeResponse{Success: true}, nil
+	return &pb.AckResponse{Success: true}, nil
+}
+
+// Nack message handling (this could be used to confirm message processing, depending on your requirements)
+func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackResponse, error) {
+	err := s.node.Nack(req.QueueName, req.Id)
+	if err != nil {
+		return &pb.NackResponse{Success: false}, fmt.Errorf("failed to ack a message")
+	}
+
+	return &pb.NackResponse{Success: true}, nil
 }
 
 // Acknowledge message handling (this could be used to confirm message processing, depending on your requirements)

@@ -44,6 +44,7 @@ type Node interface {
 	Enqueue(queueName string, group string, priority int64, content string) (*queue.Message, error)
 	Dequeue(QueueName string, ack bool) (*queue.Message, error)
 	Ack(QueueName string, id uint64) error
+	Nack(QueueName string, id uint64) error
 	GetByID(id uint64) (*queue.Message, error)
 	UpdatePriority(queueName string, id uint64, priority int64) error
 }
@@ -195,6 +196,18 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Tags:        []string{"Messages"},
 		},
 		h.Ack,
+	)
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "nack",
+			Method:      http.MethodPost,
+			Path:        "/API/v1/queues/:queue_name/messages/:id/nack",
+			Summary:     "Unacknowledge a message",
+			Description: "Unacknowledge the message",
+			Tags:        []string{"Messages"},
+		},
+		h.Nack,
 	)
 	huma.Register(
 		api,

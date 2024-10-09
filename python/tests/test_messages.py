@@ -343,3 +343,181 @@ async def test_delayed_queue(fixt_http_client, fixt_regular_queue):
         assert data["content"] == test['messages'][0]["content"]
         assert data["priority"] == test['messages'][0]["priority"]
         assert data["id"] is not None
+
+
+@pytest.mark.asyncio
+async def test_message_ack(fixt_http_client, fixt_regular_queue_manual_ack):
+    tests = [
+        {
+            "name": "test-1",
+            "messages": [
+                {
+                    "content": '{"id": 1, "name": "Clifford Gordon"}',
+                    "priority": 10,
+                    "group": "customer-1"
+                },
+                {
+                    "content": '{"id": 2, "name": "Cynthia Thomas"}',
+                    "priority": 10,
+                    "group": "customer-1"
+                },
+                {
+                    "content": '{"id": 3, "name": "Joseph Smith"}',
+                    "priority": 10,
+                    "group": "customer-1"
+                },
+                {
+                    "content": '{"id": 4, "name": "Lisa Anderson"}',
+                    "priority": 10,
+                    "group": "customer-1"
+                },
+                {
+                    "content": '{"id": 5, "name": "Tyler Norris"}',
+                    "priority": 10,
+                    "group": "customer-2"
+                },
+                {
+                    "content": '{"id": 6, "name": "Derek Pennington"}',
+                    "priority": 10,
+                    "group": "customer-2"
+                },
+                {
+                    "content": '{"id": 7, "name": "Allison Richardson"}',
+                    "priority": 10,
+                    "group": "customer-3"
+                },
+                {
+                    "content": '{"id": 8, "name": "Sharon Madden"}',
+                    "priority": 10,
+                    "group": "customer-4"
+                }
+            ],
+            "expected_message_indexes": [0, 1, 2, 3, 4, 5, 6, 7]
+        }
+    ]
+
+    queue_name = fixt_regular_queue_manual_ack['name']
+
+    for test in tests:
+        for message in test['messages']:
+            response = await fixt_http_client.post(
+                url=f"/API/v1/queues/{queue_name}/messages",
+                json=message
+            )
+            assert response.status_code == 200, response.text
+
+            data = response.json()
+
+            assert data["status"] == 'ENQUEUED'
+            assert data["priority"] == message["priority"]
+            assert data["content"] == message["content"]
+
+        for index in test['expected_message_indexes']:
+            response = await fixt_http_client.get(
+                url=f"/API/v1/queues/{queue_name}/messages?ack=false"
+            )
+            assert response.status_code == 200, response.text
+
+            data = response.json()
+
+            assert data["status"] == 'DEQUEUED'
+            assert data["content"] == test['messages'][index]["content"]
+            assert data["priority"] == test['messages'][index]["priority"]
+            assert data["id"] is not None
+
+            message_id = data["id"]
+
+            response = await fixt_http_client.post(
+                url=f"/API/v1/queues/{queue_name}/messages/{message_id}/ack"
+            )
+            assert response.status_code == 200, response.text
+
+            data = response.json()
+
+        for index in test['expected_message_indexes']:
+            response = await fixt_http_client.get(
+                url=f"/API/v1/queues/{queue_name}/messages?ack=true"
+            )
+            assert response.status_code == 400, response.text
+
+            data = response.json()
+
+            assert data["errors"] == [{"message": "Queue is empty: registration-manual-ack"}]
+
+
+@pytest.mark.asyncio
+async def test_message_nack(fixt_http_client, fixt_regular_queue_manual_nack):
+    tests = [
+        {
+            "name": "test-1",
+            "messages": [
+                {
+                    "content": '{"id": 1, "name": "Clifford Gordon"}',
+                    "priority": 10,
+                    "group": "customer-1"
+                },
+                {
+                    "content": '{"id": 2, "name": "Cynthia Thomas"}',
+                    "priority": 10,
+                    "group": "customer-1"
+                },
+                {
+                    "content": '{"id": 3, "name": "Joseph Smith"}',
+                    "priority": 10,
+                    "group": "customer-1"
+                },
+            ],
+            "expected_message_indexes": [0, 1, 2]
+        }
+    ]
+
+    queue_name = fixt_regular_queue_manual_nack['name']
+
+    for test in tests:
+        for message in test['messages']:
+            response = await fixt_http_client.post(
+                url=f"/API/v1/queues/{queue_name}/messages",
+                json=message
+            )
+            assert response.status_code == 200, response.text
+
+            data = response.json()
+
+            assert data["status"] == 'ENQUEUED'
+            assert data["priority"] == message["priority"]
+            assert data["content"] == message["content"]
+
+        for index in test['expected_message_indexes']:
+            response = await fixt_http_client.get(
+                url=f"/API/v1/queues/{queue_name}/messages?ack=false"
+            )
+            assert response.status_code == 200, response.text
+
+            data = response.json()
+
+            assert data["status"] == 'DEQUEUED'
+            assert data["content"] == test['messages'][0]["content"]
+            assert data["priority"] == test['messages'][0]["priority"]
+            assert data["id"] is not None
+
+            message_id = data["id"]
+
+            response = await fixt_http_client.post(
+                url=f"/API/v1/queues/{queue_name}/messages/{message_id}/nack"
+            )
+            assert response.status_code == 200, response.text
+
+            data = response.json()
+
+        for index in test['expected_message_indexes']:
+            response = await fixt_http_client.get(
+                url=f"/API/v1/queues/{queue_name}/messages?ack=true"
+            )
+            assert response.status_code == 200, response.text
+
+            data = response.json()
+
+            assert data["status"] == 'DEQUEUED'
+            assert data["content"] == test['messages'][index]["content"]
+            assert data["priority"] == test['messages'][index]["priority"]
+            assert data["id"] is not None

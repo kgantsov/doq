@@ -387,3 +387,88 @@ func TestBadgerPriorityQueueAck(t *testing.T) {
 
 	db.Close()
 }
+
+func TestBadgerPriorityQueueNack(t *testing.T) {
+	opts := badger.DefaultOptions("/tmp/badger7")
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	pq := NewBadgerPriorityQueue(
+		db,
+		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		nil,
+	)
+	pq.Create("delayed", "test_queue")
+
+	m1, err := pq.Enqueue(1, "default", 10, "test 1")
+	assert.Nil(t, err)
+	assert.Equal(t, "test 1", m1.Content)
+	assert.Equal(t, int64(10), m1.Priority)
+
+	m2, err := pq.Enqueue(2, "default", 20, "test 2")
+	assert.Nil(t, err)
+	assert.Equal(t, "test 2", m2.Content)
+	assert.Equal(t, int64(20), m2.Priority)
+
+	m3, err := pq.Enqueue(3, "default", 30, "test 3")
+	assert.Nil(t, err)
+	assert.Equal(t, "test 3", m3.Content)
+	assert.Equal(t, int64(30), m3.Priority)
+
+	m4, err := pq.Enqueue(4, "default", 40, "test 4")
+	assert.Nil(t, err)
+	assert.Equal(t, "test 4", m4.Content)
+	assert.Equal(t, int64(40), m4.Priority)
+
+	m1, err = pq.Dequeue(false)
+	assert.Nil(t, err)
+	assert.Equal(t, "test 1", m1.Content)
+
+	m2, err = pq.Dequeue(false)
+	assert.Nil(t, err)
+	assert.Equal(t, "test 2", m2.Content)
+
+	m3, err = pq.Dequeue(false)
+	assert.Nil(t, err)
+	assert.Equal(t, "test 3", m3.Content)
+
+	m4, err = pq.Dequeue(false)
+	assert.Nil(t, err)
+	assert.Equal(t, "test 4", m4.Content)
+
+	err = pq.Nack(m1.ID)
+	assert.Nil(t, err)
+
+	err = pq.Nack(m2.ID)
+	assert.Nil(t, err)
+
+	err = pq.Nack(m3.ID)
+	assert.Nil(t, err)
+
+	err = pq.Nack(m4.ID)
+	assert.Nil(t, err)
+
+	err = pq.Nack(100)
+	assert.EqualError(t, err, ErrMessageNotFound.Error())
+
+	m1, err = pq.Dequeue(true)
+	assert.Nil(t, err)
+	assert.Equal(t, "test 1", m1.Content)
+
+	m2, err = pq.Dequeue(true)
+	assert.Nil(t, err)
+	assert.Equal(t, "test 2", m2.Content)
+
+	m3, err = pq.Dequeue(true)
+	assert.Nil(t, err)
+	assert.Equal(t, "test 3", m3.Content)
+
+	m4, err = pq.Dequeue(true)
+	assert.Nil(t, err)
+	assert.Equal(t, "test 4", m4.Content)
+
+	m4, err = pq.Dequeue(true)
+	assert.EqualError(t, err, ErrEmptyQueue.Error())
+}

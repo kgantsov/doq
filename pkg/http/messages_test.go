@@ -253,6 +253,14 @@ func (n *testNode) Ack(QueueName string, id uint64) error {
 	return nil
 }
 
+func (n *testNode) Nack(QueueName string, id uint64) error {
+	if _, ok := n.acks[id]; !ok {
+		return queue.ErrMessageNotFound
+	}
+	delete(n.acks, id)
+	return nil
+}
+
 func (n *testNode) GetByID(id uint64) (*queue.Message, error) {
 	for _, m := range n.messages {
 		if m.ID == id {

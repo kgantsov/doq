@@ -150,7 +150,7 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
 	// Connect to the gRPC server (leader node)
-	conn, err := grpc.Dial("localhost:10001", grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:10000", grpc.WithInsecure())
 	if err != nil {
 		log.Fatal().Msgf("Failed to connect: %v", err)
 	}
@@ -220,7 +220,7 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
 	// Connect to the gRPC server (leader node)
-	conn, err := grpc.Dial("localhost:10001", grpc.WithInsecure())
+	conn, err := grpc.Dial("localhost:10000", grpc.WithInsecure())
 	if err != nil {
 		log.Fatal().Msgf("Failed to connect: %v", err)
 	}
@@ -247,12 +247,11 @@ func main() {
 		// Process the message
 		log.Info().Msgf("Received message: ID=%d, Content=%s", msg.Id, msg.Content)
 
-    // time.Sleep(500 * time.Millisecond) // Simulate message processing time
-
-		client.Acknowledge(context.Background(), &pb.AcknowledgeRequest{
+		client.Ack(context.Background(), &pb.AckRequest{
 			QueueName: "test-queue",
 			Id:        msg.Id,
 		})
+		// time.Sleep(500 * time.Millisecond) // Simulate message processing time
 	}
 }
 
