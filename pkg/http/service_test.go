@@ -14,7 +14,9 @@ import (
 func TestNew(t *testing.T) {
 	addr := "8080"
 
-	service := NewHttpService(addr, newTestNode(), embed.FS{}, embed.FS{})
+	node := newTestNode()
+	service := NewHttpService(addr, node, embed.FS{}, embed.FS{})
+	node.CreateQueue("delayed", "my-queue")
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.router)

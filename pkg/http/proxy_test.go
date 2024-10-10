@@ -252,6 +252,41 @@ func TestAck_Success(t *testing.T) {
 	assert.Equal(t, expectedOutput, output)
 }
 
+func TestNack_Success(t *testing.T) {
+	// Create a mock server that returns a successful response
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/API/v1/queues/indexing-queue/messages/1122/nack", r.URL.Path)
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+
+		response := NackOutputBody{
+			Status: "DEQUEUED",
+			ID:     1122,
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	// Initialize the proxy with the test HTTP client
+	proxy := NewProxy(server.Client())
+
+	// Call the CreateQueue method
+	output, err := proxy.Nack(context.Background(), server.URL, "indexing-queue", 1122)
+
+	// Assert that no error occurred
+	require.NoError(t, err)
+
+	// Assert that the response matches the expected output
+	expectedOutput := &NackOutputBody{
+		Status: "DEQUEUED",
+		ID:     1122,
+	}
+	assert.Equal(t, expectedOutput, output)
+}
+
 func TestUpdatePriority_Success(t *testing.T) {
 	// Create a mock server that returns a successful response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

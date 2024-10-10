@@ -166,6 +166,7 @@ func (n *testNode) UpdatePriority(queueName string, id uint64, priority int64) e
 		return queue.ErrMessageNotFound
 	}
 
+	message.Priority = priority
 	q.UpdatePriority(message.Group, id, priority)
 	return nil
 }
