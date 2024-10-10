@@ -20,14 +20,14 @@ type testNode struct {
 	nextID   uint64
 	leader   string
 	messages []*queue.Message
-	acks     map[uint64]bool
+	acks     map[uint64]*queue.Message
 	queues   map[string]*queue.DelayedPriorityQueue
 }
 
 func newTestNode() *testNode {
 	return &testNode{
 		messages: []*queue.Message{},
-		acks:     make(map[uint64]bool),
+		acks:     make(map[uint64]*queue.Message),
 		queues:   make(map[string]*queue.DelayedPriorityQueue),
 	}
 }
@@ -98,7 +98,7 @@ func (n *testNode) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 	message := n.messages[0]
 	n.messages = n.messages[1:]
 
-	n.acks[message.ID] = false
+	n.acks[message.ID] = message
 
 	return message, nil
 }
@@ -115,6 +115,7 @@ func (n *testNode) Nack(QueueName string, id uint64) error {
 	if _, ok := n.acks[id]; !ok {
 		return queue.ErrMessageNotFound
 	}
+	n.messages = append(n.messages, n.acks[id])
 	delete(n.acks, id)
 	return nil
 }
@@ -322,4 +323,51 @@ func TestAck(t *testing.T) {
 		t.Fatalf("Acknowledge failed: %v", err)
 	}
 	assert.True(t, respAck.Success, "Acknowledge should succeed")
+}
+
+func TestNack(t *testing.T) {
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	// Create a queue and enqueue a message first
+	reqCreate := &pb.CreateQueueRequest{Name: "test-queue"}
+	_, err = client.CreateQueue(ctx, reqCreate)
+	if err != nil {
+		t.Fatalf("CreateQueue failed: %v", err)
+	}
+
+	reqEnqueue := &pb.EnqueueRequest{QueueName: "test-queue", Content: "test-message", Group: "default", Priority: 10}
+	_, err = client.Enqueue(ctx, reqEnqueue)
+	if err != nil {
+		t.Fatalf("Enqueue failed: %v", err)
+	}
+
+	// Test case: Dequeue the message successfully
+	reqDequeue := &pb.DequeueRequest{QueueName: "test-queue", Ack: false}
+	resp, err := client.Dequeue(ctx, reqDequeue)
+	if err != nil {
+		t.Fatalf("Dequeue failed: %v", err)
+	}
+	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
+
+	// Test case: Acknowledge message successfully (implement actual logic in the server if needed)
+	req := &pb.NackRequest{QueueName: "test-queue", Id: resp.Id}
+	respAck, err := client.Nack(ctx, req)
+	if err != nil {
+		t.Fatalf("Nack failed: %v", err)
+	}
+	assert.True(t, respAck.Success, "Unacknowledge should succeed")
+
+	reqDequeue = &pb.DequeueRequest{QueueName: "test-queue", Ack: true}
+	resp, err = client.Dequeue(ctx, reqDequeue)
+	if err != nil {
+		t.Fatalf("Dequeue failed: %v", err)
+	}
+	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
 }
