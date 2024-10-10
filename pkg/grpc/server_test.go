@@ -63,7 +63,7 @@ func (n *testNode) PrometheusRegistry() prometheus.Registerer {
 }
 
 func (n *testNode) CreateQueue(queueType, queueName string) error {
-	n.queues[queueName] = queue.NewDelayedPriorityQueue(false)
+	n.queues[queueName] = queue.NewDelayedPriorityQueue(true)
 	return nil
 }
 
@@ -156,13 +156,18 @@ func (n *testNode) GetByID(id uint64) (*queue.Message, error) {
 }
 
 func (n *testNode) UpdatePriority(queueName string, id uint64, priority int64) error {
-	for _, m := range n.messages {
-		if m.ID == id {
-			m.Priority = priority
-			return nil
-		}
+	q, ok := n.queues[queueName]
+	if !ok {
+		return queue.ErrQueueNotFound
 	}
-	return queue.ErrMessageNotFound
+
+	message, ok := n.messages[id]
+	if !ok {
+		return queue.ErrMessageNotFound
+	}
+
+	q.UpdatePriority(message.Group, id, priority)
+	return nil
 }
 
 const bufSize = 1024 * 1024
@@ -445,4 +450,74 @@ func TestNack(t *testing.T) {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
 	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
+}
+
+func TestEnqueuetDequeueStream(t *testing.T) {
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	// Create a queue first
+	req := &pb.CreateQueueRequest{Name: "test-queue"}
+	_, err = client.CreateQueue(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateQueue failed: %v", err)
+	}
+
+	enqueueStream, err := client.EnqueueStream(ctx)
+	assert.Nil(t, err, "Failed to open stream")
+
+	enqueueStream.Send(
+		&pb.EnqueueRequest{
+			QueueName: "test-queue",
+			Content:   "test-message-1",
+			Group:     "default",
+			Priority:  10,
+		},
+	)
+	_, err = enqueueStream.Recv()
+	assert.Nil(t, err)
+
+	enqueueStream.Send(
+		&pb.EnqueueRequest{
+			QueueName: "test-queue",
+			Content:   "test-message-2",
+			Group:     "default",
+			Priority:  10,
+		},
+	)
+	_, err = enqueueStream.Recv()
+	assert.Nil(t, err)
+
+	enqueueStream.Send(
+		&pb.EnqueueRequest{
+			QueueName: "test-queue",
+			Content:   "test-message-3",
+			Group:     "default",
+			Priority:  10,
+		},
+	)
+	_, err = enqueueStream.Recv()
+	assert.Nil(t, err)
+
+	// Open a dequeueStream to receive messages from the queue
+	dequeueStream, err := client.DequeueStream(ctx, &pb.DequeueRequest{QueueName: "test-queue", Ack: true})
+	if err != nil {
+		t.Fatalf("Failed to open stream: %v", err)
+	}
+
+	// Consume messages from the stream
+	for i := 1; i <= 3; i++ {
+		msg, err := dequeueStream.Recv()
+		if err != nil {
+			t.Fatalf("Failed to receive message: %v", err)
+		}
+
+		assert.Equal(t, fmt.Sprintf("test-message-%d", i), msg.Content)
+	}
 }
