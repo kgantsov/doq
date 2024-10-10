@@ -240,7 +240,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "queue-info",
 			Method:      http.MethodGet,
-			Path:        "/API/v1/queues/:queue_name/info",
+			Path:        "/API/v1/queues/:queue_name",
 			Summary:     "Info of a queue",
 			Description: "Get the information of a queue including stats",
 			Tags:        []string{"Queues"},

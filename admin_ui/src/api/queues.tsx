@@ -6,7 +6,7 @@ export const getQueues = async () => {
 }
 
 export const getQueue = async (name: string) : Promise<Queue> => {
-  const response = await fetch(`/API/v1/queues/${name}/info`)
+  const response = await fetch(`/API/v1/queues/${name}`)
   const data = await response.json()
 
   return data
