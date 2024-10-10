@@ -19,14 +19,14 @@ import (
 type testNode struct {
 	nextID   uint64
 	leader   string
-	messages []*queue.Message
+	messages map[uint64]*queue.Message
 	acks     map[uint64]*queue.Message
 	queues   map[string]*queue.DelayedPriorityQueue
 }
 
 func newTestNode() *testNode {
 	return &testNode{
-		messages: []*queue.Message{},
+		messages: make(map[uint64]*queue.Message),
 		acks:     make(map[uint64]*queue.Message),
 		queues:   make(map[string]*queue.DelayedPriorityQueue),
 	}
@@ -63,7 +63,7 @@ func (n *testNode) PrometheusRegistry() prometheus.Registerer {
 }
 
 func (n *testNode) CreateQueue(queueType, queueName string) error {
-	n.queues[queueName] = queue.NewDelayedPriorityQueue(true)
+	n.queues[queueName] = queue.NewDelayedPriorityQueue(false)
 	return nil
 }
 
@@ -80,42 +80,68 @@ func (n *testNode) DeleteQueue(queueName string) error {
 func (n *testNode) Enqueue(
 	queueName string, group string, priority int64, content string,
 ) (*queue.Message, error) {
-	_, ok := n.queues[queueName]
+	q, ok := n.queues[queueName]
 	if !ok {
 		return &queue.Message{}, queue.ErrQueueNotFound
 	}
 
 	n.nextID++
 	message := &queue.Message{ID: n.nextID, Group: group, Priority: priority, Content: content}
-	n.messages = append(n.messages, message)
+	n.messages[message.ID] = message
+	q.Enqueue(group, &queue.Item{ID: message.ID, Priority: message.Priority})
 	return message, nil
 }
 
 func (n *testNode) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
-	if len(n.messages) == 0 {
+	q, ok := n.queues[QueueName]
+	if !ok {
+		return &queue.Message{}, queue.ErrQueueNotFound
+	}
+
+	if q.Len() == 0 {
 		return nil, queue.ErrEmptyQueue
 	}
-	message := n.messages[0]
-	n.messages = n.messages[1:]
 
-	n.acks[message.ID] = message
+	item := q.Dequeue()
+
+	message := n.messages[item.ID]
+
+	if ack {
+		delete(n.messages, item.ID)
+	} else {
+		n.acks[item.ID] = message
+	}
 
 	return message, nil
 }
 
 func (n *testNode) Ack(QueueName string, id uint64) error {
+	_, ok := n.queues[QueueName]
+	if !ok {
+		return queue.ErrQueueNotFound
+	}
+
 	if _, ok := n.acks[id]; !ok {
 		return queue.ErrMessageNotFound
 	}
 	delete(n.acks, id)
+	delete(n.messages, id)
 	return nil
 }
 
 func (n *testNode) Nack(QueueName string, id uint64) error {
-	if _, ok := n.acks[id]; !ok {
+	q, ok := n.queues[QueueName]
+	if !ok {
+		return queue.ErrQueueNotFound
+	}
+
+	message, ok := n.acks[id]
+	if !ok {
 		return queue.ErrMessageNotFound
 	}
-	n.messages = append(n.messages, n.acks[id])
+
+	q.Enqueue(message.Group, &queue.Item{ID: message.ID, Priority: message.Priority})
+
 	delete(n.acks, id)
 	return nil
 }
@@ -282,6 +308,55 @@ func TestDequeue(t *testing.T) {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
 	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
+}
+
+func TestUpdatePriority(t *testing.T) {
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	// Create a queue and enqueue a message first
+	reqCreate := &pb.CreateQueueRequest{Name: "test-queue"}
+	_, err = client.CreateQueue(ctx, reqCreate)
+	if err != nil {
+		t.Fatalf("CreateQueue failed: %v", err)
+	}
+
+	reqEnqueue := &pb.EnqueueRequest{QueueName: "test-queue", Content: "test-message-1", Group: "default", Priority: 10}
+	_, err = client.Enqueue(ctx, reqEnqueue)
+	if err != nil {
+		t.Fatalf("Enqueue failed: %v", err)
+	}
+
+	reqEnqueue = &pb.EnqueueRequest{QueueName: "test-queue", Content: "test-message-2", Group: "default", Priority: 20}
+	resEnqueue, err := client.Enqueue(ctx, reqEnqueue)
+	if err != nil {
+		t.Fatalf("Enqueue failed: %v", err)
+	}
+
+	reqUpdatePriority := &pb.UpdatePriorityRequest{QueueName: "test-queue", Id: resEnqueue.Id, Priority: 2}
+	respUpdatePriority, err := client.UpdatePriority(ctx, reqUpdatePriority)
+	assert.Nil(t, err, "UpdatePriority should succeed")
+	assert.Equal(t, true, respUpdatePriority.Success, "UpdatePriority should succeed")
+
+	reqDequeue := &pb.DequeueRequest{QueueName: "test-queue", Ack: true}
+	resp, err := client.Dequeue(ctx, reqDequeue)
+	if err != nil {
+		t.Fatalf("Dequeue failed: %v", err)
+	}
+	assert.Equal(t, "test-message-2", resp.Content, "Dequeued message should match the enqueued message")
+
+	reqDequeue = &pb.DequeueRequest{QueueName: "test-queue", Ack: true}
+	resp, err = client.Dequeue(ctx, reqDequeue)
+	if err != nil {
+		t.Fatalf("Dequeue failed: %v", err)
+	}
+	assert.Equal(t, "test-message-1", resp.Content, "Dequeued message should match the enqueued message")
 }
 
 // Test for Acknowledge function
