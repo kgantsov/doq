@@ -28,7 +28,9 @@ sequenceDiagram
 
 ```bash
 git clone git@github.com:kgantsov/doq.git
-cd doq/cmd/server
+cd doq
+make build_web
+cd /cmd/server
 go build -o doq
 ```
 
