@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
@@ -17,7 +17,7 @@ func TestEnqueueDequeue(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: newTestNode(),
+		node: newTestNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -114,7 +114,7 @@ func TestNack(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: newTestNode(),
+		node: newTestNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -187,7 +187,7 @@ func TestUpdatePriority(t *testing.T) {
 	// }
 
 	h := &Handler{
-		node: newTestNode(),
+		node: newTestNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -243,19 +243,262 @@ func TestUpdatePriority(t *testing.T) {
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
 }
 
+func TestEnqueueProxy(t *testing.T) {
+	_, api := humatest.New(t)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/API/v1/queues/my-queue/messages", r.URL.Path)
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+
+		response := EnqueueOutputBody{
+			Status:   "ENQUEUED",
+			ID:       123,
+			Group:    "customer-1",
+			Priority: 100,
+			Content:  "{\"user_id\": 1, \"name\": \"John\"}",
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	h := &Handler{
+		node:  newTestNode(server.URL, false),
+		proxy: NewProxy(server.Client()),
+	}
+	h.RegisterRoutes(api)
+
+	type ErrorOutput struct {
+		Title  string `json:"title"`
+		Status int    `json:"status"`
+		Detail string `json:"detail"`
+	}
+
+	h.node.CreateQueue("delayed", "my-queue")
+
+	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
+		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
+		"priority": 100,
+	})
+
+	enqueueOutput := &EnqueueOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), enqueueOutput)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
+	assert.Equal(t, uint64(123), enqueueOutput.ID)
+	assert.Equal(t, int64(100), enqueueOutput.Priority)
+	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
+}
+
+func TestDequeueProxy(t *testing.T) {
+	_, api := humatest.New(t)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/API/v1/queues/indexing-queue/messages", r.URL.Path)
+		assert.Equal(t, "true", r.URL.Query().Get("ack"))
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+
+		response := DequeueOutputBody{
+			Status:   "DEQUEUED",
+			ID:       75,
+			Group:    "customer-1",
+			Priority: 31,
+			Content:  "{\"id\": 114, \"name\": \"test\"}",
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	h := &Handler{
+		node:  newTestNode(server.URL, false),
+		proxy: NewProxy(server.Client()),
+	}
+	h.RegisterRoutes(api)
+
+	type ErrorOutput struct {
+		Title  string `json:"title"`
+		Status int    `json:"status"`
+		Detail string `json:"detail"`
+	}
+
+	h.node.CreateQueue("delayed", "indexing-queue")
+
+	resp := api.Get("/API/v1/queues/indexing-queue/messages?ack=true")
+
+	dequeueOutput := &DequeueOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), dequeueOutput)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, "DEQUEUED", dequeueOutput.Status)
+	assert.Equal(t, uint64(75), dequeueOutput.ID)
+	assert.Equal(t, int64(31), dequeueOutput.Priority)
+	assert.Equal(t, "{\"id\": 114, \"name\": \"test\"}", dequeueOutput.Content)
+}
+
+func TestAckProxy(t *testing.T) {
+	_, api := humatest.New(t)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/API/v1/queues/indexing-queue/messages/1122/ack", r.URL.Path)
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+
+		response := AckOutputBody{
+			Status: "ACKED",
+			ID:     1122,
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	h := &Handler{
+		node:  newTestNode(server.URL, false),
+		proxy: NewProxy(server.Client()),
+	}
+	h.RegisterRoutes(api)
+
+	type ErrorOutput struct {
+		Title  string `json:"title"`
+		Status int    `json:"status"`
+		Detail string `json:"detail"`
+	}
+
+	h.node.CreateQueue("delayed", "indexing-queue")
+
+	resp := api.Post(
+		"/API/v1/queues/indexing-queue/messages/1122/ack", map[string]any{})
+
+	output := &AckOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), output)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, uint64(1122), output.ID)
+	assert.Equal(t, "ACKED", output.Status)
+}
+
+func TestNackProxy(t *testing.T) {
+	_, api := humatest.New(t)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/API/v1/queues/indexing-queue/messages/1122/nack", r.URL.Path)
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+
+		response := AckOutputBody{
+			Status: "ACKED",
+			ID:     1122,
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	h := &Handler{
+		node:  newTestNode(server.URL, false),
+		proxy: NewProxy(server.Client()),
+	}
+	h.RegisterRoutes(api)
+
+	type ErrorOutput struct {
+		Title  string `json:"title"`
+		Status int    `json:"status"`
+		Detail string `json:"detail"`
+	}
+
+	h.node.CreateQueue("delayed", "indexing-queue")
+
+	resp := api.Post(
+		"/API/v1/queues/indexing-queue/messages/1122/nack", map[string]any{})
+
+	output := &NackOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), output)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, uint64(1122), output.ID)
+	assert.Equal(t, "ACKED", output.Status)
+}
+
+func TestUpdatePriorityProxy(t *testing.T) {
+	_, api := humatest.New(t)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/API/v1/queues/indexing-queue/messages/980/priority", r.URL.Path)
+		assert.Equal(t, "PUT", r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+
+		response := UpdatePriorityOutputBody{
+			Status:   "UPDATED",
+			ID:       5634,
+			Priority: 777,
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	h := &Handler{
+		node:  newTestNode(server.URL, false),
+		proxy: NewProxy(server.Client()),
+	}
+	h.RegisterRoutes(api)
+
+	type ErrorOutput struct {
+		Title  string `json:"title"`
+		Status int    `json:"status"`
+		Detail string `json:"detail"`
+	}
+
+	h.node.CreateQueue("delayed", "indexing-queue")
+
+	resp := api.Put("/API/v1/queues/indexing-queue/messages/980/priority", map[string]any{
+		"priority": 777,
+	})
+
+	output := &UpdatePriorityOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), output)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, uint64(5634), output.ID)
+	assert.Equal(t, "UPDATED", output.Status)
+	assert.Equal(t, int64(777), output.Priority)
+}
+
 type testNode struct {
 	nextID   uint64
+	isLeader bool
 	leader   string
 	messages map[uint64]*queue.Message
 	acks     map[uint64]*queue.Message
 	queues   map[string]*queue.DelayedPriorityQueue
 }
 
-func newTestNode() *testNode {
+func newTestNode(leader string, isLeader bool) *testNode {
 	return &testNode{
 		messages: make(map[uint64]*queue.Message),
 		acks:     make(map[uint64]*queue.Message),
 		queues:   make(map[string]*queue.DelayedPriorityQueue),
+		leader:   leader,
+		isLeader: isLeader,
 	}
 }
 
@@ -264,12 +507,13 @@ func (n *testNode) Join(nodeID, addr string) error {
 }
 
 func (n *testNode) Leader() string {
-	u, _ := url.ParseRequestURI(fmt.Sprintf("http://%s", n.leader))
+	return n.leader
+	// u, _ := url.ParseRequestURI(fmt.Sprintf("http://%s", n.leader))
 
-	return fmt.Sprintf("http://%s:8000/API/v1/queues", u.Hostname())
+	// return fmt.Sprintf("http://%s:8000/API/v1/queues", u.Hostname())
 }
 func (n *testNode) IsLeader() bool {
-	return true
+	return n.isLeader
 }
 
 func (n *testNode) GenerateID() uint64 {
