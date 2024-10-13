@@ -12,7 +12,23 @@ export const getQueue = async (name: string): Promise<Queue> => {
   return data;
 };
 
-export const deleteQueue = async (name: string) => {
+export const createQueue = async ({
+  name,
+  type,
+}: {
+  name: string;
+  type: string;
+}) => {
+  await fetch("/API/v1/queues", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name, type }),
+  });
+};
+
+export const deleteQueue = async ({ name }: { name: string }) => {
   await fetch(`/API/v1/queues/${name}`, {
     method: "DELETE",
   });

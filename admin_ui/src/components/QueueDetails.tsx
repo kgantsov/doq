@@ -33,13 +33,28 @@ import { getQueue, deleteQueue } from "../api/queues";
 import EnqueueMessageForm from "./EnqueueMessageForm";
 import DequeueMessageForm from "./DequeueMessageForm";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 const QueueDetails = ({ queueName }: { queueName: string }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = useRef();
   const navigate = useNavigate();
   const toast = useToast();
+
+  const mutation = useMutation({
+    mutationFn: deleteQueue,
+    onSuccess: () => {
+      onClose();
+      navigate(`/`);
+      toast({
+        title: "Qeueu deleted.",
+        description: `The queue '${queueName}' has been deleted successfully.`,
+        status: "success",
+        duration: 9000,
+        isClosable: true,
+      });
+    },
+  });
 
   const { isPending, data: queue } = useQuery({
     queryKey: ["queues"],
@@ -171,16 +186,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
               <Button
                 colorScheme="red"
                 onClick={async () => {
-                  await deleteQueue(queueName);
-                  onClose();
-                  navigate(`/`);
-                  toast({
-                    title: "Qeueu deleted.",
-                    description: `The queue '${queueName}' has been deleted successfully.`,
-                    status: "success",
-                    duration: 9000,
-                    isClosable: true,
-                  });
+                  mutation.mutate({ name: queueName });
                 }}
                 ml={3}
               >

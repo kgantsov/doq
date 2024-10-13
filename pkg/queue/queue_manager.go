@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -126,6 +127,10 @@ func (qm *QueueManager) GetQueues() []*QueueInfo {
 	for _, queue := range qm.queues {
 		queues = append(queues, queue.GetStats())
 	}
+
+	sort.Slice(queues, func(i, j int) bool {
+		return queues[i].Name < queues[j].Name
+	})
 
 	return queues
 }
