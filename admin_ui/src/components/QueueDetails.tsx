@@ -11,13 +11,13 @@ import {
 } from "@chakra-ui/react";
 import { Card, CardBody } from "@chakra-ui/react";
 import { getQueue } from "../api/queues";
+import EnqueueMessageForm from "./EnqueueMessageForm";
+import DequeueMessageForm from "./DequeueMessageForm";
 
 import { useQuery } from "@tanstack/react-query";
 
-
 const QueueDetails = ({ queueName }: { queueName: string }) => {
-
-  const { isPending, data: queue  } = useQuery({
+  const { isPending, data: queue } = useQuery({
     queryKey: ["queues"],
     queryFn: () => getQueue(queueName),
     refetchInterval: 1000,
@@ -105,6 +105,13 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
           </CardBody>
         </Card>
       </SimpleGrid>
+
+      <Box pt={4}>
+        <DequeueMessageForm queueName={queueName} />
+      </Box>
+      <Box pt={4}>
+        <EnqueueMessageForm queueName={queueName} />
+      </Box>
     </Box>
   );
 };
