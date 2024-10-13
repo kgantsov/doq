@@ -519,6 +519,7 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64) error {
 	}
 
 	bpq.pq.Enqueue(message.Group, queueItem)
+	bpq.ackQueue.DeleteByID("default", item.ID)
 
 	bpq.stats.IncrementNack()
 	if bpq.cfg.Prometheus.Enabled {
