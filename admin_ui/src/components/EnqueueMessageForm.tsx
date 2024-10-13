@@ -15,7 +15,7 @@ import {
   Progress,
   Box,
 } from "@chakra-ui/react";
-import { SetStateAction, useState } from "react";
+import { useState } from "react";
 import { EnqueueMessage } from "../api/messages";
 import { useMutation } from "@tanstack/react-query";
 
@@ -39,16 +39,14 @@ const EnqueueMessageForm = ({ queueName }: { queueName: string }) => {
     },
   });
 
-  const handleContentChange = (e: {
-    target: { value: SetStateAction<string> };
-  }) => setContent(e.target.value);
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) =>
+    setContent(e.target.value);
 
-  const handleGroupChange = (e: {
-    target: { value: SetStateAction<string> };
-  }) => setGroup(e.target.value);
+  const handleGroupChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setGroup(e.target.value);
 
   const handlePriorityChange = (
-    valueAsString: string,
+    _valueAsString: string,
     valueAsNumber: number
   ): void => {
     setPriority(valueAsNumber);

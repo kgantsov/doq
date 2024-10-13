@@ -37,7 +37,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 
 const QueueDetails = ({ queueName }: { queueName: string }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const cancelRef = useRef();
+  const cancelRef = useRef(null);
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -180,9 +180,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
             </AlertDialogBody>
 
             <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose}>
-                Cancel
-              </Button>
+              <Button onClick={onClose}>Cancel</Button>
               <Button
                 colorScheme="red"
                 onClick={async () => {

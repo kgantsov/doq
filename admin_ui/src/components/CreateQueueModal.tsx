@@ -15,7 +15,7 @@ import {
   ModalBody,
   ModalCloseButton,
 } from "@chakra-ui/react";
-import { SetStateAction, useState } from "react";
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createQueue } from "../api/queues";
 
@@ -48,9 +48,8 @@ const CreateQueueModal = ({
     },
   });
 
-  const handleGroupChange = (e: {
-    target: { value: SetStateAction<string> };
-  }) => setName(e.target.value);
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setName(e.target.value);
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
@@ -74,11 +73,7 @@ const CreateQueueModal = ({
           <form onSubmit={handleSubmit}>
             <FormControl isInvalid={isError}>
               <FormLabel>Name</FormLabel>
-              <Input
-                onChange={handleGroupChange}
-                value={name}
-                autoFocus
-              ></Input>
+              <Input onChange={handleNameChange} value={name} autoFocus></Input>
             </FormControl>
             <FormControl isInvalid={isError}>
               <FormLabel>Type</FormLabel>

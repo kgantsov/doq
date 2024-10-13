@@ -13,7 +13,7 @@ import {
   StackDivider,
   Progress,
 } from "@chakra-ui/react";
-import { SetStateAction, useState } from "react";
+import { useState } from "react";
 import { DequeueMessage, NackMessage, DequeueRequest } from "../api/messages";
 import { Message } from "../types/messages";
 import { useMutation } from "@tanstack/react-query";
@@ -36,7 +36,7 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
     },
   });
 
-  const handleAckChange = (e: { target: { value: SetStateAction<string> } }) =>
+  const handleAckChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setAck(e.target.checked);
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
@@ -60,7 +60,11 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
           <form onSubmit={handleSubmit}>
             <FormControl>
               <FormLabel>Ack</FormLabel>
-              <Switch size="lg" onChange={handleAckChange} value={ack}></Switch>
+              <Switch
+                size="lg"
+                onChange={handleAckChange}
+                isChecked={ack}
+              ></Switch>
             </FormControl>
             <Box mt={4}>
               <Progress
