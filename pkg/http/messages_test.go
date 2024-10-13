@@ -40,7 +40,7 @@ func TestEnqueueDequeue(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
-	assert.Equal(t, uint64(1), enqueueOutput.ID)
+	assert.Equal(t, "1", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
 
@@ -55,7 +55,7 @@ func TestEnqueueDequeue(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
-	assert.Equal(t, uint64(2), enqueueOutput.ID)
+	assert.Equal(t, "2", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 2, \"name\": \"Jane\"}", enqueueOutput.Content)
 
@@ -67,12 +67,12 @@ func TestEnqueueDequeue(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "DEQUEUED", enqueueOutput.Status)
-	assert.Equal(t, uint64(1), enqueueOutput.ID)
+	assert.Equal(t, "1", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
 
 	resp = api.Post(
-		fmt.Sprintf("/API/v1/queues/my-queue/messages/%d/ack", enqueueOutput.ID),
+		fmt.Sprintf("/API/v1/queues/my-queue/messages/%s/ack", enqueueOutput.ID),
 		map[string]any{},
 	)
 
@@ -82,7 +82,7 @@ func TestEnqueueDequeue(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "ACKNOWLEDGED", ackOutput.Status)
-	assert.Equal(t, uint64(1), ackOutput.ID)
+	assert.Equal(t, "1", ackOutput.ID)
 
 	enqueueOutput = &EnqueueOutputBody{}
 
@@ -92,12 +92,12 @@ func TestEnqueueDequeue(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "DEQUEUED", enqueueOutput.Status)
-	assert.Equal(t, uint64(2), enqueueOutput.ID)
+	assert.Equal(t, "2", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 2, \"name\": \"Jane\"}", enqueueOutput.Content)
 
 	resp = api.Post(
-		fmt.Sprintf("/API/v1/queues/my-queue/messages/%d/ack", enqueueOutput.ID),
+		fmt.Sprintf("/API/v1/queues/my-queue/messages/%s/ack", enqueueOutput.ID),
 		map[string]any{},
 	)
 
@@ -107,7 +107,7 @@ func TestEnqueueDequeue(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "ACKNOWLEDGED", ackOutput.Status)
-	assert.Equal(t, uint64(2), ackOutput.ID)
+	assert.Equal(t, "2", ackOutput.ID)
 }
 
 func TestNack(t *testing.T) {
@@ -137,7 +137,7 @@ func TestNack(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
-	assert.Equal(t, uint64(1), enqueueOutput.ID)
+	assert.Equal(t, "1", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
 
@@ -149,12 +149,12 @@ func TestNack(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "DEQUEUED", dequeueOutput.Status)
-	assert.Equal(t, uint64(1), dequeueOutput.ID)
+	assert.Equal(t, "1", dequeueOutput.ID)
 	assert.Equal(t, int64(100), dequeueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
 
 	resp = api.Post(
-		fmt.Sprintf("/API/v1/queues/my-queue/messages/%d/nack", dequeueOutput.ID),
+		fmt.Sprintf("/API/v1/queues/my-queue/messages/%s/nack", dequeueOutput.ID),
 		map[string]any{},
 	)
 
@@ -164,7 +164,7 @@ func TestNack(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "UNACKNOWLEDGED", nackOutput.Status)
-	assert.Equal(t, uint64(1), nackOutput.ID)
+	assert.Equal(t, "1", nackOutput.ID)
 
 	resp = api.Get("/API/v1/queues/my-queue/messages?ack=true")
 
@@ -174,7 +174,7 @@ func TestNack(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "DEQUEUED", dequeueOutput.Status)
-	assert.Equal(t, uint64(1), dequeueOutput.ID)
+	assert.Equal(t, "1", dequeueOutput.ID)
 	assert.Equal(t, int64(100), dequeueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
 }
@@ -210,12 +210,12 @@ func TestUpdatePriority(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
-	assert.Equal(t, uint64(1), enqueueOutput.ID)
+	assert.Equal(t, "1", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
 
 	resp = api.Put(
-		fmt.Sprintf("/API/v1/queues/my-queue-1/messages/%d/priority", enqueueOutput.ID),
+		fmt.Sprintf("/API/v1/queues/my-queue-1/messages/%s/priority", enqueueOutput.ID),
 		map[string]any{
 			"priority": 256,
 		},
@@ -227,7 +227,7 @@ func TestUpdatePriority(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "UPDATED", updatePriorityOutput.Status)
-	assert.Equal(t, uint64(1), updatePriorityOutput.ID)
+	assert.Equal(t, "1", updatePriorityOutput.ID)
 	assert.Equal(t, int64(256), updatePriorityOutput.Priority)
 
 	resp = api.Get("/API/v1/queues/my-queue-1/messages")
@@ -238,7 +238,7 @@ func TestUpdatePriority(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "DEQUEUED", enqueueOutput.Status)
-	assert.Equal(t, uint64(1), enqueueOutput.ID)
+	assert.Equal(t, "1", enqueueOutput.ID)
 	assert.Equal(t, int64(256), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
 }
@@ -254,7 +254,7 @@ func TestEnqueueProxy(t *testing.T) {
 
 		response := EnqueueOutputBody{
 			Status:   "ENQUEUED",
-			ID:       123,
+			ID:       "123",
 			Group:    "customer-1",
 			Priority: 100,
 			Content:  "{\"user_id\": 1, \"name\": \"John\"}",
@@ -290,7 +290,7 @@ func TestEnqueueProxy(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
-	assert.Equal(t, uint64(123), enqueueOutput.ID)
+	assert.Equal(t, "123", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
 }
@@ -307,7 +307,7 @@ func TestDequeueProxy(t *testing.T) {
 
 		response := DequeueOutputBody{
 			Status:   "DEQUEUED",
-			ID:       75,
+			ID:       "75",
 			Group:    "customer-1",
 			Priority: 31,
 			Content:  "{\"id\": 114, \"name\": \"test\"}",
@@ -340,7 +340,7 @@ func TestDequeueProxy(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "DEQUEUED", dequeueOutput.Status)
-	assert.Equal(t, uint64(75), dequeueOutput.ID)
+	assert.Equal(t, "75", dequeueOutput.ID)
 	assert.Equal(t, int64(31), dequeueOutput.Priority)
 	assert.Equal(t, "{\"id\": 114, \"name\": \"test\"}", dequeueOutput.Content)
 }
@@ -356,7 +356,7 @@ func TestAckProxy(t *testing.T) {
 
 		response := AckOutputBody{
 			Status: "ACKED",
-			ID:     1122,
+			ID:     "1122",
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -386,7 +386,7 @@ func TestAckProxy(t *testing.T) {
 	json.Unmarshal(resp.Body.Bytes(), output)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, uint64(1122), output.ID)
+	assert.Equal(t, "1122", output.ID)
 	assert.Equal(t, "ACKED", output.Status)
 }
 
@@ -401,7 +401,7 @@ func TestNackProxy(t *testing.T) {
 
 		response := AckOutputBody{
 			Status: "ACKED",
-			ID:     1122,
+			ID:     "1122",
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -431,7 +431,7 @@ func TestNackProxy(t *testing.T) {
 	json.Unmarshal(resp.Body.Bytes(), output)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, uint64(1122), output.ID)
+	assert.Equal(t, "1122", output.ID)
 	assert.Equal(t, "ACKED", output.Status)
 }
 
@@ -446,7 +446,7 @@ func TestUpdatePriorityProxy(t *testing.T) {
 
 		response := UpdatePriorityOutputBody{
 			Status:   "UPDATED",
-			ID:       5634,
+			ID:       "5634",
 			Priority: 777,
 		}
 
@@ -478,7 +478,7 @@ func TestUpdatePriorityProxy(t *testing.T) {
 	json.Unmarshal(resp.Body.Bytes(), output)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, uint64(5634), output.ID)
+	assert.Equal(t, "5634", output.ID)
 	assert.Equal(t, "UPDATED", output.Status)
 	assert.Equal(t, int64(777), output.Priority)
 }

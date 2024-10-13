@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/danielgtaylor/huma/v2"
 )
@@ -39,11 +40,16 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 		return nil, huma.Error409Conflict("Failed to enqueue a message", err)
 	}
 
-	res := &EnqueueOutput{Status: http.StatusOK}
-	res.Body.Status = "ENQUEUED"
-	res.Body.ID = msg.ID
-	res.Body.Priority = msg.Priority
-	res.Body.Content = msg.Content
+	res := &EnqueueOutput{
+		Status: http.StatusOK,
+		Body: EnqueueOutputBody{
+			Status:   "ENQUEUED",
+			ID:       strconv.Itoa(int(msg.ID)),
+			Group:    group,
+			Priority: priority,
+			Content:  content,
+		},
+	}
 	return res, nil
 }
 
@@ -68,11 +74,16 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 		return nil, huma.Error400BadRequest("Failed to dequeue a message from a queue", err)
 	}
 
-	res := &DequeueOutput{Status: http.StatusOK}
-	res.Body.Status = "DEQUEUED"
-	res.Body.ID = msg.ID
-	res.Body.Priority = msg.Priority
-	res.Body.Content = msg.Content
+	res := &DequeueOutput{
+		Status: http.StatusOK,
+		Body: DequeueOutputBody{
+			Status:   "DEQUEUED",
+			ID:       strconv.Itoa(int(msg.ID)),
+			Group:    msg.Group,
+			Priority: msg.Priority,
+			Content:  msg.Content,
+		},
+	}
 	return res, nil
 }
 
@@ -94,14 +105,14 @@ func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) 
 	err := h.node.Ack(queueName, input.ID)
 
 	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to acknowledge a message from a queue", err)
+		return nil, huma.Error400BadRequest("Failed to ack a message from a queue", err)
 	}
 
 	res := &AckOutput{
 		Status: http.StatusOK,
 		Body: AckOutputBody{
 			Status: "ACKNOWLEDGED",
-			ID:     input.ID,
+			ID:     strconv.Itoa(int(input.ID)),
 		},
 	}
 
@@ -126,14 +137,14 @@ func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, erro
 	err := h.node.Nack(queueName, input.ID)
 
 	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to acknowledge a message from a queue", err)
+		return nil, huma.Error400BadRequest("Failed to nack a message from a queue", err)
 	}
 
 	res := &NackOutput{
 		Status: http.StatusOK,
 		Body: NackOutputBody{
 			Status: "UNACKNOWLEDGED",
-			ID:     input.ID,
+			ID:     strconv.Itoa(int(input.ID)),
 		},
 	}
 
@@ -169,7 +180,7 @@ func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput
 		Status: http.StatusOK,
 		Body: UpdatePriorityOutputBody{
 			Status:   "UPDATED",
-			ID:       input.ID,
+			ID:       strconv.Itoa(int(input.ID)),
 			Priority: priority,
 		},
 	}

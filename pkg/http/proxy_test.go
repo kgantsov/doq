@@ -137,7 +137,7 @@ func TestEnqueue_Success(t *testing.T) {
 
 		response := EnqueueOutputBody{
 			Status:   "ENQUEUED",
-			ID:       123,
+			ID:       "123",
 			Group:    "customer-1",
 			Priority: 61,
 			Content:  "{\"user_id\": 114}",
@@ -167,7 +167,7 @@ func TestEnqueue_Success(t *testing.T) {
 	// Assert that the response matches the expected output
 	expectedOutput := &EnqueueOutputBody{
 		Status:   "ENQUEUED",
-		ID:       123,
+		ID:       "123",
 		Group:    "customer-1",
 		Priority: 61,
 		Content:  "{\"user_id\": 114}",
@@ -186,7 +186,7 @@ func TestDequeue_Success(t *testing.T) {
 
 		response := DequeueOutputBody{
 			Status:   "DEQUEUED",
-			ID:       75,
+			ID:       "75",
 			Group:    "customer-1",
 			Priority: 31,
 			Content:  "{\"id\": 114, \"name\": \"test\"}",
@@ -209,7 +209,7 @@ func TestDequeue_Success(t *testing.T) {
 	// Assert that the response matches the expected output
 	expectedOutput := &DequeueOutputBody{
 		Status:   "DEQUEUED",
-		ID:       75,
+		ID:       "75",
 		Group:    "customer-1",
 		Priority: 31,
 		Content:  "{\"id\": 114, \"name\": \"test\"}",
@@ -227,7 +227,7 @@ func TestAck_Success(t *testing.T) {
 
 		response := AckOutputBody{
 			Status: "DEQUEUED",
-			ID:     1122,
+			ID:     "1122",
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -247,7 +247,7 @@ func TestAck_Success(t *testing.T) {
 	// Assert that the response matches the expected output
 	expectedOutput := &AckOutputBody{
 		Status: "DEQUEUED",
-		ID:     1122,
+		ID:     "1122",
 	}
 	assert.Equal(t, expectedOutput, output)
 }
@@ -262,7 +262,7 @@ func TestNack_Success(t *testing.T) {
 
 		response := NackOutputBody{
 			Status: "DEQUEUED",
-			ID:     1122,
+			ID:     "1122",
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -282,7 +282,7 @@ func TestNack_Success(t *testing.T) {
 	// Assert that the response matches the expected output
 	expectedOutput := &NackOutputBody{
 		Status: "DEQUEUED",
-		ID:     1122,
+		ID:     "1122",
 	}
 	assert.Equal(t, expectedOutput, output)
 }
@@ -297,7 +297,7 @@ func TestUpdatePriority_Success(t *testing.T) {
 
 		response := UpdatePriorityOutputBody{
 			Status:   "ENQUEUED",
-			ID:       5634,
+			ID:       "5634",
 			Priority: 777,
 		}
 
@@ -325,7 +325,7 @@ func TestUpdatePriority_Success(t *testing.T) {
 	// Assert that the response matches the expected output
 	expectedOutput := &UpdatePriorityOutputBody{
 		Status:   "ENQUEUED",
-		ID:       5634,
+		ID:       "5634",
 		Priority: 777,
 	}
 	assert.Equal(t, expectedOutput, output)
