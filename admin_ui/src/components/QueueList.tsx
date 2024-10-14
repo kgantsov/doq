@@ -12,8 +12,13 @@ import {
   Box,
   Heading,
   useDisclosure,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  InputRightElement,
+  CloseButton,
 } from "@chakra-ui/react";
-import { ChevronDownIcon } from "@chakra-ui/icons";
+import { ChevronDownIcon, SearchIcon } from "@chakra-ui/icons";
 import { Badge } from "@chakra-ui/react";
 import { Link as RouterLink } from "react-router-dom";
 import { Queue } from "../types/queues";
@@ -22,6 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 import CreateQueueModal from "./CreateQueueModal";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "./DataTable";
+import { useState } from "react";
 
 const columnHelper = createColumnHelper<Queue>();
 
@@ -92,6 +98,7 @@ const columns = [
 
 const QueueList = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const [query, setQuery] = useState("");
 
   const { isPending, data } = useQuery({
     queryKey: ["queues"],
@@ -113,7 +120,8 @@ const QueueList = () => {
     );
   }
 
-  const queues: Queue[] = data?.queues || [];
+  const queues: Queue[] =
+    data?.queues.filter((queue: Queue) => queue.name.includes(query)) || [];
 
   return (
     <>
@@ -130,6 +138,27 @@ const QueueList = () => {
             </MenuList>
           </Menu>
         </Flex>
+        <InputGroup width={"500px"} mr={4} mb={4}>
+          <InputLeftElement pointerEvents="none">
+            <SearchIcon color="gray.300" />
+          </InputLeftElement>
+          <Input
+            type="query"
+            placeholder="Search"
+            value={query}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setQuery(e.target.value)
+            }
+          />
+          <InputRightElement width="4.5rem">
+            <CloseButton
+              h="1.75rem"
+              color="gray.300"
+              size="sm"
+              onClick={() => setQuery("")}
+            ></CloseButton>
+          </InputRightElement>
+        </InputGroup>
         <DataTable columns={columns} data={queues} />
       </Box>
       <CreateQueueModal isOpen={isOpen} onClose={onClose} />
