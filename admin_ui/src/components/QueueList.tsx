@@ -47,7 +47,7 @@ const columns = [
     cell: (info) => {
       const type = info.getValue();
       return (
-        <Badge colorScheme={type === "delayed" ? "teal" : "teal"}>{type}</Badge>
+        <Badge colorScheme={type === "delayed" ? "teal" : "cyan"}>{type}</Badge>
       );
     },
     header: "Type",

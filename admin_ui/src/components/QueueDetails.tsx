@@ -86,7 +86,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
         <Flex>
           <Text fontSize="2xl" mb={4}>
             {queue.name} &nbsp;
-            <Badge colorScheme={queue.type === "delayed" ? "teal" : "teal"}>
+            <Badge colorScheme={queue.type === "delayed" ? "teal" : "cyan"}>
               {queue.type}
             </Badge>
           </Text>
