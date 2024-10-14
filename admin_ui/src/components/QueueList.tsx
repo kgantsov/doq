@@ -121,7 +121,7 @@ const QueueList = () => {
   }
 
   const queues: Queue[] =
-    data?.queues.filter((queue: Queue) => queue.name.includes(query)) || [];
+    data?.queues?.filter((queue: Queue) => queue.name.includes(query)) || [];
 
   return (
     <>
