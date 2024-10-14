@@ -1,11 +1,4 @@
 import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
   Link,
   Center,
   Spinner,
@@ -22,11 +15,80 @@ import {
 } from "@chakra-ui/react";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import { Badge } from "@chakra-ui/react";
-import { Link as RouterLink } from "react-router-dom"; // For routing
+import { Link as RouterLink } from "react-router-dom";
 import { Queue } from "../types/queues";
 import { getQueues } from "../api/queues";
 import { useQuery } from "@tanstack/react-query";
 import CreateQueueModal from "./CreateQueueModal";
+import { createColumnHelper } from "@tanstack/react-table";
+import { DataTable } from "./DataTable";
+
+const columnHelper = createColumnHelper<Queue>();
+
+const columns = [
+  columnHelper.accessor("name", {
+    cell: (info) => {
+      const name = info.getValue();
+      return (
+        <Link as={RouterLink} to={`/queues/${name}`}>
+          {name}
+        </Link>
+      );
+    },
+    header: "Name",
+  }),
+  columnHelper.accessor("type", {
+    cell: (info) => {
+      const type = info.getValue();
+      return (
+        <Badge colorScheme={type === "delayed" ? "teal" : "teal"}>{type}</Badge>
+      );
+    },
+    header: "Type",
+  }),
+  columnHelper.accessor("ready", {
+    cell: (info) => info.getValue(),
+    header: "ready",
+    meta: {
+      isNumeric: true,
+    },
+  }),
+  columnHelper.accessor("unacked", {
+    cell: (info) => info.getValue(),
+    header: "unacked",
+    meta: {
+      isNumeric: true,
+    },
+  }),
+  columnHelper.accessor("total", {
+    cell: (info) => info.getValue(),
+    header: "total",
+    meta: {
+      isNumeric: true,
+    },
+  }),
+  columnHelper.accessor("enqueue_rps", {
+    cell: (info) => info.getValue(),
+    header: "enqueue_rps",
+    meta: {
+      isNumeric: true,
+    },
+  }),
+  columnHelper.accessor("dequeue_rps", {
+    cell: (info) => info.getValue(),
+    header: "dequeue_rps",
+    meta: {
+      isNumeric: true,
+    },
+  }),
+  columnHelper.accessor("ack_rps", {
+    cell: (info) => info.getValue(),
+    header: "ack_rps",
+    meta: {
+      isNumeric: true,
+    },
+  }),
+];
 
 const QueueList = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -68,48 +130,8 @@ const QueueList = () => {
             </MenuList>
           </Menu>
         </Flex>
-        <TableContainer>
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                <Th>Name</Th>
-                <Th>Type</Th>
-                <Th>Ready</Th>
-                <Th>Unacked</Th>
-                <Th>Total</Th>
-                <Th>Enqueue RPS</Th>
-                <Th>Dequeue RPS</Th>
-                <Th>Ack RPS</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {queues.map((queue, index) => (
-                <Tr key={index}>
-                  <Td>
-                    <Link as={RouterLink} to={`/queues/${queue.name}`}>
-                      {queue.name}
-                    </Link>
-                  </Td>
-                  <Td>
-                    <Badge
-                      colorScheme={queue.type === "delayed" ? "teal" : "teal"}
-                    >
-                      {queue.type}
-                    </Badge>
-                  </Td>
-                  <Td>{queue.ready}</Td>
-                  <Td>{queue.unacked}</Td>
-                  <Td>{queue.total}</Td>
-                  <Td>{queue.enqueue_rps}/s</Td>
-                  <Td>{queue.dequeue_rps}/s</Td>
-                  <Td>{queue.ack_rps}/s</Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableContainer>
+        <DataTable columns={columns} data={queues} />
       </Box>
-
       <CreateQueueModal isOpen={isOpen} onClose={onClose} />
     </>
   );
