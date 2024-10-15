@@ -148,6 +148,7 @@ type FSM struct {
 type FSMResponse struct {
 	QueueName string
 	ID        uint64
+	Group     string
 	Priority  int64
 	Content   string
 	error     error
@@ -235,6 +236,7 @@ func (f *FSM) enqueueApply(payload EnqueuePayload) *FSMResponse {
 	return &FSMResponse{
 		QueueName: payload.QueueName,
 		ID:        msg.ID,
+		Group:     msg.Group,
 		Priority:  msg.Priority,
 		Content:   msg.Content,
 		error:     nil,
@@ -270,6 +272,7 @@ func (f *FSM) dequeueApply(payload DequeuePayload) *FSMResponse {
 	return &FSMResponse{
 		QueueName: payload.QueueName,
 		ID:        msg.ID,
+		Group:     msg.Group,
 		Priority:  msg.Priority,
 		Content:   msg.Content,
 		error:     nil,

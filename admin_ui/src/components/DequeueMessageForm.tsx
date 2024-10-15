@@ -94,6 +94,14 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
                 <Stack divider={<StackDivider />} spacing="4">
                   <Box>
                     <Heading size="xs" textTransform="uppercase">
+                      Group
+                    </Heading>
+                    <Text pt="2" fontSize="sm">
+                      {dequeuedMessage.group}
+                    </Text>
+                  </Box>
+                  <Box>
+                    <Heading size="xs" textTransform="uppercase">
                       Priority
                     </Heading>
                     <Text pt="2" fontSize="sm">

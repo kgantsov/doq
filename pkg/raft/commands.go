@@ -37,6 +37,7 @@ func (n *Node) Enqueue(
 
 	return &queue.Message{
 		ID:       r.ID,
+		Group:    group,
 		Priority: r.Priority,
 		Content:  r.Content,
 	}, nil
@@ -67,6 +68,7 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 
 	return &queue.Message{
 		ID:       r.ID,
+		Group:    r.Group,
 		Priority: r.Priority,
 		Content:  r.Content,
 	}, nil
