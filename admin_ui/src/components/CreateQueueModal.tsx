@@ -41,6 +41,7 @@ const CreateQueueModal = ({
         status: "success",
         duration: 9000,
         isClosable: true,
+        position: "bottom-right",
       });
       queryClient.invalidateQueries({ queryKey: ["queues"] });
       setName("");

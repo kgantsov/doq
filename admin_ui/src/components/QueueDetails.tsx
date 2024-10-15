@@ -52,6 +52,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
         status: "success",
         duration: 9000,
         isClosable: true,
+        position: "bottom-right",
       });
     },
   });
