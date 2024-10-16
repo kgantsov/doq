@@ -38,19 +38,21 @@ import { getQueue, deleteQueue } from "../api/queues";
 import EnqueueMessageForm from "./EnqueueMessageForm";
 import DequeueMessageForm from "./DequeueMessageForm";
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const QueueDetails = ({ queueName }: { queueName: string }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = useRef(null);
   const navigate = useNavigate();
   const toast = useToast();
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: deleteQueue,
     onSuccess: () => {
       onClose();
       navigate(`/`);
+      queryClient.invalidateQueries({ queryKey: ["queues"] });
       toast({
         title: "Qeueu deleted.",
         description: `The queue '${queueName}' has been deleted successfully.`,
