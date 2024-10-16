@@ -1,4 +1,8 @@
 import {
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
   AlertDialog,
   AlertDialogBody,
   AlertDialogFooter,
@@ -24,6 +28,7 @@ import {
   useDisclosure,
   useToast,
 } from "@chakra-ui/react";
+import { AccordionIcon } from "@chakra-ui/icons";
 import { useNavigate } from "react-router-dom";
 
 import { useRef } from "react";
@@ -157,13 +162,39 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
             </CardBody>
           </Card>
         </SimpleGrid>
+        <Accordion allowMultiple mt={4}>
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box as="span" flex="1" textAlign="left">
+                  Dequeue messages
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel pb={4}>
+              <Box pt={4}>
+                <DequeueMessageForm queueName={queueName} />
+              </Box>
+            </AccordionPanel>
+          </AccordionItem>
 
-        <Box pt={4}>
-          <DequeueMessageForm queueName={queueName} />
-        </Box>
-        <Box pt={4}>
-          <EnqueueMessageForm queueName={queueName} />
-        </Box>
+          <AccordionItem>
+            <h2>
+              <AccordionButton>
+                <Box as="span" flex="1" textAlign="left">
+                  Enqueue messages
+                </Box>
+                <AccordionIcon />
+              </AccordionButton>
+            </h2>
+            <AccordionPanel pb={4}>
+              <Box pt={4}>
+                <EnqueueMessageForm queueName={queueName} />
+              </Box>
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
       </Box>
       <AlertDialog
         isOpen={isOpen}

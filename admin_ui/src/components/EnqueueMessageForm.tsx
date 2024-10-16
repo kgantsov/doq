@@ -7,9 +7,7 @@ import {
   Stack,
   useToast,
   Card,
-  CardHeader,
   CardBody,
-  Heading,
   NumberInput,
   NumberInputField,
   Progress,
@@ -69,11 +67,6 @@ const EnqueueMessageForm = ({ queueName }: { queueName: string }) => {
 
   return (
     <Card>
-      <CardHeader>
-        <Heading size="sm" textTransform="uppercase">
-          Enqueue message
-        </Heading>
-      </CardHeader>
       <CardBody>
         <form onSubmit={handleSubmit}>
           <FormControl isInvalid={isError}>

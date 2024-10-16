@@ -51,11 +51,6 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
   return (
     <>
       <Card>
-        <CardHeader>
-          <Heading size="sm" textTransform="uppercase">
-            Dequeue message
-          </Heading>
-        </CardHeader>
         <CardBody>
           <form onSubmit={handleSubmit}>
             <FormControl>
