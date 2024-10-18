@@ -9,6 +9,7 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/go-hclog"
@@ -84,7 +85,9 @@ func (node *Node) Initialize() {
 
 	var prometheusMetrics *queue.PrometheusMetrics
 	if node.cfg.Prometheus.Enabled {
-		prometheusMetrics = queue.NewPrometheusMetrics(node.PrometheusRegistry(), "queues")
+		promRegistry := node.PrometheusRegistry()
+		prometheusMetrics = queue.NewPrometheusMetrics(promRegistry, "queues")
+		promRegistry.Register(collectors.NewGoCollector())
 	}
 	queueManager := queue.NewQueueManager(node.db, node.cfg, prometheusMetrics)
 
