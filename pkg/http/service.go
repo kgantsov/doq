@@ -115,7 +115,7 @@ func (h *Handler) ConfigureMiddleware(router *fiber.App) {
 	router.Use(requestid.New())
 
 	prom := fiberprometheus.NewWithRegistry(
-		h.node.PrometheusRegistry(), "doq", "", "", map[string]string{},
+		h.node.PrometheusRegistry(), "doq", "doq", "http", map[string]string{},
 	)
 	prom.RegisterAt(router, "/metrics")
 	router.Use(prom.Middleware)

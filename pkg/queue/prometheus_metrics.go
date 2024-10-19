@@ -14,12 +14,12 @@ type PrometheusMetrics struct {
 	registry     *prometheus.Registry
 }
 
-func NewPrometheusMetrics(registry prometheus.Registerer, subsystem string) *PrometheusMetrics {
-
+func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem string) *PrometheusMetrics {
 	m := &PrometheusMetrics{}
 
 	m.enqueueTotal = promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{
+			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "enqueue_total",
 			Help:      "Total number of enqueued messages.",
@@ -30,6 +30,7 @@ func NewPrometheusMetrics(registry prometheus.Registerer, subsystem string) *Pro
 
 	m.dequeueTotal = promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{
+			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "dequeue_total",
 			Help:      "Total number of dequeued messages.",
@@ -40,6 +41,7 @@ func NewPrometheusMetrics(registry prometheus.Registerer, subsystem string) *Pro
 
 	m.ackTotal = promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{
+			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "ack_total",
 			Help:      "Total number of acknowledged messages.",
@@ -50,6 +52,7 @@ func NewPrometheusMetrics(registry prometheus.Registerer, subsystem string) *Pro
 
 	m.nackTotal = promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{
+			Namespace: namespace,
 			Subsystem: subsystem,
 			Name:      "nack_total",
 			Help:      "Total number of not acknowledged messages.",
@@ -60,8 +63,9 @@ func NewPrometheusMetrics(registry prometheus.Registerer, subsystem string) *Pro
 
 	m.queueSize = promauto.With(registry).NewGaugeVec(
 		prometheus.GaugeOpts{
+			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "queue_size",
+			Name:      "size",
 			Help:      "Current size of the queue.",
 		},
 		[]string{"queue_name"},
