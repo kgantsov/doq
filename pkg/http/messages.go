@@ -6,12 +6,14 @@ import (
 	"strconv"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/kgantsov/doq/pkg/config"
 )
 
 type (
 	Handler struct {
-		node  Node
-		proxy *Proxy
+		node   Node
+		proxy  *Proxy
+		config *config.Config
 	}
 )
 

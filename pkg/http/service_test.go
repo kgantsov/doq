@@ -7,22 +7,28 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
-	addr := "8080"
+	cfg := &config.Config{
+		Http: config.HttpConfig{Port: "8080"},
+		Prometheus: config.PrometheusConfig{
+			Enabled: true,
+		},
+	}
 
 	node := newTestNode("", true)
-	service := NewHttpService(addr, node, embed.FS{}, embed.FS{})
+	service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
 	node.CreateQueue("delayed", "my-queue")
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.router)
 	assert.NotNil(t, service.api)
 	assert.NotNil(t, service.h)
-	assert.Equal(t, addr, service.addr)
+	assert.Equal(t, cfg.Http.Port, service.addr)
 
 	tests := []struct {
 		description  string

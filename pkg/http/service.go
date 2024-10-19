@@ -19,6 +19,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -50,7 +51,7 @@ type Node interface {
 }
 
 // New returns an uninitialized HTTP service.
-func NewHttpService(addr string, node Node, indexHtmlFS embed.FS, frontendFS embed.FS) *Service {
+func NewHttpService(config *config.Config, node Node, indexHtmlFS embed.FS, frontendFS embed.FS) *Service {
 	router := fiber.New()
 
 	api := humafiber.New(
@@ -74,8 +75,9 @@ func NewHttpService(addr string, node Node, indexHtmlFS embed.FS, frontendFS emb
 	proxy := NewProxy(httpClient)
 
 	h := &Handler{
-		node:  node,
-		proxy: proxy,
+		node:   node,
+		proxy:  proxy,
+		config: config,
 	}
 	h.ConfigureMiddleware(router)
 	h.RegisterRoutes(api)
@@ -98,7 +100,7 @@ func NewHttpService(addr string, node Node, indexHtmlFS embed.FS, frontendFS emb
 		api:    api,
 		router: router,
 		h:      h,
-		addr:   addr,
+		addr:   config.Http.Port,
 	}
 }
 
@@ -114,11 +116,13 @@ func (h *Handler) ConfigureMiddleware(router *fiber.App) {
 
 	router.Use(requestid.New())
 
-	prom := fiberprometheus.NewWithRegistry(
-		h.node.PrometheusRegistry(), "doq", "doq", "http", map[string]string{},
-	)
-	prom.RegisterAt(router, "/metrics")
-	router.Use(prom.Middleware)
+	if h.config.Prometheus.Enabled {
+		prom := fiberprometheus.NewWithRegistry(
+			h.node.PrometheusRegistry(), "doq", "doq", "http", map[string]string{},
+		)
+		prom.RegisterAt(router, "/metrics")
+		router.Use(prom.Middleware)
+	}
 
 	router.Get("/service/metrics", monitor.New())
 	router.Use(recover.New())
