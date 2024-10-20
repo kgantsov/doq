@@ -6,12 +6,14 @@ import (
 )
 
 type PrometheusMetrics struct {
-	enqueueTotal *prometheus.CounterVec
-	dequeueTotal *prometheus.CounterVec
-	ackTotal     *prometheus.CounterVec
-	nackTotal    *prometheus.CounterVec
-	messages     *prometheus.GaugeVec
-	registry     *prometheus.Registry
+	enqueueTotal    *prometheus.CounterVec
+	dequeueTotal    *prometheus.CounterVec
+	ackTotal        *prometheus.CounterVec
+	nackTotal       *prometheus.CounterVec
+	messages        *prometheus.GaugeVec
+	unackedMessages *prometheus.GaugeVec
+	readyMessages   *prometheus.GaugeVec
+	registry        *prometheus.Registry
 }
 
 func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem string) *PrometheusMetrics {
@@ -71,6 +73,28 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 		[]string{"queue_name"},
 	)
 	prometheus.MustRegister(m.messages)
+
+	m.unackedMessages = promauto.With(registry).NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      "unacked_messages",
+			Help:      "Number of unacknowledged messages in the queue.",
+		},
+		[]string{"queue_name"},
+	)
+	prometheus.MustRegister(m.unackedMessages)
+
+	m.readyMessages = promauto.With(registry).NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      "ready_messages",
+			Help:      "Number of ready messages in the queue.",
+		},
+		[]string{"queue_name"},
+	)
+	prometheus.MustRegister(m.readyMessages)
 
 	return m
 }

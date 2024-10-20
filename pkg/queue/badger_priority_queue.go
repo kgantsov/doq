@@ -326,7 +326,18 @@ func (bpq *BadgerPriorityQueue) Enqueue(id uint64, group string, priority int64,
 
 	if bpq.cfg.Prometheus.Enabled {
 		bpq.PrometheusMetrics.enqueueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
-		bpq.PrometheusMetrics.messages.With(prometheus.Labels{"queue_name": bpq.config.Name}).Set(float64(bpq.pq.Len()))
+
+		readyMessages := float64(bpq.pq.Len())
+		unackedMessages := float64(bpq.ackQueue.Len())
+		bpq.PrometheusMetrics.messages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(readyMessages + unackedMessages)
+		bpq.PrometheusMetrics.unackedMessages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(unackedMessages)
+		bpq.PrometheusMetrics.readyMessages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(readyMessages)
 	}
 
 	return msg, nil
@@ -387,7 +398,18 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 	bpq.stats.IncrementDequeue()
 	if bpq.cfg.Prometheus.Enabled {
 		bpq.PrometheusMetrics.dequeueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
-		bpq.PrometheusMetrics.messages.With(prometheus.Labels{"queue_name": bpq.config.Name}).Set(float64(bpq.pq.Len()))
+
+		readyMessages := float64(bpq.pq.Len())
+		unackedMessages := float64(bpq.ackQueue.Len())
+		bpq.PrometheusMetrics.messages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(readyMessages + unackedMessages)
+		bpq.PrometheusMetrics.unackedMessages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(unackedMessages)
+		bpq.PrometheusMetrics.readyMessages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(readyMessages)
 	}
 	return msg, nil
 }
@@ -493,6 +515,18 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 	bpq.stats.IncrementAck()
 	if bpq.cfg.Prometheus.Enabled {
 		bpq.PrometheusMetrics.ackTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+
+		readyMessages := float64(bpq.pq.Len())
+		unackedMessages := float64(bpq.ackQueue.Len())
+		bpq.PrometheusMetrics.messages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(readyMessages + unackedMessages)
+		bpq.PrometheusMetrics.unackedMessages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(unackedMessages)
+		bpq.PrometheusMetrics.readyMessages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(readyMessages)
 	}
 	return nil
 }
@@ -524,6 +558,18 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64) error {
 	bpq.stats.IncrementNack()
 	if bpq.cfg.Prometheus.Enabled {
 		bpq.PrometheusMetrics.nackTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+
+		readyMessages := float64(bpq.pq.Len())
+		unackedMessages := float64(bpq.ackQueue.Len())
+		bpq.PrometheusMetrics.messages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(readyMessages + unackedMessages)
+		bpq.PrometheusMetrics.unackedMessages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(unackedMessages)
+		bpq.PrometheusMetrics.readyMessages.With(
+			prometheus.Labels{"queue_name": bpq.config.Name},
+		).Set(readyMessages)
 	}
 
 	return nil
