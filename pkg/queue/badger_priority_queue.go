@@ -326,7 +326,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(id uint64, group string, priority int64,
 
 	if bpq.cfg.Prometheus.Enabled {
 		bpq.PrometheusMetrics.enqueueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
-		bpq.PrometheusMetrics.queueSize.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+		bpq.PrometheusMetrics.messages.With(prometheus.Labels{"queue_name": bpq.config.Name}).Set(float64(bpq.pq.Len()))
 	}
 
 	return msg, nil
@@ -387,7 +387,7 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 	bpq.stats.IncrementDequeue()
 	if bpq.cfg.Prometheus.Enabled {
 		bpq.PrometheusMetrics.dequeueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
-		bpq.PrometheusMetrics.queueSize.With(prometheus.Labels{"queue_name": bpq.config.Name}).Dec()
+		bpq.PrometheusMetrics.messages.With(prometheus.Labels{"queue_name": bpq.config.Name}).Set(float64(bpq.pq.Len()))
 	}
 	return msg, nil
 }

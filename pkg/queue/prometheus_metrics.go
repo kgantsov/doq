@@ -10,7 +10,7 @@ type PrometheusMetrics struct {
 	dequeueTotal *prometheus.CounterVec
 	ackTotal     *prometheus.CounterVec
 	nackTotal    *prometheus.CounterVec
-	queueSize    *prometheus.GaugeVec
+	messages     *prometheus.GaugeVec
 	registry     *prometheus.Registry
 }
 
@@ -61,16 +61,16 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 	)
 	prometheus.MustRegister(m.nackTotal)
 
-	m.queueSize = promauto.With(registry).NewGaugeVec(
+	m.messages = promauto.With(registry).NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
-			Name:      "size",
-			Help:      "Current size of the queue.",
+			Name:      "messages",
+			Help:      "Number of messages in the queue.",
 		},
 		[]string{"queue_name"},
 	)
-	prometheus.MustRegister(m.queueSize)
+	prometheus.MustRegister(m.messages)
 
 	return m
 }
