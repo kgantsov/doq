@@ -62,7 +62,7 @@ export default function () {
     tags: { name: 'dequeue' },
   };
 
-  resp = http.request("GET", url, {}, params);
+  resp = http.request("GET", url + '?ack=true', {}, params);
   check(resp, {
     'dequeued': (r) => r.status === 200,
   });
