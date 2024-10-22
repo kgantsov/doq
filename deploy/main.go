@@ -117,6 +117,11 @@ func main() {
 				Template: &corev1.PodTemplateSpecArgs{
 					Metadata: &metav1.ObjectMetaArgs{
 						Labels: pulumi.StringMap(appLabels),
+						Annotations: pulumi.StringMap{
+							"prometheus.io/scrape": pulumi.String("true"),
+							"prometheus.io/path":   pulumi.String("/metrics"),
+							"prometheus.io/port":   pulumi.String("8000"),
+						},
 					},
 					Spec: &corev1.PodSpecArgs{
 						ServiceAccount: pulumi.String(name),
@@ -132,6 +137,8 @@ func main() {
 									pulumi.String(fmt.Sprintf("%d", httPort)),
 									pulumi.String("--raft.address"),
 									pulumi.String(fmt.Sprintf("%d", raftPort)),
+									pulumi.String("--prometheus.enabled"),
+									pulumi.String("true"),
 									pulumi.String("--storage.data_dir"),
 									pulumi.String("/usr/local/doq/data"),
 								},
