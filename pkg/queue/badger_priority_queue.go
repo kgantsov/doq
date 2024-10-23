@@ -74,8 +74,7 @@ type BadgerPriorityQueue struct {
 
 	ackQueueMonitoringChan chan struct{}
 
-	ackQueue   Queue
-	ackQueueMu sync.Mutex
+	ackQueue Queue
 }
 
 func NewBadgerPriorityQueue(db *badger.DB, cfg *config.Config, metrics *PrometheusMetrics) *BadgerPriorityQueue {
@@ -144,18 +143,14 @@ func (bpq *BadgerPriorityQueue) monitorAckQueue() {
 		select {
 		case <-ticker.C:
 			for {
-				bpq.ackQueueMu.Lock()
-
 				item := bpq.ackQueue.Dequeue()
 				if item == nil {
-					bpq.ackQueueMu.Unlock()
 					break
 				}
 
 				message, err := bpq.GetByID(item.ID)
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to get message by ID: %d", item.ID)
-					bpq.ackQueueMu.Unlock()
 					continue
 				}
 
@@ -166,8 +161,6 @@ func (bpq *BadgerPriorityQueue) monitorAckQueue() {
 
 				bpq.pq.Enqueue(message.Group, queueItem)
 				log.Debug().Msgf("Re-enqueued message: %d", message.ID)
-
-				bpq.ackQueueMu.Unlock()
 			}
 		case <-bpq.ackQueueMonitoringChan:
 			return
@@ -311,9 +304,6 @@ func (bpq *BadgerPriorityQueue) Load(queueName string, loadMessages bool) error 
 }
 
 func (bpq *BadgerPriorityQueue) Enqueue(id uint64, group string, priority int64, content string) (*Message, error) {
-	bpq.mu.Lock()
-	defer bpq.mu.Unlock()
-
 	if bpq.config.Type != "fair" {
 		group = "default"
 	}
@@ -355,9 +345,6 @@ func (bpq *BadgerPriorityQueue) Enqueue(id uint64, group string, priority int64,
 }
 
 func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
-	bpq.mu.Lock()
-	defer bpq.mu.Unlock()
-
 	if bpq.pq.Len() == 0 {
 		return nil, ErrEmptyQueue
 	}
@@ -386,7 +373,6 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 		} else {
 			// in case of manual ack, we need to keep the message in the queue
 			// so we can ack it later and add it to the ackQueue
-			bpq.ackQueueMu.Lock()
 			bpq.ackQueue.Enqueue(
 				"default",
 				&Item{
@@ -396,7 +382,6 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 					).Unix(),
 				},
 			)
-			bpq.ackQueueMu.Unlock()
 		}
 
 		return nil
@@ -416,9 +401,6 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 }
 
 func (bpq *BadgerPriorityQueue) GetByID(id uint64) (*Message, error) {
-	bpq.mu.Lock()
-	defer bpq.mu.Unlock()
-
 	var msg *Message
 
 	err := bpq.db.View(func(txn *badger.Txn) error {
@@ -440,9 +422,6 @@ func (bpq *BadgerPriorityQueue) GetByID(id uint64) (*Message, error) {
 }
 
 func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) error {
-	bpq.mu.Lock()
-	defer bpq.mu.Unlock()
-
 	group := "default"
 
 	// Update BadgerDB
@@ -491,9 +470,6 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 }
 
 func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
-	bpq.ackQueueMu.Lock()
-	defer bpq.ackQueueMu.Unlock()
-
 	queueItem := bpq.ackQueue.GetByID("default", id)
 
 	if queueItem == nil {
@@ -523,9 +499,6 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 }
 
 func (bpq *BadgerPriorityQueue) Nack(id uint64) error {
-	bpq.ackQueueMu.Lock()
-	defer bpq.ackQueueMu.Unlock()
-
 	item := bpq.ackQueue.GetByID("default", id)
 
 	if item == nil {
@@ -557,8 +530,5 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64) error {
 }
 
 func (bpq *BadgerPriorityQueue) Len() int {
-	bpq.mu.Lock()
-	defer bpq.mu.Unlock()
-
 	return int(bpq.pq.Len())
 }

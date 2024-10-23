@@ -1,6 +1,9 @@
 package queue
 
-import "container/heap"
+import (
+	"container/heap"
+	"sync"
+)
 
 type LinkedListNode struct {
 	group string
@@ -65,6 +68,7 @@ type FairPriorityQueue struct {
 	queues      map[string]*LinkedListNode
 	roundRobin  *LinkedList
 	currentNone *LinkedListNode
+	mu          sync.RWMutex
 
 	totalMessages uint64
 }
@@ -80,6 +84,8 @@ func NewFairPriorityQueue() *FairPriorityQueue {
 
 // Enqueue adds a message to the queue
 func (fq *FairPriorityQueue) Enqueue(group string, item *Item) {
+	fq.mu.Lock()
+	defer fq.mu.Unlock()
 
 	// Add the message to the respective goups's queue
 	if _, exists := fq.queues[group]; !exists {
@@ -94,6 +100,8 @@ func (fq *FairPriorityQueue) Enqueue(group string, item *Item) {
 
 // Dequeue removes and returns the next message in a fair way
 func (fq *FairPriorityQueue) Dequeue() *Item {
+	fq.mu.Lock()
+	defer fq.mu.Unlock()
 
 	// No groups in the queue
 	if fq.roundRobin.Len() == 0 {
@@ -127,6 +135,9 @@ func (fq *FairPriorityQueue) Dequeue() *Item {
 }
 
 func (fq *FairPriorityQueue) GetByID(group string, id uint64) *Item {
+	fq.mu.RLock()
+	defer fq.mu.RUnlock()
+
 	if _, exists := fq.queues[group]; !exists {
 		return nil
 	}
@@ -135,6 +146,9 @@ func (fq *FairPriorityQueue) GetByID(group string, id uint64) *Item {
 }
 
 func (fq *FairPriorityQueue) DeleteByID(group string, id uint64) *Item {
+	fq.mu.Lock()
+	defer fq.mu.Unlock()
+
 	if _, exists := fq.queues[group]; !exists {
 		return nil
 	}
@@ -146,6 +160,9 @@ func (fq *FairPriorityQueue) DeleteByID(group string, id uint64) *Item {
 }
 
 func (fq *FairPriorityQueue) UpdatePriority(group string, id uint64, priority int64) {
+	fq.mu.Lock()
+	defer fq.mu.Unlock()
+
 	if _, exists := fq.queues[group]; !exists {
 		return
 	}
@@ -154,5 +171,8 @@ func (fq *FairPriorityQueue) UpdatePriority(group string, id uint64, priority in
 }
 
 func (fq *FairPriorityQueue) Len() uint64 {
+	fq.mu.RLock()
+	defer fq.mu.RUnlock()
+
 	return fq.totalMessages
 }
