@@ -30,3 +30,5 @@ cmd/server/vite.svg
 cmd/server/index.html
 cmd/server/data/
 cmd/server/assets/
+
+prometheus_data
