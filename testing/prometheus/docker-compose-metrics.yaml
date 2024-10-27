@@ -1,0 +1,62 @@
+# deployment of 3 nodes of the server
+version: '3.8'
+
+services:
+  init_prometheus:
+    image: prom/prometheus:v2.40.4
+    user: root
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        chown -R 65534:65534 /prometheus
+    volumes:
+      - ./prometheus_data:/prometheus
+  prometheus:
+    image: prom/prometheus:v2.40.4
+    restart: unless-stopped
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:9.3.0
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+
+  doq-prom:
+    container_name: doq-prom
+    build:
+      context: ../../
+      dockerfile: Dockerfile-dev
+    volumes:
+      - ../../:/go/src/doq
+    ports:
+      - "9000"
+      - "8000:8000"
+      - "10000:10000"
+    command: [
+      "go",
+      "run",
+      "main.go",
+      "--storage.data_dir",
+      "/usr/local/doq/data",
+      "--cluster.node_id",
+      "doq-prom",
+      "--http.port",
+      "8000",
+      "--raft.address",
+      "doq-prom:9000",
+      "--grpc.address",
+      "doq-prom:10000",
+      "--prometheus.enabled",
+      "true"
+    ]
