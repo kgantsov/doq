@@ -472,3 +472,52 @@ func TestBadgerPriorityQueueNack(t *testing.T) {
 	m4, err = pq.Dequeue(true)
 	assert.EqualError(t, err, ErrEmptyQueue.Error())
 }
+
+func BenchmarkBadgerPriorityQueueEnqueue(b *testing.B) {
+	tempFolder, _ := os.MkdirTemp("", "testdir")
+
+	opts := badger.DefaultOptions(tempFolder)
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	pq := NewBadgerPriorityQueue(
+		db,
+		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		nil,
+	)
+	pq.Create("delayed", "test_queue")
+
+	// Pre-fill the queue with items to ensure there’s something to dequeue
+	for i := 0; i < b.N; i++ {
+		pq.Enqueue(uint64(i), "customer1", 10, "content 1")
+	}
+}
+
+func BenchmarkBadgerPriorityQueueDequeue(b *testing.B) {
+	tempFolder, _ := os.MkdirTemp("", "testdir")
+	opts := badger.DefaultOptions(tempFolder)
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	pq := NewBadgerPriorityQueue(
+		db,
+		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		nil,
+	)
+	pq.Create("delayed", "test_queue")
+
+	// Pre-fill the queue with items to ensure there’s something to dequeue
+	for i := 0; i < b.N; i++ {
+		pq.Enqueue(uint64(i), "customer1", 10, "content 1")
+	}
+
+	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing
+
+	for i := 0; i < b.N; i++ {
+		pq.Dequeue(true)
+	}
+}

@@ -70,3 +70,27 @@ func TestFairPriorityQueue1(t *testing.T) {
 	assert.Equal(t, uint64(2), fq.Dequeue().ID)
 	assert.Nil(t, fq.Dequeue())
 }
+
+func BenchmarkFairPriorityQueueEnqueue(b *testing.B) {
+	fq := NewFairPriorityQueue()
+
+	// Pre-fill the queue with items to ensure there’s something to dequeue
+	for i := 0; i < b.N; i++ {
+		fq.Enqueue("customer1", &Item{ID: uint64(i), Priority: 10})
+	}
+}
+
+func BenchmarkFairPriorityQueueDequeue(b *testing.B) {
+	fq := NewFairPriorityQueue()
+
+	// Pre-fill the queue with items to ensure there’s something to dequeue
+	for i := 0; i < b.N; i++ {
+		fq.Enqueue("customer1", &Item{ID: uint64(i), Priority: 10})
+	}
+
+	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing
+
+	for i := 0; i < b.N; i++ {
+		fq.Dequeue()
+	}
+}

@@ -98,3 +98,27 @@ func TestDelayedPriorityQueueDelayed(t *testing.T) {
 	assert.Equal(t, uint64(1), m1.ID)
 	assert.Equal(t, priority, m1.Priority)
 }
+
+func BenchmarkDelayedPriorityQueueEnqueue(b *testing.B) {
+	pq := NewDelayedPriorityQueue(true)
+
+	// Pre-fill the queue with items to ensure there’s something to dequeue
+	for i := 0; i < b.N; i++ {
+		pq.Enqueue("default", &Item{ID: uint64(i), Priority: 10})
+	}
+}
+
+func BenchmarkDelayedPriorityQueueDequeue(b *testing.B) {
+	pq := NewDelayedPriorityQueue(true)
+
+	// Pre-fill the queue with items to ensure there’s something to dequeue
+	for i := 0; i < b.N; i++ {
+		pq.Enqueue("default", &Item{ID: uint64(i), Priority: 10})
+	}
+
+	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing
+
+	for i := 0; i < b.N; i++ {
+		pq.Dequeue()
+	}
+}
