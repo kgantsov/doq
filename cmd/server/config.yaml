@@ -2,7 +2,7 @@ prometheus:
   enabled: true
 
 profiling:
-  enabled: false
+  enabled: true
 
 logging:
   level: "info"

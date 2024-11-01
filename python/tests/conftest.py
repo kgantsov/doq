@@ -1,4 +1,5 @@
 import asyncio
+import os
 
 import httpx
 import pytest
@@ -7,6 +8,8 @@ from faker import Faker
 
 
 fake = Faker()
+
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
 
 @pytest.fixture(scope="session")
@@ -20,7 +23,7 @@ def event_loop():
 
 @pytest.fixture(scope="session")
 async def fixt_http_client():
-    async with httpx.AsyncClient(base_url='http://localhost:8000') as client:
+    async with httpx.AsyncClient(base_url=BASE_URL) as client:
         yield client
 
 
