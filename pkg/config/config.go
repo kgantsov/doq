@@ -10,7 +10,8 @@ import (
 var cfgFile string
 
 type ProfilingConfig struct {
-	Enabled bool `mapstructure:"enabled"`
+	Enabled bool  `mapstructure:"enabled"`
+	Port    int32 `mapstructure:"port"`
 }
 
 type PrometheusConfig struct {
@@ -100,6 +101,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	// Command-line flags
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is config.yaml)")
 	rootCmd.Flags().Bool("profiling.enabled", false, "Enable profiling")
+	rootCmd.Flags().Int32("profiling.port", 6060, "Profiling port")
 	rootCmd.Flags().String("prometheus.enabled", "false", "Enable Prometheus")
 	rootCmd.Flags().String("logging.level", "warning", "Log level")
 	rootCmd.Flags().String("http.port", "8000", "Port to run the HTTP server on")
@@ -116,6 +118,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 
 	// Bind CLI flags to Viper settings
 	viper.BindPFlag("profiling.enabled", rootCmd.Flags().Lookup("profiling.enabled"))
+	viper.BindPFlag("profiling.port", rootCmd.Flags().Lookup("profiling.port"))
 	viper.BindPFlag("prometheus.enabled", rootCmd.Flags().Lookup("prometheus.enabled"))
 	viper.BindPFlag("logging.level", rootCmd.Flags().Lookup("logging.level"))
 	viper.BindPFlag("http.port", rootCmd.Flags().Lookup("http.port"))

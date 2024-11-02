@@ -3,6 +3,7 @@ prometheus:
 
 profiling:
   enabled: true
+  port: 6060
 
 logging:
   level: "info"

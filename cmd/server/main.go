@@ -166,7 +166,7 @@ func Run(cmd *cobra.Command, args []string) {
 		defer profile.Start(profile.MemProfile).Stop()
 
 		go func() {
-			netHttp.ListenAndServe(":8080", nil)
+			netHttp.ListenAndServe(fmt.Sprintf(":%d", config.Profiling.Port), nil)
 		}()
 	}
 
