@@ -74,21 +74,21 @@ const columns = [
     },
   }),
   columnHelper.accessor("enqueue_rps", {
-    cell: (info) => info.getValue(),
+    cell: (info) => info.getValue().toFixed(1),
     header: "enqueue_rps",
     meta: {
       isNumeric: true,
     },
   }),
   columnHelper.accessor("dequeue_rps", {
-    cell: (info) => info.getValue(),
+    cell: (info) => info.getValue().toFixed(1),
     header: "dequeue_rps",
     meta: {
       isNumeric: true,
     },
   }),
   columnHelper.accessor("ack_rps", {
-    cell: (info) => info.getValue(),
+    cell: (info) => info.getValue().toFixed(1),
     header: "ack_rps",
     meta: {
       isNumeric: true,

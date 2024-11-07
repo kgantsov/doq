@@ -141,7 +141,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
             <CardBody>
               <Stat>
                 <StatLabel>Enqueue Rate</StatLabel>
-                <StatNumber>{queue.enqueue_rps}/s</StatNumber>
+                <StatNumber>{queue.enqueue_rps.toFixed(1)}/s</StatNumber>
               </Stat>
             </CardBody>
           </Card>
@@ -150,7 +150,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
             <CardBody>
               <Stat>
                 <StatLabel>Dequeue Rate</StatLabel>
-                <StatNumber>{queue.dequeue_rps}/s</StatNumber>
+                <StatNumber>{queue.dequeue_rps.toFixed(1)}/s</StatNumber>
               </Stat>
             </CardBody>
           </Card>
@@ -159,7 +159,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
             <CardBody>
               <Stat>
                 <StatLabel>Acknowledge Rate</StatLabel>
-                <StatNumber>{queue.ack_rps}/s</StatNumber>
+                <StatNumber>{queue.ack_rps.toFixed(1)}/s</StatNumber>
               </Stat>
             </CardBody>
           </Card>
