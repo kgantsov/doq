@@ -84,7 +84,7 @@ func NewBadgerPriorityQueue(db *badger.DB, cfg *config.Config, metrics *Promethe
 		cfg:               cfg,
 		ackQueue:          NewDelayedPriorityQueue(false),
 		PrometheusMetrics: metrics,
-		stats:             NewQueueStats(10),
+		stats:             NewQueueStats(cfg.Queue.QueueStats.WindowSide),
 	}
 
 	return bpq

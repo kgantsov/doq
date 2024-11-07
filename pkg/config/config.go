@@ -40,9 +40,14 @@ type StorageConfig struct {
 	GCDiscardRatio float64 `mapstructure:"gc_discard_ratio"`
 }
 
+type QueueStatsConfig struct {
+	WindowSide int `mapstructure:"window_side"`
+}
+
 type QueueConfig struct {
-	AcknowledgementCheckInterval int64 `mapstructure:"acknowledgement_check_interval"`
-	AcknowledgementTimeout       int64 `mapstructure:"acknowledgement_timeout"`
+	AcknowledgementCheckInterval int64            `mapstructure:"acknowledgement_check_interval"`
+	AcknowledgementTimeout       int64            `mapstructure:"acknowledgement_timeout"`
+	QueueStats                   QueueStatsConfig `mapstructure:"stats"`
 }
 
 type ClusterConfig struct {
@@ -115,6 +120,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	rootCmd.Flags().String("cluster.join_addr", "", "Set join address, if any")
 	rootCmd.Flags().Int64("queue.acknowledgement_check_interval", 1, "Acknowledgement check interval in seconds")
 	rootCmd.Flags().Int64("queue.acknowledgement_timeout", 60, "Acknowledgement timeout in seconds")
+	rootCmd.Flags().Int("queue.stats.window_side", 10, "Window side for queue stats in seconds")
 
 	// Bind CLI flags to Viper settings
 	viper.BindPFlag("profiling.enabled", rootCmd.Flags().Lookup("profiling.enabled"))
@@ -132,6 +138,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	viper.BindPFlag("cluster.join_addr", rootCmd.Flags().Lookup("cluster.join_addr"))
 	viper.BindPFlag("queue.acknowledgement_check_interval", rootCmd.Flags().Lookup("queue.acknowledgement_check_interval"))
 	viper.BindPFlag("queue.acknowledgement_timeout", rootCmd.Flags().Lookup("queue.acknowledgement_timeout"))
+	viper.BindPFlag("queue.stats.window_side", rootCmd.Flags().Lookup("queue.stats.window_side"))
 
 	return rootCmd
 }
