@@ -14,6 +14,8 @@ storage:
 
 queue:
   acknowledgement_check_interval: 1
+  stats:
+    window_side: 10
 
 cluster:
   node_id: "node-1"
