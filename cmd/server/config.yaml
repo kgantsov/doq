@@ -12,6 +12,9 @@ storage:
   gc_interval: 300
   gc_discard_ratio: 0.7
 
+  compression: "none"
+  block_cache_size: 0
+
 queue:
   acknowledgement_check_interval: 1
   acknowledgement_timeout: 60

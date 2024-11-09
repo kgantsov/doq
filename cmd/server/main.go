@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/profile"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/dgraph-io/badger/v4/options"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -91,10 +90,41 @@ func Run(cmd *cobra.Command, args []string) {
 		filepath.Join(config.Storage.DataDir, config.Cluster.NodeID, "store"),
 	)
 
-	// TODO make it configurable
-	opts = opts.WithCompression(options.None)
-	opts = opts.WithBlockCacheSize(0)
+	if config.Storage.Compression != "" {
+		opts = opts.WithCompression(config.Storage.CompressionType())
+	}
+	if config.Storage.ZSTDCompressionLevel > 0 {
+		opts = opts.WithZSTDCompressionLevel(config.Storage.ZSTDCompressionLevel)
+	}
+	if config.Storage.BlockCacheSize > 0 {
+		opts = opts.WithBlockCacheSize(config.Storage.BlockCacheSize)
+	}
+
+	if config.Storage.IndexCacheSize > 0 {
+		opts = opts.WithIndexCacheSize(config.Storage.IndexCacheSize)
+	}
+	if config.Storage.BaseTableSize > 0 {
+		opts = opts.WithBaseTableSize(config.Storage.BaseTableSize)
+	}
+	if config.Storage.NumCompactors > 0 {
+		opts = opts.WithNumCompactors(config.Storage.NumCompactors)
+	}
+	if config.Storage.NumLevelZeroTables > 0 {
+		opts = opts.WithNumLevelZeroTables(config.Storage.NumLevelZeroTables)
+	}
+	if config.Storage.NumLevelZeroTablesStall > 0 {
+		opts = opts.WithNumLevelZeroTablesStall(config.Storage.NumLevelZeroTablesStall)
+	}
+	if config.Storage.NumMemtables > 0 {
+		opts = opts.WithNumMemtables(config.Storage.NumMemtables)
+	}
+	if config.Storage.ValueLogFileSize > 0 {
+		opts = opts.WithValueLogFileSize(config.Storage.ValueLogFileSize)
+	}
+
 	opts.Logger = &logger.BadgerLogger{}
+
+	log.Debug().Msgf("Badger options: %+v", opts)
 
 	db, err := badger.Open(opts)
 	if err != nil {
