@@ -51,7 +51,10 @@ func TestBadgerPriorityQueue(t *testing.T) {
 
 			pq := NewBadgerPriorityQueue(
 				db,
-				&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+				&config.Config{Queue: config.QueueConfig{
+					AcknowledgementCheckInterval: 1,
+					QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+				}},
 				nil,
 			)
 			pq.Create("delayed", "test_queue")
@@ -89,7 +92,10 @@ func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
 
 	pq := NewBadgerPriorityQueue(
 		db,
-		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
 		nil,
 	)
 	pq.Create("delayed", "test_queue_stored")
@@ -112,7 +118,10 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 
 	pq := NewBadgerPriorityQueue(
 		db,
-		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
 		nil,
 	)
 	err = pq.Create("delayed", "test_queue")
@@ -127,7 +136,10 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 
 	pq1 := NewBadgerPriorityQueue(
 		db,
-		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
 		nil,
 	)
 	err = pq1.Load("test_queue", true)
@@ -169,7 +181,10 @@ func TestBadgerPriorityQueueDelete(t *testing.T) {
 
 	pq := NewBadgerPriorityQueue(
 		db,
-		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
 		nil,
 	)
 	err = pq.Create("delayed", "test_queue")
@@ -195,7 +210,10 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 
 	pq := NewBadgerPriorityQueue(
 		db,
-		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
 		nil,
 	)
 	pq.Create("delayed", "test_queue")
@@ -294,7 +312,10 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 
 	pq := NewBadgerPriorityQueue(
 		db,
-		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
 		nil,
 	)
 	pq.Create("delayed", "test_queue_1")
@@ -329,7 +350,10 @@ func TestBadgerPriorityQueueAck(t *testing.T) {
 
 	pq := NewBadgerPriorityQueue(
 		db,
-		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
 		nil,
 	)
 	pq.Create("delayed", "test_queue")
@@ -397,7 +421,10 @@ func TestBadgerPriorityQueueNack(t *testing.T) {
 
 	pq := NewBadgerPriorityQueue(
 		db,
-		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
 		nil,
 	)
 	pq.Create("delayed", "test_queue")
@@ -484,7 +511,10 @@ func BenchmarkBadgerPriorityQueueEnqueue(b *testing.B) {
 
 	pq := NewBadgerPriorityQueue(
 		db,
-		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
 		nil,
 	)
 	pq.Create("delayed", "test_queue")
@@ -505,7 +535,10 @@ func BenchmarkBadgerPriorityQueueDequeue(b *testing.B) {
 
 	pq := NewBadgerPriorityQueue(
 		db,
-		&config.Config{Queue: config.QueueConfig{AcknowledgementCheckInterval: 1}},
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
 		nil,
 	)
 	pq.Create("delayed", "test_queue")
