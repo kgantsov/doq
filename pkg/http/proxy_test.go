@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,7 +32,7 @@ func TestCreateQueue_Success(t *testing.T) {
 	defer server.Close()
 
 	// Initialize the proxy with the test HTTP client
-	proxy := NewProxy(server.Client())
+	proxy := NewProxy(server.Client(), "")
 
 	// Define input for the CreateQueue method
 	input := &CreateQueueInputBody{
@@ -40,7 +41,7 @@ func TestCreateQueue_Success(t *testing.T) {
 	}
 
 	// Call the CreateQueue method
-	output, err := proxy.CreateQueue(context.Background(), server.URL, input)
+	output, err := proxy.CreateQueue(context.Background(), strings.Replace(server.URL, "http://", "", 1), input)
 
 	// Assert that no error occurred
 	require.NoError(t, err)
@@ -55,7 +56,7 @@ func TestCreateQueue_Success(t *testing.T) {
 }
 
 func TestCreateQueue_HostParsingError(t *testing.T) {
-	proxy := NewProxy(&http.Client{})
+	proxy := NewProxy(&http.Client{}, "")
 
 	input := &CreateQueueInputBody{
 		Name: "user_indexing_queue",
@@ -78,7 +79,7 @@ func TestCreateQueue_HTTPClientError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	proxy := NewProxy(server.Client())
+	proxy := NewProxy(server.Client(), "")
 
 	input := &CreateQueueInputBody{
 		Name: "user_indexing_queue",
@@ -86,7 +87,7 @@ func TestCreateQueue_HTTPClientError(t *testing.T) {
 	}
 
 	// Call the CreateQueue method
-	_, err := proxy.CreateQueue(context.Background(), server.URL, input)
+	_, err := proxy.CreateQueue(context.Background(), strings.Replace(server.URL, "http://", "", 1), input)
 
 	require.Error(t, err)
 
@@ -112,10 +113,10 @@ func TestDeleteQueue_Success(t *testing.T) {
 	defer server.Close()
 
 	// Initialize the proxy with the test HTTP client
-	proxy := NewProxy(server.Client())
+	proxy := NewProxy(server.Client(), "")
 
 	// Call the CreateQueue method
-	output, err := proxy.DeleteQueue(context.Background(), server.URL, "user_indexing_queue")
+	output, err := proxy.DeleteQueue(context.Background(), strings.Replace(server.URL, "http://", "", 1), "user_indexing_queue")
 
 	// Assert that no error occurred
 	require.NoError(t, err)
@@ -149,7 +150,7 @@ func TestEnqueue_Success(t *testing.T) {
 	defer server.Close()
 
 	// Initialize the proxy with the test HTTP client
-	proxy := NewProxy(server.Client())
+	proxy := NewProxy(server.Client(), "")
 
 	// Define input for the CreateQueue method
 	input := &EnqueueInputBody{
@@ -159,7 +160,7 @@ func TestEnqueue_Success(t *testing.T) {
 	}
 
 	// Call the CreateQueue method
-	output, err := proxy.Enqueue(context.Background(), server.URL, "indexing-queue", input)
+	output, err := proxy.Enqueue(context.Background(), strings.Replace(server.URL, "http://", "", 1), "indexing-queue", input)
 
 	// Assert that no error occurred
 	require.NoError(t, err)
@@ -198,10 +199,10 @@ func TestDequeue_Success(t *testing.T) {
 	defer server.Close()
 
 	// Initialize the proxy with the test HTTP client
-	proxy := NewProxy(server.Client())
+	proxy := NewProxy(server.Client(), "")
 
 	// Call the CreateQueue method
-	output, err := proxy.Dequeue(context.Background(), server.URL, "indexing-queue", true)
+	output, err := proxy.Dequeue(context.Background(), strings.Replace(server.URL, "http://", "", 1), "indexing-queue", true)
 
 	// Assert that no error occurred
 	require.NoError(t, err)
@@ -236,10 +237,10 @@ func TestAck_Success(t *testing.T) {
 	defer server.Close()
 
 	// Initialize the proxy with the test HTTP client
-	proxy := NewProxy(server.Client())
+	proxy := NewProxy(server.Client(), "")
 
 	// Call the CreateQueue method
-	output, err := proxy.Ack(context.Background(), server.URL, "indexing-queue", 1122)
+	output, err := proxy.Ack(context.Background(), strings.Replace(server.URL, "http://", "", 1), "indexing-queue", 1122)
 
 	// Assert that no error occurred
 	require.NoError(t, err)
@@ -271,10 +272,10 @@ func TestNack_Success(t *testing.T) {
 	defer server.Close()
 
 	// Initialize the proxy with the test HTTP client
-	proxy := NewProxy(server.Client())
+	proxy := NewProxy(server.Client(), "")
 
 	// Call the CreateQueue method
-	output, err := proxy.Nack(context.Background(), server.URL, "indexing-queue", 1122)
+	output, err := proxy.Nack(context.Background(), strings.Replace(server.URL, "http://", "", 1), "indexing-queue", 1122)
 
 	// Assert that no error occurred
 	require.NoError(t, err)
@@ -307,7 +308,7 @@ func TestUpdatePriority_Success(t *testing.T) {
 	defer server.Close()
 
 	// Initialize the proxy with the test HTTP client
-	proxy := NewProxy(server.Client())
+	proxy := NewProxy(server.Client(), "")
 
 	// Define input for the CreateQueue method
 	input := &UpdatePriorityInputBody{
@@ -316,7 +317,7 @@ func TestUpdatePriority_Success(t *testing.T) {
 
 	// Call the CreateQueue method
 	output, err := proxy.UpdatePriority(
-		context.Background(), server.URL, "indexing-queue", 980, input,
+		context.Background(), strings.Replace(server.URL, "http://", "", 1), "indexing-queue", 980, input,
 	)
 
 	// Assert that no error occurred

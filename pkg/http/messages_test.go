@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
@@ -266,8 +267,8 @@ func TestEnqueueProxy(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node:  newTestNode(server.URL, false),
-		proxy: NewProxy(server.Client()),
+		node:  newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		proxy: NewProxy(server.Client(), ""),
 	}
 	h.RegisterRoutes(api)
 
@@ -319,8 +320,8 @@ func TestDequeueProxy(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node:  newTestNode(server.URL, false),
-		proxy: NewProxy(server.Client()),
+		node:  newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		proxy: NewProxy(server.Client(), ""),
 	}
 	h.RegisterRoutes(api)
 
@@ -365,8 +366,8 @@ func TestAckProxy(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node:  newTestNode(server.URL, false),
-		proxy: NewProxy(server.Client()),
+		node:  newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		proxy: NewProxy(server.Client(), ""),
 	}
 	h.RegisterRoutes(api)
 
@@ -410,8 +411,8 @@ func TestNackProxy(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node:  newTestNode(server.URL, false),
-		proxy: NewProxy(server.Client()),
+		node:  newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		proxy: NewProxy(server.Client(), ""),
 	}
 	h.RegisterRoutes(api)
 
@@ -456,8 +457,8 @@ func TestUpdatePriorityProxy(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node:  newTestNode(server.URL, false),
-		proxy: NewProxy(server.Client()),
+		node:  newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		proxy: NewProxy(server.Client(), ""),
 	}
 	h.RegisterRoutes(api)
 

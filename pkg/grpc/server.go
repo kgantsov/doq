@@ -15,11 +15,39 @@ import (
 
 type QueueServer struct {
 	pb.UnimplementedDOQServer
-	node http.Node
+	node  http.Node
+	proxy *GRPCProxy
+	port  int
 
 	queueConsumers map[string]map[uint64]chan struct{}
 	mu             sync.RWMutex
 	timerPool      sync.Pool
+}
+
+func NewQueueServer(node http.Node, port int) *QueueServer {
+	return &QueueServer{
+		node:           node,
+		port:           port,
+		queueConsumers: make(map[string]map[uint64]chan struct{}),
+		proxy:          NewGRPCProxy(nil, port),
+		timerPool: sync.Pool{
+			New: func() interface{} {
+				// Create a new timer, but immediately stop it so it can be reused.
+				t := time.NewTimer(0)
+				if !t.Stop() {
+					<-t.C // drain the channel if it was already fired
+				}
+				return t
+			},
+		},
+	}
+}
+
+func NewGRPCServer(node http.Node, port int) (*grpc.Server, error) {
+	grpcServer := grpc.NewServer()
+	pb.RegisterDOQServer(grpcServer, NewQueueServer(node, port))
+
+	return grpcServer, nil
 }
 
 // Function to get a timer from the pool
@@ -39,6 +67,10 @@ func (s *QueueServer) putTimer(timer *time.Timer) {
 
 // CreateQueue creates a new queue
 func (s *QueueServer) CreateQueue(ctx context.Context, req *pb.CreateQueueRequest) (*pb.CreateQueueResponse, error) {
+	if !s.node.IsLeader() {
+		return s.proxy.CreateQueue(ctx, s.node.Leader(), req)
+	}
+
 	err := s.node.CreateQueue(req.Type, req.Name)
 	if err != nil {
 		return &pb.CreateQueueResponse{Success: false}, fmt.Errorf("failed to create a queue %s", req.Name)
@@ -49,6 +81,10 @@ func (s *QueueServer) CreateQueue(ctx context.Context, req *pb.CreateQueueReques
 
 // DeleteQueue deletes a queue
 func (s *QueueServer) DeleteQueue(ctx context.Context, req *pb.DeleteQueueRequest) (*pb.DeleteQueueResponse, error) {
+	if !s.node.IsLeader() {
+		return s.proxy.DeleteQueue(ctx, s.node.Leader(), req)
+	}
+
 	err := s.node.DeleteQueue(req.Name)
 
 	if err != nil {
@@ -60,6 +96,10 @@ func (s *QueueServer) DeleteQueue(ctx context.Context, req *pb.DeleteQueueReques
 
 // Enqueue implements client-side streaming for enqueuing messages
 func (s *QueueServer) Enqueue(ctx context.Context, req *pb.EnqueueRequest) (*pb.EnqueueResponse, error) {
+	if !s.node.IsLeader() {
+		return s.proxy.Enqueue(ctx, s.node.Leader(), req)
+	}
+
 	message, err := s.node.Enqueue(req.QueueName, req.Group, req.Priority, req.Content)
 
 	if err != nil {
@@ -111,6 +151,10 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 
 // Dequeue implements server-side streaming for dequeuing messages
 func (s *QueueServer) Dequeue(ctx context.Context, req *pb.DequeueRequest) (*pb.DequeueResponse, error) {
+	if !s.node.IsLeader() {
+		return s.proxy.Dequeue(ctx, s.node.Leader(), req)
+	}
+
 	message, err := s.node.Dequeue(req.QueueName, req.Ack)
 	if err != nil {
 		return &pb.DequeueResponse{Success: false}, fmt.Errorf("failed to dequeue a message")
@@ -230,6 +274,10 @@ func (s *QueueServer) broadcastMessage(queueName string, message struct{}) {
 
 // Ack message handling (this could be used to confirm message processing, depending on your requirements)
 func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckResponse, error) {
+	if !s.node.IsLeader() {
+		return s.proxy.Ack(ctx, s.node.Leader(), req)
+	}
+
 	err := s.node.Ack(req.QueueName, req.Id)
 	if err != nil {
 		return &pb.AckResponse{Success: false}, fmt.Errorf("failed to ack a message")
@@ -240,6 +288,10 @@ func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckRespo
 
 // Nack message handling (this could be used to confirm message processing, depending on your requirements)
 func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackResponse, error) {
+	if !s.node.IsLeader() {
+		return s.proxy.Nack(ctx, s.node.Leader(), req)
+	}
+
 	err := s.node.Nack(req.QueueName, req.Id)
 	if err != nil {
 		return &pb.NackResponse{Success: false}, fmt.Errorf("failed to ack a message")
@@ -250,34 +302,14 @@ func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackRe
 
 // Acknowledge message handling (this could be used to confirm message processing, depending on your requirements)
 func (s *QueueServer) UpdatePriority(ctx context.Context, req *pb.UpdatePriorityRequest) (*pb.UpdatePriorityResponse, error) {
+	if !s.node.IsLeader() {
+		return s.proxy.UpdatePriority(ctx, s.node.Leader(), req)
+	}
+
 	err := s.node.UpdatePriority(req.QueueName, req.Id, req.Priority)
 	if err != nil {
 		return &pb.UpdatePriorityResponse{Success: false}, fmt.Errorf("failed to update prioprity of a message")
 	}
 
 	return &pb.UpdatePriorityResponse{Success: true}, nil
-}
-
-func NewQueueServer(node http.Node) *QueueServer {
-	return &QueueServer{
-		node:           node,
-		queueConsumers: make(map[string]map[uint64]chan struct{}),
-		timerPool: sync.Pool{
-			New: func() interface{} {
-				// Create a new timer, but immediately stop it so it can be reused.
-				t := time.NewTimer(0)
-				if !t.Stop() {
-					<-t.C // drain the channel if it was already fired
-				}
-				return t
-			},
-		},
-	}
-}
-
-func NewGRPCServer(node http.Node) (*grpc.Server, error) {
-	grpcServer := grpc.NewServer()
-	pb.RegisterDOQServer(grpcServer, NewQueueServer(node))
-
-	return grpcServer, nil
 }

@@ -181,7 +181,7 @@ func init() {
 	// grpcServer := grpc.NewServer()
 	// pb.RegisterDOQServer(grpcServer, NewQueueServer(newTestNode()))
 
-	grpcServer, _ := NewGRPCServer(newTestNode())
+	grpcServer, _ := NewGRPCServer(newTestNode(), 0)
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {

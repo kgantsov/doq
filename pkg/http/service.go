@@ -72,7 +72,7 @@ func NewHttpService(config *config.Config, node Node, indexHtmlFS embed.FS, fron
 		Transport: netTransport,
 	}
 
-	proxy := NewProxy(httpClient)
+	proxy := NewProxy(httpClient, config.Http.Port)
 
 	h := &Handler{
 		node:   node,

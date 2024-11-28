@@ -13,12 +13,22 @@ import (
 
 type Proxy struct {
 	client *http.Client
+	port   string
 }
 
-func NewProxy(client *http.Client) *Proxy {
+func NewProxy(client *http.Client, port string) *Proxy {
 	return &Proxy{
 		client: client,
+		port:   port,
 	}
+}
+
+func (p *Proxy) getHost(host string) string {
+	if p.port != "" {
+		return fmt.Sprintf("http://%s:%s", host, p.port)
+	}
+
+	return fmt.Sprintf("http://%s", host)
 }
 
 func (p *Proxy) CreateQueue(
@@ -32,7 +42,7 @@ func (p *Proxy) CreateQueue(
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/API/v1/queues", host),
+		fmt.Sprintf("%s/API/v1/queues", p.getHost(host)),
 		bytes.NewBuffer(bodyB),
 	)
 	if err != nil {
@@ -66,7 +76,7 @@ func (p *Proxy) DeleteQueue(
 ) (*DeleteQueueOutputBody, huma.StatusError) {
 	req, err := http.NewRequest(
 		"DELETE",
-		fmt.Sprintf("%s/API/v1/queues/%s", host, queueName),
+		fmt.Sprintf("%s/API/v1/queues/%s", p.getHost(host), queueName),
 		nil,
 	)
 	if err != nil {
@@ -101,7 +111,7 @@ func (p *Proxy) Enqueue(ctx context.Context, host string, queueName string, body
 
 	req, err := http.NewRequest(
 		"POST",
-		fmt.Sprintf("%s/API/v1/queues/%s/messages", host, queueName),
+		fmt.Sprintf("%s/API/v1/queues/%s/messages", p.getHost(host), queueName),
 		bytes.NewBuffer(bodyB),
 	)
 	if err != nil {
@@ -137,7 +147,7 @@ func (p *Proxy) Dequeue(
 		"GET",
 		fmt.Sprintf(
 			"%s/API/v1/queues/%s/messages?ack=%s",
-			host,
+			p.getHost(host),
 			queueName,
 			fmt.Sprint(ack),
 		),
@@ -176,7 +186,7 @@ func (p *Proxy) Ack(
 	req, err := http.NewRequest(
 		"POST",
 		fmt.Sprintf(
-			"%s/API/v1/queues/%s/messages/%d/ack", host, queueName, id,
+			"%s/API/v1/queues/%s/messages/%d/ack", p.getHost(host), queueName, id,
 		),
 		nil,
 	)
@@ -214,7 +224,7 @@ func (p *Proxy) Nack(
 	req, err := http.NewRequest(
 		"POST",
 		fmt.Sprintf(
-			"%s/API/v1/queues/%s/messages/%d/nack", host, queueName, id,
+			"%s/API/v1/queues/%s/messages/%d/nack", p.getHost(host), queueName, id,
 		),
 		nil,
 	)
@@ -259,7 +269,7 @@ func (p *Proxy) UpdatePriority(
 		"PUT",
 		fmt.Sprintf(
 			"%s/API/v1/queues/%s/messages/%d/priority",
-			host,
+			p.getHost(host),
 			queueName,
 			id,
 		),

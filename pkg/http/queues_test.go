@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
@@ -70,8 +71,8 @@ func TestCreateQueueProxy(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node:  newTestNode(server.URL, false),
-		proxy: NewProxy(server.Client()),
+		node:  newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		proxy: NewProxy(server.Client(), ""),
 	}
 	h.RegisterRoutes(api)
 
@@ -117,8 +118,8 @@ func TestDeleteQueueProxy(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node:  newTestNode(server.URL, false),
-		proxy: NewProxy(server.Client()),
+		node:  newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		proxy: NewProxy(server.Client(), ""),
 	}
 	h.RegisterRoutes(api)
 

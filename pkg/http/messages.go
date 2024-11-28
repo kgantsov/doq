@@ -7,6 +7,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -23,6 +24,7 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 	priority := input.Body.Priority
 	content := input.Body.Content
 
+	log.Info().Msgf("Enqueue request %t: %s %s, %s, %d, %s", h.node.IsLeader(), h.node.Leader(), queueName, group, priority, content)
 	if !h.node.IsLeader() {
 		respBody, err := h.proxy.Enqueue(ctx, h.node.Leader(), queueName, &input.Body)
 		if err != nil {

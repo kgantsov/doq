@@ -151,10 +151,10 @@ func (node *Node) monitorLeadership() {
 	log.Debug().Msgf("Node %s Monitoring leadership for node %s", node.id, node.id)
 
 	for {
-		leader := string(node.Raft.Leader())
-		if leader != node.leader {
-			node.leader = leader
-			log.Printf("Node %s leader is now %s", node.id, leader)
+		leaderAddr, _ := node.Raft.LeaderWithID()
+		if string(leaderAddr) != node.leader {
+			node.leader = string(leaderAddr)
+			log.Info().Msgf("Node %s leader is now %s", node.id, leaderAddr)
 		}
 		time.Sleep(1 * time.Second)
 	}
@@ -169,7 +169,7 @@ func (node *Node) ListenToLeaderChanges() {
 func (n *Node) Leader() string {
 	u, _ := url.ParseRequestURI(fmt.Sprintf("http://%s", n.leader))
 
-	return fmt.Sprintf("http://%s:8000", u.Hostname())
+	return u.Hostname()
 }
 
 func (n *Node) IsLeader() bool {
