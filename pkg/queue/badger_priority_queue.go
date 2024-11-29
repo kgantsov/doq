@@ -444,6 +444,13 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 		group = msg.Group
 		queueItem := bpq.pq.GetByID(group, id)
 
+		if queueItem == nil {
+			queueItem = bpq.ackQueue.GetByID(group, id)
+			if queueItem == nil {
+				return ErrMessageNotFound
+			}
+		}
+
 		msg.UpdatePriority(newPriority)
 
 		data, err := msg.ToBytes()
