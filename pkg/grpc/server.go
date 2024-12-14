@@ -119,6 +119,10 @@ func (s *QueueServer) Enqueue(ctx context.Context, req *pb.EnqueueRequest) (*pb.
 
 // EnqueueStream implements client-side streaming for enqueuing messages
 func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
+	if !s.node.IsLeader() {
+		return s.proxy.EnqueueStream(stream, s.node.Leader())
+	}
+
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -193,6 +197,10 @@ func (s *QueueServer) unregisterConsumer(queueName string, id uint64) {
 
 // DequeueStream implements server-side streaming for dequeuing messages
 func (s *QueueServer) DequeueStream(req *pb.DequeueRequest, stream pb.DOQ_DequeueStreamServer) error {
+	if !s.node.IsLeader() {
+		return s.proxy.DequeueStream(req, stream, s.node.Leader())
+	}
+
 	consumerChan := make(chan struct{})
 	consumerID := s.node.GenerateID()
 	s.registerConsumer(req.QueueName, consumerID, consumerChan)

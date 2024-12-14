@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"io"
 
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/rs/zerolog/log"
@@ -101,4 +102,93 @@ func (p *GRPCProxy) UpdatePriority(ctx context.Context, host string, req *pb.Upd
 		p.initClient(host)
 	}
 	return p.client.UpdatePriority(ctx, req)
+}
+
+func (p *GRPCProxy) EnqueueStream(inStream pb.DOQ_EnqueueStreamServer, host string) error {
+	log.Debug().Msgf("PROXY EnqueueStream to the leader node: %s", host)
+
+	if p.leader != host {
+		p.initClient(host)
+	}
+
+	outStream, err := p.client.EnqueueStream(inStream.Context())
+	if err != nil {
+		log.Error().Msgf("Failed to open stream: %v", err)
+		return err
+	}
+
+	for {
+		req, err := inStream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+
+		if err != nil {
+			return err
+		}
+
+		// Send the message to the queue
+		if err := outStream.Send(req); err != nil {
+			log.Error().Msgf("Failed to send message: %v", err)
+			return err
+		}
+
+		// Receive the acknowledgment from the server
+		message, err := outStream.Recv()
+		if err != nil {
+			log.Error().Msgf("Failed to receive acknowledgment: %v", err)
+			return err
+		}
+
+		err = inStream.Send(&pb.EnqueueResponse{
+			Success:  true,
+			Id:       message.Id,
+			Group:    message.Group,
+			Priority: message.Priority,
+			Content:  message.Content,
+		})
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func (p *GRPCProxy) DequeueStream(req *pb.DequeueRequest, outStream pb.DOQ_DequeueStreamServer, host string) error {
+	log.Debug().Msgf("PROXY DequeueStream to the leader node: %s", host)
+
+	if p.leader != host {
+		p.initClient(host)
+	}
+
+	// Open a stream to receive messages from the queue
+	inStream, err := p.client.DequeueStream(outStream.Context(), &pb.DequeueRequest{
+		QueueName: req.QueueName,
+		Ack:       false,
+	})
+	if err != nil {
+		log.Error().Msgf("Failed to open stream: %v", err)
+		return err
+	}
+
+	// Consume messages from the stream
+	for {
+		select {
+		case <-outStream.Context().Done():
+			log.Info().Msg("Client closed the connection")
+			return nil
+		case <-inStream.Context().Done():
+			return nil
+		default:
+			msg, err := inStream.Recv()
+			if err != nil {
+				log.Error().Msgf("Failed to receive message: %v", err)
+				return err
+			}
+
+			if err := outStream.Send(msg); err != nil {
+				log.Error().Msgf("Failed to send message: %v", err)
+				return err
+			}
+		}
+	}
 }
