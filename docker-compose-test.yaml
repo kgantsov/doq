@@ -28,6 +28,12 @@ services:
       "--grpc.address",
       "doq:10000"
     ]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/readyz"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
   python:
     container_name: python
     build:
@@ -35,3 +41,7 @@ services:
       dockerfile: Dockerfile
     environment:
       - BASE_URL=http://doq:8000
+
+    depends_on:
+      doq:
+        condition: service_healthy
