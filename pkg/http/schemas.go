@@ -48,9 +48,10 @@ type DeleteQueueOutput struct {
 }
 
 type EnqueueInputBody struct {
-	Group    string `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
-	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
-	Content  string `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
+	Group    string            `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
+	Priority int64             `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
+	Content  string            `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
+	Metadata map[string]string `json:"metadata,omitempty" example:"{\"retry\": \"0\"}" doc:"Metadata of the message"`
 }
 
 type EnqueueInput struct {
@@ -59,11 +60,12 @@ type EnqueueInput struct {
 }
 
 type EnqueueOutputBody struct {
-	Status   string `json:"status" example:"ENQUEUED" doc:"Status of the enqueue operation"`
-	ID       string `json:"id" doc:"ID of the message"`
-	Group    string `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
-	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
-	Content  string `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
+	Status   string            `json:"status" example:"ENQUEUED" doc:"Status of the enqueue operation"`
+	ID       string            `json:"id" doc:"ID of the message"`
+	Group    string            `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
+	Priority int64             `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
+	Content  string            `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
+	Metadata map[string]string `json:"metadata,omitempty" example:"{\"retry\": \"0\"}" doc:"Metadata of the message"`
 }
 
 type EnqueueOutput struct {
@@ -77,11 +79,12 @@ type DequeueInput struct {
 }
 
 type DequeueOutputBody struct {
-	Status   string `json:"status" example:"DEQUEUED" doc:"Status of the dequeue operation"`
-	ID       string `json:"id" doc:"ID of the message"`
-	Group    string `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
-	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
-	Content  string `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
+	Status   string            `json:"status" example:"DEQUEUED" doc:"Status of the dequeue operation"`
+	ID       string            `json:"id" doc:"ID of the message"`
+	Group    string            `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
+	Priority int64             `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
+	Content  string            `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
+	Metadata map[string]string `json:"metadata,omitempty" example:"{\"retry\": \"0\"}" doc:"Metadata of the message"`
 }
 
 type DequeueOutput struct {

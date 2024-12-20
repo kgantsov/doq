@@ -23,8 +23,18 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 	group := input.Body.Group
 	priority := input.Body.Priority
 	content := input.Body.Content
+	metadata := input.Body.Metadata
 
-	log.Info().Msgf("Enqueue request %t: %s %s, %s, %d, %s", h.node.IsLeader(), h.node.Leader(), queueName, group, priority, content)
+	log.Info().Msgf(
+		"Enqueue request %t: %s %s, %s, %d, %s %v",
+		h.node.IsLeader(),
+		h.node.Leader(),
+		queueName,
+		group,
+		priority,
+		content,
+		metadata,
+	)
 	if !h.node.IsLeader() {
 		respBody, err := h.proxy.Enqueue(ctx, h.node.Leader(), queueName, &input.Body)
 		if err != nil {
@@ -38,7 +48,7 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 		return res, nil
 	}
 
-	msg, err := h.node.Enqueue(queueName, group, priority, content)
+	msg, err := h.node.Enqueue(queueName, group, priority, content, metadata)
 
 	if err != nil {
 		return nil, huma.Error409Conflict("Failed to enqueue a message", err)
@@ -52,6 +62,7 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 			Group:    group,
 			Priority: priority,
 			Content:  content,
+			Metadata: metadata,
 		},
 	}
 	return res, nil
@@ -86,6 +97,7 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 			Group:    msg.Group,
 			Priority: msg.Priority,
 			Content:  msg.Content,
+			Metadata: msg.Metadata,
 		},
 	}
 	return res, nil

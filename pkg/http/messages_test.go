@@ -33,6 +33,7 @@ func TestEnqueueDequeue(t *testing.T) {
 	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
 		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
 		"priority": 100,
+		"metadata": map[string]string{"retry": "3"},
 	})
 
 	enqueueOutput := &EnqueueOutputBody{}
@@ -44,10 +45,12 @@ func TestEnqueueDequeue(t *testing.T) {
 	assert.Equal(t, "1", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
+	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
 
 	resp = api.Post("/API/v1/queues/my-queue/messages", map[string]any{
 		"content":  "{\"user_id\": 2, \"name\": \"Jane\"}",
 		"priority": 100,
+		"metadata": map[string]string{"retry": "3"},
 	})
 
 	enqueueOutput = &EnqueueOutputBody{}
@@ -59,6 +62,7 @@ func TestEnqueueDequeue(t *testing.T) {
 	assert.Equal(t, "2", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 2, \"name\": \"Jane\"}", enqueueOutput.Content)
+	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
 
 	resp = api.Get("/API/v1/queues/my-queue/messages")
 
@@ -71,6 +75,7 @@ func TestEnqueueDequeue(t *testing.T) {
 	assert.Equal(t, "1", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
+	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
 
 	resp = api.Post(
 		fmt.Sprintf("/API/v1/queues/my-queue/messages/%s/ack", enqueueOutput.ID),
@@ -96,6 +101,7 @@ func TestEnqueueDequeue(t *testing.T) {
 	assert.Equal(t, "2", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 2, \"name\": \"Jane\"}", enqueueOutput.Content)
+	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
 
 	resp = api.Post(
 		fmt.Sprintf("/API/v1/queues/my-queue/messages/%s/ack", enqueueOutput.ID),
@@ -259,6 +265,7 @@ func TestEnqueueProxy(t *testing.T) {
 			Group:    "customer-1",
 			Priority: 100,
 			Content:  "{\"user_id\": 1, \"name\": \"John\"}",
+			Metadata: map[string]string{"retry": "3"},
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -283,6 +290,7 @@ func TestEnqueueProxy(t *testing.T) {
 	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
 		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
 		"priority": 100,
+		"metadata": map[string]string{"retry": "3"},
 	})
 
 	enqueueOutput := &EnqueueOutputBody{}
@@ -294,6 +302,7 @@ func TestEnqueueProxy(t *testing.T) {
 	assert.Equal(t, "123", enqueueOutput.ID)
 	assert.Equal(t, int64(100), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
+	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
 }
 
 func TestDequeueProxy(t *testing.T) {
@@ -312,6 +321,7 @@ func TestDequeueProxy(t *testing.T) {
 			Group:    "customer-1",
 			Priority: 31,
 			Content:  "{\"id\": 114, \"name\": \"test\"}",
+			Metadata: map[string]string{"retry": "1"},
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -344,6 +354,7 @@ func TestDequeueProxy(t *testing.T) {
 	assert.Equal(t, "75", dequeueOutput.ID)
 	assert.Equal(t, int64(31), dequeueOutput.Priority)
 	assert.Equal(t, "{\"id\": 114, \"name\": \"test\"}", dequeueOutput.Content)
+	assert.Equal(t, "1", dequeueOutput.Metadata["retry"])
 }
 
 func TestAckProxy(t *testing.T) {
@@ -584,7 +595,7 @@ func (n *testNode) DeleteQueue(queueName string) error {
 }
 
 func (n *testNode) Enqueue(
-	queueName string, group string, priority int64, content string,
+	queueName string, group string, priority int64, content string, metadata map[string]string,
 ) (*queue.Message, error) {
 	q, ok := n.queues[queueName]
 	if !ok {
@@ -592,7 +603,9 @@ func (n *testNode) Enqueue(
 	}
 
 	n.nextID++
-	message := &queue.Message{ID: n.nextID, Group: group, Priority: priority, Content: content}
+	message := &queue.Message{
+		ID: n.nextID, Group: group, Priority: priority, Content: content, Metadata: metadata,
+	}
 	n.messages[message.ID] = message
 	q.Enqueue(group, &queue.Item{ID: message.ID, Priority: message.Priority})
 	return message, nil

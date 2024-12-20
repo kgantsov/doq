@@ -42,7 +42,13 @@ type Node interface {
 	DeleteQueue(queueName string) error
 	GetQueues() []*queue.QueueInfo
 	GetQueueInfo(queueName string) (*queue.QueueInfo, error)
-	Enqueue(queueName string, group string, priority int64, content string) (*queue.Message, error)
+	Enqueue(
+		queueName string,
+		group string,
+		priority int64,
+		content string,
+		metadata map[string]string,
+	) (*queue.Message, error)
 	Dequeue(QueueName string, ack bool) (*queue.Message, error)
 	Ack(QueueName string, id uint64) error
 	Nack(QueueName string, id uint64) error

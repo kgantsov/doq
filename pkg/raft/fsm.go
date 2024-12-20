@@ -24,11 +24,12 @@ type DeleteQueuePayload struct {
 }
 
 type EnqueuePayload struct {
-	ID        uint64 `json:"id"`
-	QueueName string `json:"queue_name"`
-	Group     string `json:"group"`
-	Priority  int64  `json:"priority"`
-	Content   string `json:"content"`
+	ID        uint64            `json:"id"`
+	QueueName string            `json:"queue_name"`
+	Group     string            `json:"group"`
+	Priority  int64             `json:"priority"`
+	Content   string            `json:"content"`
+	Metadata  map[string]string `json:"metadata"`
 }
 
 type DequeuePayload struct {
@@ -151,6 +152,7 @@ type FSMResponse struct {
 	Group     string
 	Priority  int64
 	Content   string
+	Metadata  map[string]string
 	error     error
 }
 
@@ -222,7 +224,9 @@ func (f *FSM) enqueueApply(payload EnqueuePayload) *FSMResponse {
 		}
 	}
 
-	msg, err := queue.Enqueue(payload.ID, payload.Group, payload.Priority, payload.Content)
+	msg, err := queue.Enqueue(
+		payload.ID, payload.Group, payload.Priority, payload.Content, payload.Metadata,
+	)
 
 	log.Debug().Msgf("Node %s Enqueued a message: %+v %v", f.NodeID, msg, err)
 
@@ -239,6 +243,7 @@ func (f *FSM) enqueueApply(payload EnqueuePayload) *FSMResponse {
 		Group:     msg.Group,
 		Priority:  msg.Priority,
 		Content:   msg.Content,
+		Metadata:  msg.Metadata,
 		error:     nil,
 	}
 }
@@ -275,6 +280,7 @@ func (f *FSM) dequeueApply(payload DequeuePayload) *FSMResponse {
 		Group:     msg.Group,
 		Priority:  msg.Priority,
 		Content:   msg.Content,
+		Metadata:  msg.Metadata,
 		error:     nil,
 	}
 }

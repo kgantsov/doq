@@ -8,7 +8,7 @@ import (
 )
 
 func (n *Node) Enqueue(
-	queueName string, group string, priority int64, content string,
+	queueName string, group string, priority int64, content string, metadata map[string]string,
 ) (*queue.Message, error) {
 	cmd := Command{
 		Op: "enqueue",
@@ -18,6 +18,7 @@ func (n *Node) Enqueue(
 			Group:     group,
 			Priority:  priority,
 			Content:   content,
+			Metadata:  metadata,
 		},
 	}
 	data, err := json.Marshal(cmd)
@@ -40,6 +41,7 @@ func (n *Node) Enqueue(
 		Group:    group,
 		Priority: r.Priority,
 		Content:  r.Content,
+		Metadata: r.Metadata,
 	}, nil
 }
 
@@ -71,6 +73,7 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 		Group:    r.Group,
 		Priority: r.Priority,
 		Content:  r.Content,
+		Metadata: r.Metadata,
 	}, nil
 }
 

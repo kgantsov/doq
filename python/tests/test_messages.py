@@ -16,42 +16,50 @@ async def test_fair_priority_queue(fixt_http_client, fixt_fair_queue):
                 {
                     "content": '{"id": 1, "name": "Clifford Gordon"}',
                     "priority": 10,
-                    "group": "customer-1"
+                    "group": "customer-1",
+                    "metadata": {"retry": "1"}
                 },
                 {
                     "content": '{"id": 2, "name": "Cynthia Thomas"}',
                     "priority": 10,
-                    "group": "customer-1"
+                    "group": "customer-1",
+                    "metadata": {"retry": "2"}
                 },
                 {
                     "content": '{"id": 3, "name": "Joseph Smith"}',
                     "priority": 10,
-                    "group": "customer-1"
+                    "group": "customer-1",
+                    "metadata": {"retry": "2"}
                 },
                 {
                     "content": '{"id": 4, "name": "Lisa Anderson"}',
                     "priority": 10,
-                    "group": "customer-1"
+                    "group": "customer-1",
+                    "metadata": {"retry": "3"}
                 },
                 {
                     "content": '{"id": 5, "name": "Tyler Norris"}',
                     "priority": 10,
-                    "group": "customer-2"
+                    "group": "customer-2",
+                    "metadata": {"retry": "2"}
                 },
                 {
                     "content": '{"id": 6, "name": "Derek Pennington"}',
                     "priority": 10,
-                    "group": "customer-2"
+                    "group": "customer-2",
+                    "metadata": {"retry": "1"}
                 },
                 {
                     "content": '{"id": 7, "name": "Allison Richardson"}',
                     "priority": 10,
-                    "group": "customer-3"
+                    "group": "customer-3",
+                    "metadata": {"retry": "1"}
                 },
                 {
                     "content": '{"id": 8, "name": "Sharon Madden"}',
                     "priority": 10,
-                    "group": "customer-4"
+                    "group": "customer-4",
+                    "metadata": {"retry": "1"}
                 }
             ],
             "expected_message_indexes": [0, 4, 6, 7, 1, 5, 2, 3]
@@ -73,6 +81,7 @@ async def test_fair_priority_queue(fixt_http_client, fixt_fair_queue):
             assert data["status"] == 'ENQUEUED'
             assert data["priority"] == message["priority"]
             assert data["content"] == message["content"]
+            assert data["metadata"] == message["metadata"]
 
         for index in test['expected_message_indexes']:
             response = await fixt_http_client.get(
@@ -85,6 +94,7 @@ async def test_fair_priority_queue(fixt_http_client, fixt_fair_queue):
             assert data["status"] == 'DEQUEUED'
             assert data["content"] == test['messages'][index]["content"]
             assert data["priority"] == test['messages'][index]["priority"]
+            assert data["metadata"] == test['messages'][index]["metadata"]
             assert data["id"] is not None
 
 

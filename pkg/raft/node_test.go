@@ -49,23 +49,24 @@ func TestNodeSingleNode(t *testing.T) {
 
 	assert.True(t, n.IsLeader())
 
-	m1, err := n.Enqueue("test_queue", "default", 10, "message 1")
+	m1, err := n.Enqueue("test_queue", "default", 10, "message 1", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m1)
 	assert.Equal(t, "message 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	m2, err := n.Enqueue("test_queue", "default", 5, "message 2")
+	m2, err := n.Enqueue("test_queue", "default", 5, "message 2", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m2)
 	assert.Equal(t, "message 2", m2.Content)
 	assert.Equal(t, int64(5), m2.Priority)
 
-	m3, err := n.Enqueue("test_queue", "default", 10, "message 3")
+	m3, err := n.Enqueue("test_queue", "default", 10, "message 3", map[string]string{"key": "value"})
 	assert.Nil(t, err)
 	assert.NotNil(t, m3)
 	assert.Equal(t, "message 3", m3.Content)
 	assert.Equal(t, int64(10), m3.Priority)
+	assert.Equal(t, "value", m3.Metadata["key"])
 
 	m, err := n.Dequeue("test_queue", true)
 	assert.Nil(t, err)
@@ -165,7 +166,7 @@ func TestNodeSingleNodeAck(t *testing.T) {
 
 	assert.True(t, n.IsLeader())
 
-	m1, err := n.Enqueue("test_queue", "default", 10, "message 1")
+	m1, err := n.Enqueue("test_queue", "default", 10, "message 1", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m1)
 	assert.Equal(t, "message 1", m1.Content)
@@ -222,19 +223,19 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 
 	assert.True(t, n.IsLeader())
 
-	m1, err := n.Enqueue("test_queue", "default", 10, "message 1")
+	m1, err := n.Enqueue("test_queue", "default", 10, "message 1", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m1)
 	assert.Equal(t, "message 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	m2, err := n.Enqueue("test_queue", "default", 5, "message 2")
+	m2, err := n.Enqueue("test_queue", "default", 5, "message 2", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m2)
 	assert.Equal(t, "message 2", m2.Content)
 	assert.Equal(t, int64(5), m2.Priority)
 
-	m3, err := n.Enqueue("test_queue", "default", 10, "message 3")
+	m3, err := n.Enqueue("test_queue", "default", 10, "message 3", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m3)
 	assert.Equal(t, "message 3", m3.Content)

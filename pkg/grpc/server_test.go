@@ -78,7 +78,7 @@ func (n *testNode) DeleteQueue(queueName string) error {
 }
 
 func (n *testNode) Enqueue(
-	queueName string, group string, priority int64, content string,
+	queueName string, group string, priority int64, content string, metadata map[string]string,
 ) (*queue.Message, error) {
 	q, ok := n.queues[queueName]
 	if !ok {
@@ -86,7 +86,9 @@ func (n *testNode) Enqueue(
 	}
 
 	n.nextID++
-	message := &queue.Message{ID: n.nextID, Group: group, Priority: priority, Content: content}
+	message := &queue.Message{
+		ID: n.nextID, Group: group, Priority: priority, Content: content, Metadata: metadata,
+	}
 	n.messages[message.ID] = message
 	q.Enqueue(group, &queue.Item{ID: message.ID, Priority: message.Priority})
 	return message, nil
@@ -269,7 +271,12 @@ func TestEnqueue(t *testing.T) {
 	}
 
 	// Test case: Enqueue a message successfully
-	reqEnqueue := &pb.EnqueueRequest{QueueName: "test-queue", Content: "test-message", Group: "default", Priority: 10}
+	reqEnqueue := &pb.EnqueueRequest{
+		QueueName: "test-queue",
+		Content:   "test-message",
+		Group:     "default",
+		Priority:  10,
+	}
 	resp, err := client.Enqueue(ctx, reqEnqueue)
 	if err != nil {
 		t.Fatalf("Enqueue failed: %v", err)
@@ -277,7 +284,12 @@ func TestEnqueue(t *testing.T) {
 	assert.True(t, resp.Success, "Enqueue should succeed")
 
 	// // Test case: Try to enqueue a message to a non-existent queue (should fail)
-	reqEnqueue = &pb.EnqueueRequest{QueueName: "non-existent-queue", Content: "test-message", Group: "default", Priority: 10}
+	reqEnqueue = &pb.EnqueueRequest{
+		QueueName: "non-existent-queue",
+		Content:   "test-message",
+		Group:     "default",
+		Priority:  10,
+	}
 	resp, err = client.Enqueue(ctx, reqEnqueue)
 	assert.Equal(t, "rpc error: code = Unknown desc = failed to enqueue a message", err.Error(), "Error message should match")
 	// assert.False(t, resp.Success, "Enqueue should fail for a non-existent queue")
@@ -301,7 +313,13 @@ func TestDequeue(t *testing.T) {
 		t.Fatalf("CreateQueue failed: %v", err)
 	}
 
-	reqEnqueue := &pb.EnqueueRequest{QueueName: "test-queue", Content: "test-message", Group: "default", Priority: 10}
+	reqEnqueue := &pb.EnqueueRequest{
+		QueueName: "test-queue",
+		Content:   "test-message",
+		Group:     "default",
+		Priority:  10,
+		Metadata:  map[string]string{"retry": "3"},
+	}
 	_, err = client.Enqueue(ctx, reqEnqueue)
 	if err != nil {
 		t.Fatalf("Enqueue failed: %v", err)
@@ -314,6 +332,7 @@ func TestDequeue(t *testing.T) {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
 	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
+	assert.Equal(t, "3", resp.Metadata["retry"], "Metadata should match the enqueued message")
 }
 
 func TestUpdatePriority(t *testing.T) {
@@ -479,6 +498,7 @@ func TestEnqueuetDequeueStream(t *testing.T) {
 			Content:   "test-message-1",
 			Group:     "default",
 			Priority:  10,
+			Metadata:  map[string]string{"retry": "3"},
 		},
 	)
 	_, err = enqueueStream.Recv()
@@ -490,6 +510,7 @@ func TestEnqueuetDequeueStream(t *testing.T) {
 			Content:   "test-message-2",
 			Group:     "default",
 			Priority:  10,
+			Metadata:  map[string]string{"retry": "1"},
 		},
 	)
 	_, err = enqueueStream.Recv()

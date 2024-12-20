@@ -44,6 +44,7 @@ type Message struct {
 	ID       uint64
 	Priority int64
 	Content  string
+	Metadata map[string]string
 }
 
 func (m *Message) ToBytes() ([]byte, error) {
@@ -303,7 +304,13 @@ func (bpq *BadgerPriorityQueue) Load(queueName string, loadMessages bool) error 
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) Enqueue(id uint64, group string, priority int64, content string) (*Message, error) {
+func (bpq *BadgerPriorityQueue) Enqueue(
+	id uint64,
+	group string,
+	priority int64,
+	content string,
+	metadata map[string]string,
+) (*Message, error) {
 	if bpq.config.Type != "fair" {
 		group = "default"
 	}
@@ -313,6 +320,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(id uint64, group string, priority int64,
 		Group:    group,
 		Priority: priority,
 		Content:  content,
+		Metadata: metadata,
 	}
 
 	queueItem := &Item{

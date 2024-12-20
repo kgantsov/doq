@@ -18,6 +18,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 		messages []struct {
 			Priority int64
 			Content  string
+			Metadata map[string]string
 		}
 		expected []string
 	}{
@@ -26,16 +27,17 @@ func TestBadgerPriorityQueue(t *testing.T) {
 			messages: []struct {
 				Priority int64
 				Content  string
+				Metadata map[string]string
 			}{
-				{Priority: 10, Content: "test 1"},
-				{Priority: 50, Content: "test 2"},
-				{Priority: 20, Content: "test 3"},
-				{Priority: 70, Content: "test 4"},
-				{Priority: 100, Content: "test 5"},
-				{Priority: 7, Content: "test 6"},
-				{Priority: 4, Content: "test 7"},
-				{Priority: 2, Content: "test 8"},
-				{Priority: 5, Content: "test 9"},
+				{Priority: 10, Content: "test 1", Metadata: map[string]string{"retry": "0"}},
+				{Priority: 50, Content: "test 2", Metadata: map[string]string{"retry": "0"}},
+				{Priority: 20, Content: "test 3", Metadata: map[string]string{"retry": "0"}},
+				{Priority: 70, Content: "test 4", Metadata: map[string]string{"retry": "0"}},
+				{Priority: 100, Content: "test 5", Metadata: map[string]string{"retry": "0"}},
+				{Priority: 7, Content: "test 6", Metadata: map[string]string{"retry": "0"}},
+				{Priority: 4, Content: "test 7", Metadata: map[string]string{"retry": "0"}},
+				{Priority: 2, Content: "test 8", Metadata: map[string]string{"retry": "0"}},
+				{Priority: 5, Content: "test 9", Metadata: map[string]string{"retry": "0"}},
 			},
 			expected: []string{"test 8", "test 7", "test 9", "test 6", "test 1", "test 3", "test 2", "test 4", "test 5"},
 		},
@@ -60,7 +62,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 			pq.Create("delayed", "test_queue")
 
 			for i, m := range tt.messages {
-				pq.Enqueue(uint64(i+1), "default", m.Priority, m.Content)
+				pq.Enqueue(uint64(i+1), "default", m.Priority, m.Content, m.Metadata)
 				assert.Equal(t, i+1, pq.Len())
 			}
 			assert.Equal(t, len(tt.messages), pq.Len())
@@ -129,10 +131,10 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
 
-	pq.Enqueue(1, "default", 10, "test 1")
-	pq.Enqueue(2, "default", 5, "test 2")
-	pq.Enqueue(3, "default", 8, "test 3")
-	pq.Enqueue(4, "default", 1, "test 4")
+	pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "0"})
+	pq.Enqueue(2, "default", 5, "test 2", map[string]string{"retry": "0"})
+	pq.Enqueue(3, "default", 8, "test 3", map[string]string{"retry": "0"})
+	pq.Enqueue(4, "default", 1, "test 4", map[string]string{"retry": "0"})
 
 	pq1 := NewBadgerPriorityQueue(
 		db,
@@ -192,10 +194,10 @@ func TestBadgerPriorityQueueDelete(t *testing.T) {
 	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
 
-	pq.Enqueue(1, "default", 10, "test 1")
-	pq.Enqueue(2, "default", 5, "test 2")
-	pq.Enqueue(3, "default", 8, "test 3")
-	pq.Enqueue(4, "default", 1, "test 4")
+	pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "0"})
+	pq.Enqueue(2, "default", 5, "test 2", map[string]string{"retry": "0"})
+	pq.Enqueue(3, "default", 8, "test 3", map[string]string{"retry": "0"})
+	pq.Enqueue(4, "default", 1, "test 4", map[string]string{"retry": "0"})
 
 	err = pq.Delete()
 	assert.Nil(t, err)
@@ -218,31 +220,34 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	)
 	pq.Create("delayed", "test_queue")
 
-	m1, err := pq.Enqueue(1, "default", 10, "test 1")
+	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "1"})
 	assert.Nil(t, err)
 
 	m1, err = pq.GetByID(m1.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
+	assert.Equal(t, "1", m1.Metadata["retry"])
 
-	m2, err := pq.Enqueue(2, "default", 20, "test 2")
+	m2, err := pq.Enqueue(2, "default", 20, "test 2", map[string]string{"retry": "2"})
 	assert.Nil(t, err)
 
 	m2, err = pq.GetByID(m2.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m2.Content)
 	assert.Equal(t, int64(20), m2.Priority)
+	assert.Equal(t, "2", m2.Metadata["retry"])
 
-	m3, err := pq.Enqueue(3, "default", 30, "test 3")
+	m3, err := pq.Enqueue(3, "default", 30, "test 3", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 
 	m3, err = pq.GetByID(m3.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
 	assert.Equal(t, int64(30), m3.Priority)
+	assert.Equal(t, "0", m3.Metadata["retry"])
 
-	m4, err := pq.Enqueue(4, "default", 40, "test 4")
+	m4, err := pq.Enqueue(4, "default", 40, "test 4", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 
 	m4, err = pq.GetByID(m4.ID)
@@ -250,7 +255,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(40), m4.Priority)
 
-	m5, err := pq.Enqueue(5, "default", 50, "test 5")
+	m5, err := pq.Enqueue(5, "default", 50, "test 5", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 
 	m5, err = pq.GetByID(m5.ID)
@@ -321,7 +326,7 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 	pq.Create("delayed", "test_queue_1")
 
 	priority := time.Now().UTC().Add(1 * time.Second).Unix()
-	m1, err := pq.Enqueue(1, "default", priority, "delayed message 1")
+	m1, err := pq.Enqueue(1, "default", priority, "delayed message 1", map[string]string{})
 	assert.Nil(t, err)
 
 	m1, err = pq.GetByID(m1.ID)
@@ -358,22 +363,22 @@ func TestBadgerPriorityQueueAck(t *testing.T) {
 	)
 	pq.Create("delayed", "test_queue")
 
-	m1, err := pq.Enqueue(1, "default", 10, "test 1")
+	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	m2, err := pq.Enqueue(2, "default", 20, "test 2")
+	m2, err := pq.Enqueue(2, "default", 20, "test 2", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m2.Content)
 	assert.Equal(t, int64(20), m2.Priority)
 
-	m3, err := pq.Enqueue(3, "default", 30, "test 3")
+	m3, err := pq.Enqueue(3, "default", 30, "test 3", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
 	assert.Equal(t, int64(30), m3.Priority)
 
-	m4, err := pq.Enqueue(4, "default", 40, "test 4")
+	m4, err := pq.Enqueue(4, "default", 40, "test 4", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(40), m4.Priority)
@@ -429,22 +434,22 @@ func TestBadgerPriorityQueueNack(t *testing.T) {
 	)
 	pq.Create("delayed", "test_queue")
 
-	m1, err := pq.Enqueue(1, "default", 10, "test 1")
+	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	m2, err := pq.Enqueue(2, "default", 20, "test 2")
+	m2, err := pq.Enqueue(2, "default", 20, "test 2", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m2.Content)
 	assert.Equal(t, int64(20), m2.Priority)
 
-	m3, err := pq.Enqueue(3, "default", 30, "test 3")
+	m3, err := pq.Enqueue(3, "default", 30, "test 3", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
 	assert.Equal(t, int64(30), m3.Priority)
 
-	m4, err := pq.Enqueue(4, "default", 40, "test 4")
+	m4, err := pq.Enqueue(4, "default", 40, "test 4", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(40), m4.Priority)
@@ -521,7 +526,7 @@ func BenchmarkBadgerPriorityQueueEnqueue(b *testing.B) {
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
-		pq.Enqueue(uint64(i), "customer1", 10, "content 1")
+		pq.Enqueue(uint64(i), "customer1", 10, "content 1", nil)
 	}
 }
 
@@ -545,7 +550,7 @@ func BenchmarkBadgerPriorityQueueDequeue(b *testing.B) {
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
-		pq.Enqueue(uint64(i), "customer1", 10, "content 1")
+		pq.Enqueue(uint64(i), "customer1", 10, "content 1", nil)
 	}
 
 	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing

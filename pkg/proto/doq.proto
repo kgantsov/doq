@@ -41,6 +41,7 @@ message EnqueueRequest {
     string group = 2;
     int64 priority = 3;
     string content = 4;
+    map<string, string> metadata = 5;
 }
 
 message EnqueueResponse {
@@ -50,6 +51,7 @@ message EnqueueResponse {
     string group = 4;
     int64 priority = 5;
     string content = 6;
+    map<string, string> metadata = 7;
 }
 
 message DequeueRequest {
@@ -64,6 +66,7 @@ message DequeueResponse {
     string group = 4;
     int64 priority = 5;
     string content = 6;
+    map<string, string> metadata = 7;
 }
 
 message AckRequest {

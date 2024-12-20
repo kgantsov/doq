@@ -100,7 +100,9 @@ func (s *QueueServer) Enqueue(ctx context.Context, req *pb.EnqueueRequest) (*pb.
 		return s.proxy.Enqueue(ctx, s.node.Leader(), req)
 	}
 
-	message, err := s.node.Enqueue(req.QueueName, req.Group, req.Priority, req.Content)
+	message, err := s.node.Enqueue(
+		req.QueueName, req.Group, req.Priority, req.Content, req.Metadata,
+	)
 
 	if err != nil {
 		return &pb.EnqueueResponse{Success: false}, fmt.Errorf("failed to enqueue a message")
@@ -114,6 +116,7 @@ func (s *QueueServer) Enqueue(ctx context.Context, req *pb.EnqueueRequest) (*pb.
 		Group:    message.Group,
 		Priority: message.Priority,
 		Content:  message.Content,
+		Metadata: message.Metadata,
 	}, nil
 }
 
@@ -133,7 +136,9 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 			return err
 		}
 
-		message, err := s.node.Enqueue(req.QueueName, req.Group, req.Priority, req.Content)
+		message, err := s.node.Enqueue(
+			req.QueueName, req.Group, req.Priority, req.Content, req.Metadata,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to enqueue a message")
 		}
@@ -146,6 +151,7 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 			Group:    message.Group,
 			Priority: message.Priority,
 			Content:  message.Content,
+			Metadata: message.Metadata,
 		})
 		if err != nil {
 			return err
@@ -170,6 +176,7 @@ func (s *QueueServer) Dequeue(ctx context.Context, req *pb.DequeueRequest) (*pb.
 		Group:    message.Group,
 		Priority: message.Priority,
 		Content:  message.Content,
+		Metadata: message.Metadata,
 	}, nil
 }
 
@@ -227,6 +234,7 @@ func (s *QueueServer) DequeueStream(req *pb.DequeueRequest, stream pb.DOQ_Dequeu
 					Group:    message.Group,
 					Priority: message.Priority,
 					Content:  message.Content,
+					Metadata: message.Metadata,
 				},
 			)
 
@@ -247,6 +255,7 @@ func (s *QueueServer) DequeueStream(req *pb.DequeueRequest, stream pb.DOQ_Dequeu
 						Group:    message.Group,
 						Priority: message.Priority,
 						Content:  message.Content,
+						Metadata: message.Metadata,
 					},
 				)
 

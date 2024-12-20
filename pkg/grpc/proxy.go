@@ -146,6 +146,7 @@ func (p *GRPCProxy) EnqueueStream(inStream pb.DOQ_EnqueueStreamServer, host stri
 			Group:    message.Group,
 			Priority: message.Priority,
 			Content:  message.Content,
+			Metadata: message.Metadata,
 		})
 		if err != nil {
 			return err
