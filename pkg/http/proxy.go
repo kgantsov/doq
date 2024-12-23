@@ -220,13 +220,19 @@ func (p *Proxy) Nack(
 	host string,
 	queueName string,
 	id uint64,
+	body *NackInputBody,
 ) (*NackOutputBody, huma.StatusError) {
+	bodyB, err := json.Marshal(body)
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to marshal body", err)
+	}
+
 	req, err := http.NewRequest(
 		"POST",
 		fmt.Sprintf(
 			"%s/API/v1/queues/%s/messages/%d/nack", p.getHost(host), queueName, id,
 		),
-		nil,
+		bytes.NewBuffer(bodyB),
 	)
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to create a request", err)

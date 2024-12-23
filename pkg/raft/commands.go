@@ -103,12 +103,13 @@ func (n *Node) Ack(QueueName string, id uint64) error {
 	return nil
 }
 
-func (n *Node) Nack(QueueName string, id uint64) error {
+func (n *Node) Nack(QueueName string, id uint64, metadata map[string]string) error {
 	cmd := Command{
 		Op: "nack",
 		Payload: NackPayload{
 			QueueName: QueueName,
 			ID:        id,
+			Metadata:  metadata,
 		},
 	}
 	data, err := json.Marshal(cmd)

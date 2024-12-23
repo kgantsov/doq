@@ -107,14 +107,20 @@ type AckOutput struct {
 	Body   AckOutputBody
 }
 
+type NackInputBody struct {
+	Metadata map[string]string `json:"metadata,omitempty" example:"{\"retry\": \"0\"}" doc:"Metadata of the message"`
+}
+
 type NackInput struct {
 	QueueName string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
 	ID        uint64 `path:"id" example:"123" doc:"ID of the message"`
+	Body      NackInputBody
 }
 
 type NackOutputBody struct {
-	Status string `json:"status" example:"UNACKNOWLEDGED" doc:"Status of the dequeue operation"`
-	ID     string `json:"id" doc:"ID of the message"`
+	Status   string            `json:"status" example:"UNACKNOWLEDGED" doc:"Status of the dequeue operation"`
+	ID       string            `json:"id" doc:"ID of the message"`
+	Metadata map[string]string `json:"metadata,omitempty" example:"{\"retry\": \"0\"}" doc:"Metadata of the message"`
 }
 
 type NackOutput struct {

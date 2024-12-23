@@ -81,6 +81,7 @@ message AckResponse {
 message NackRequest {
     string queueName = 1;
     uint64 id = 2;
+    map<string, string> metadata = 3;
 }
 
 message NackResponse {

@@ -43,8 +43,9 @@ type AckPayload struct {
 }
 
 type NackPayload struct {
-	QueueName string `json:"queue_name"`
-	ID        uint64 `json:"id"`
+	QueueName string            `json:"queue_name"`
+	ID        uint64            `json:"id"`
+	Metadata  map[string]string `json:"metadata"`
 }
 
 type UpdatePriorityPayload struct {
@@ -332,7 +333,7 @@ func (f *FSM) nackApply(payload NackPayload) *FSMResponse {
 		}
 	}
 
-	err = q.Nack(payload.ID)
+	err = q.Nack(payload.ID, payload.Metadata)
 
 	log.Debug().Msgf("Node %s Nacked a message: %v", f.NodeID, err)
 
@@ -357,6 +358,7 @@ func (f *FSM) nackApply(payload NackPayload) *FSMResponse {
 	return &FSMResponse{
 		QueueName: payload.QueueName,
 		ID:        payload.ID,
+		Metadata:  payload.Metadata,
 		error:     nil,
 	}
 }

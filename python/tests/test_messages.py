@@ -495,6 +495,8 @@ async def test_message_nack(fixt_http_client, fixt_regular_queue_manual_nack):
             assert data["priority"] == message["priority"]
             assert data["content"] == message["content"]
 
+        message_ids = []
+
         for index in test['expected_message_indexes']:
             response = await fixt_http_client.get(
                 url=f"/API/v1/queues/{queue_name}/messages?ack=false"
@@ -504,14 +506,17 @@ async def test_message_nack(fixt_http_client, fixt_regular_queue_manual_nack):
             data = response.json()
 
             assert data["status"] == 'DEQUEUED'
-            assert data["content"] == test['messages'][0]["content"]
-            assert data["priority"] == test['messages'][0]["priority"]
+            assert data["content"] == test['messages'][index]["content"]
+            assert data["priority"] == test['messages'][index]["priority"]
             assert data["id"] is not None
 
             message_id = data["id"]
+            message_ids.append(message_id)
 
+        for message_id in message_ids:
             response = await fixt_http_client.post(
-                url=f"/API/v1/queues/{queue_name}/messages/{message_id}/nack"
+                url=f"/API/v1/queues/{queue_name}/messages/{message_id}/nack",
+                json={"metadata": {"retry": "1"}}
             )
             assert response.status_code == 200, response.text
 
@@ -528,4 +533,5 @@ async def test_message_nack(fixt_http_client, fixt_regular_queue_manual_nack):
             assert data["status"] == 'DEQUEUED'
             assert data["content"] == test['messages'][index]["content"]
             assert data["priority"] == test['messages'][index]["priority"]
+            assert data["metadata"] == {"retry": "1"}
             assert data["id"] is not None

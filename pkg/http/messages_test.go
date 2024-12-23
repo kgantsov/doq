@@ -162,7 +162,9 @@ func TestNack(t *testing.T) {
 
 	resp = api.Post(
 		fmt.Sprintf("/API/v1/queues/my-queue/messages/%s/nack", dequeueOutput.ID),
-		map[string]any{},
+		map[string]any{
+			"metadata": map[string]string{"retry": "3"},
+		},
 	)
 
 	nackOutput := &NackOutputBody{}
@@ -172,6 +174,7 @@ func TestNack(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "UNACKNOWLEDGED", nackOutput.Status)
 	assert.Equal(t, "1", nackOutput.ID)
+	assert.Equal(t, "3", nackOutput.Metadata["retry"])
 
 	resp = api.Get("/API/v1/queues/my-queue/messages?ack=true")
 
@@ -184,6 +187,7 @@ func TestNack(t *testing.T) {
 	assert.Equal(t, "1", dequeueOutput.ID)
 	assert.Equal(t, int64(100), dequeueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
+	assert.Equal(t, "3", dequeueOutput.Metadata["retry"])
 }
 
 func TestUpdatePriority(t *testing.T) {
@@ -648,7 +652,7 @@ func (n *testNode) Ack(QueueName string, id uint64) error {
 	return nil
 }
 
-func (n *testNode) Nack(QueueName string, id uint64) error {
+func (n *testNode) Nack(QueueName string, id uint64, metadata map[string]string) error {
 	q, ok := n.queues[QueueName]
 	if !ok {
 		return queue.ErrQueueNotFound
@@ -658,6 +662,9 @@ func (n *testNode) Nack(QueueName string, id uint64) error {
 	if !ok {
 		return queue.ErrMessageNotFound
 	}
+
+	message.Metadata = metadata
+	n.messages[message.ID] = message
 
 	q.Enqueue(message.Group, &queue.Item{ID: message.ID, Priority: message.Priority})
 

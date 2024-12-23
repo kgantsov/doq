@@ -137,9 +137,10 @@ func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) 
 
 func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, error) {
 	queueName := input.QueueName
+	metadata := input.Body.Metadata
 
 	if !h.node.IsLeader() {
-		respBody, err := h.proxy.Nack(ctx, h.node.Leader(), queueName, input.ID)
+		respBody, err := h.proxy.Nack(ctx, h.node.Leader(), queueName, input.ID, &input.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -150,7 +151,7 @@ func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, erro
 		return res, nil
 	}
 
-	err := h.node.Nack(queueName, input.ID)
+	err := h.node.Nack(queueName, input.ID, metadata)
 
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to nack a message from a queue", err)
@@ -159,8 +160,9 @@ func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, erro
 	res := &NackOutput{
 		Status: http.StatusOK,
 		Body: NackOutputBody{
-			Status: "UNACKNOWLEDGED",
-			ID:     strconv.Itoa(int(input.ID)),
+			Status:   "UNACKNOWLEDGED",
+			ID:       strconv.Itoa(int(input.ID)),
+			Metadata: metadata,
 		},
 	}
 

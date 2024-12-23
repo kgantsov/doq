@@ -438,21 +438,25 @@ func TestBadgerPriorityQueueNack(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
+	assert.Equal(t, map[string]string{"retry": "0"}, m1.Metadata)
 
 	m2, err := pq.Enqueue(2, "default", 20, "test 2", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m2.Content)
 	assert.Equal(t, int64(20), m2.Priority)
+	assert.Equal(t, map[string]string{"retry": "0"}, m2.Metadata)
 
-	m3, err := pq.Enqueue(3, "default", 30, "test 3", map[string]string{"retry": "0"})
+	m3, err := pq.Enqueue(3, "default", 30, "test 3", nil)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
 	assert.Equal(t, int64(30), m3.Priority)
+	assert.Equal(t, map[string]string(nil), m3.Metadata)
 
-	m4, err := pq.Enqueue(4, "default", 40, "test 4", map[string]string{"retry": "0"})
+	m4, err := pq.Enqueue(4, "default", 40, "test 4", nil)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(40), m4.Priority)
+	assert.Equal(t, map[string]string(nil), m4.Metadata)
 
 	m1, err = pq.Dequeue(false)
 	assert.Nil(t, err)
@@ -470,36 +474,40 @@ func TestBadgerPriorityQueueNack(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 
-	err = pq.Nack(m1.ID)
+	err = pq.Nack(m1.ID, map[string]string{"retry": "1"})
 	assert.Nil(t, err)
 
-	err = pq.Nack(m2.ID)
+	err = pq.Nack(m2.ID, map[string]string{"retry": "2"})
 	assert.Nil(t, err)
 
-	err = pq.Nack(m3.ID)
+	err = pq.Nack(m3.ID, nil)
 	assert.Nil(t, err)
 
-	err = pq.Nack(m4.ID)
+	err = pq.Nack(m4.ID, nil)
 	assert.Nil(t, err)
 
-	err = pq.Nack(100)
+	err = pq.Nack(100, nil)
 	assert.EqualError(t, err, ErrMessageNotFound.Error())
 
 	m1, err = pq.Dequeue(true)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
+	assert.Equal(t, map[string]string{"retry": "1"}, m1.Metadata)
 
 	m2, err = pq.Dequeue(true)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m2.Content)
+	assert.Equal(t, map[string]string{"retry": "2"}, m2.Metadata)
 
 	m3, err = pq.Dequeue(true)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
+	assert.Equal(t, map[string]string(nil), m3.Metadata)
 
 	m4, err = pq.Dequeue(true)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
+	assert.Equal(t, map[string]string(nil), m4.Metadata)
 
 	m4, err = pq.Dequeue(true)
 	assert.EqualError(t, err, ErrEmptyQueue.Error())

@@ -131,7 +131,7 @@ func (n *testNode) Ack(QueueName string, id uint64) error {
 	return nil
 }
 
-func (n *testNode) Nack(QueueName string, id uint64) error {
+func (n *testNode) Nack(QueueName string, id uint64, metadata map[string]string) error {
 	q, ok := n.queues[QueueName]
 	if !ok {
 		return queue.ErrQueueNotFound
@@ -141,6 +141,9 @@ func (n *testNode) Nack(QueueName string, id uint64) error {
 	if !ok {
 		return queue.ErrMessageNotFound
 	}
+
+	message.Metadata = metadata
+	n.messages[message.ID] = message
 
 	q.Enqueue(message.Group, &queue.Item{ID: message.ID, Priority: message.Priority})
 

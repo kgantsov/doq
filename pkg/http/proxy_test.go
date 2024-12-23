@@ -274,8 +274,19 @@ func TestNack_Success(t *testing.T) {
 	// Initialize the proxy with the test HTTP client
 	proxy := NewProxy(server.Client(), "")
 
+	// Define input for the CreateQueue method
+	input := &NackInputBody{
+		Metadata: map[string]string{},
+	}
+
 	// Call the CreateQueue method
-	output, err := proxy.Nack(context.Background(), strings.Replace(server.URL, "http://", "", 1), "indexing-queue", 1122)
+	output, err := proxy.Nack(
+		context.Background(),
+		strings.Replace(server.URL, "http://", "", 1),
+		"indexing-queue",
+		1122,
+		input,
+	)
 
 	// Assert that no error occurred
 	require.NoError(t, err)

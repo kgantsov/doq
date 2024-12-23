@@ -405,6 +405,7 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 
 		bpq.updatePrometheusQueueSizes()
 	}
+
 	return msg, nil
 }
 
@@ -513,7 +514,7 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) Nack(id uint64) error {
+func (bpq *BadgerPriorityQueue) Nack(id uint64, metadata map[string]string) error {
 	item := bpq.ackQueue.GetByID("default", id)
 
 	if item == nil {
@@ -534,6 +535,15 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64) error {
 	bpq.pq.Enqueue(message.Group, queueItem)
 	bpq.ackQueue.DeleteByID("default", item.ID)
 
+	if metadata != nil {
+		err = bpq.updateMessage(item.ID, 0, "", metadata)
+
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to update message: %d", item.ID)
+			return err
+		}
+	}
+
 	bpq.stats.IncrementNack()
 	if bpq.cfg.Prometheus.Enabled {
 		bpq.PrometheusMetrics.nackTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
@@ -542,6 +552,48 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64) error {
 	}
 
 	return nil
+}
+
+func (bpq *BadgerPriorityQueue) updateMessage(
+	id uint64,
+	priority int64,
+	content string,
+	metadata map[string]string,
+) error {
+	return bpq.db.Update(func(txn *badger.Txn) error {
+		item, err := txn.Get(bpq.GetMessagesKey(id))
+		if err != nil {
+			return err
+		}
+
+		var msg *Message
+		err = item.Value(func(val []byte) error {
+			msg, err = MessageFromBytes(val)
+			return err
+		})
+		if err != nil {
+			return err
+		}
+
+		if priority != 0 {
+			msg.Priority = priority
+		}
+
+		if content != "" {
+			msg.Content = content
+		}
+
+		if metadata != nil {
+			msg.Metadata = metadata
+		}
+
+		data, err := msg.ToBytes()
+		if err != nil {
+			return err
+		}
+
+		return txn.Set(bpq.GetMessagesKey(id), data)
+	})
 }
 
 func (bpq *BadgerPriorityQueue) Len() int {
