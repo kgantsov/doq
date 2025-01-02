@@ -85,7 +85,7 @@ func TestDelayedPriorityQueueDelayed(t *testing.T) {
 	priority := time.Now().UTC().Add(1 * time.Second).Unix()
 	pq.Enqueue("test", &Item{ID: 1, Priority: priority})
 
-	m1 := pq.GetByID("test", 1)
+	m1 := pq.Get("test", 1)
 	assert.Equal(t, uint64(1), m1.ID)
 	assert.Equal(t, priority, m1.Priority)
 

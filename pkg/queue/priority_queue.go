@@ -79,7 +79,7 @@ func (pq *PriorityQueue) Pop() any {
 	return item
 }
 
-func (pq *PriorityQueue) GetByID(id uint64) *Item {
+func (pq *PriorityQueue) Get(id uint64) *Item {
 	index, ok := pq.idToIndex[id]
 	if !ok {
 		return nil

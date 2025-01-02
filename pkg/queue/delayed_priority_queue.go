@@ -43,11 +43,11 @@ func (pq *DelayedPriorityQueue) Dequeue() *Item {
 	return heap.Pop(pq.queue).(*Item)
 }
 
-func (pq *DelayedPriorityQueue) GetByID(group string, id uint64) *Item {
+func (pq *DelayedPriorityQueue) Get(group string, id uint64) *Item {
 	pq.mu.RLock()
 	defer pq.mu.RUnlock()
 
-	return pq.queue.GetByID(id)
+	return pq.queue.Get(id)
 }
 
 func (pq *DelayedPriorityQueue) DeleteByID(group string, id uint64) *Item {

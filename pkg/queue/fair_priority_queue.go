@@ -134,7 +134,7 @@ func (fq *FairPriorityQueue) Dequeue() *Item {
 	return item
 }
 
-func (fq *FairPriorityQueue) GetByID(group string, id uint64) *Item {
+func (fq *FairPriorityQueue) Get(group string, id uint64) *Item {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
 
@@ -142,7 +142,7 @@ func (fq *FairPriorityQueue) GetByID(group string, id uint64) *Item {
 		return nil
 	}
 
-	return fq.queues[group].Queue().GetByID(id)
+	return fq.queues[group].Queue().Get(id)
 }
 
 func (fq *FairPriorityQueue) DeleteByID(group string, id uint64) *Item {

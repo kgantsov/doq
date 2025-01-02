@@ -223,7 +223,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "1"})
 	assert.Nil(t, err)
 
-	m1, err = pq.GetByID(m1.ID)
+	m1, err = pq.Get(m1.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
@@ -232,7 +232,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m2, err := pq.Enqueue(2, "default", 20, "test 2", map[string]string{"retry": "2"})
 	assert.Nil(t, err)
 
-	m2, err = pq.GetByID(m2.ID)
+	m2, err = pq.Get(m2.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m2.Content)
 	assert.Equal(t, int64(20), m2.Priority)
@@ -241,7 +241,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m3, err := pq.Enqueue(3, "default", 30, "test 3", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 
-	m3, err = pq.GetByID(m3.ID)
+	m3, err = pq.Get(m3.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
 	assert.Equal(t, int64(30), m3.Priority)
@@ -250,7 +250,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m4, err := pq.Enqueue(4, "default", 40, "test 4", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 
-	m4, err = pq.GetByID(m4.ID)
+	m4, err = pq.Get(m4.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(40), m4.Priority)
@@ -258,7 +258,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	m5, err := pq.Enqueue(5, "default", 50, "test 5", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
 
-	m5, err = pq.GetByID(m5.ID)
+	m5, err = pq.Get(m5.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 5", m5.Content)
 	assert.Equal(t, int64(50), m5.Priority)
@@ -266,7 +266,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	err = pq.UpdatePriority(m1.ID, 60)
 	assert.Nil(t, err)
 
-	m1, err = pq.GetByID(m1.ID)
+	m1, err = pq.Get(m1.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
 	assert.Equal(t, int64(60), m1.Priority)
@@ -274,7 +274,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	err = pq.UpdatePriority(m4.ID, 55)
 	assert.Nil(t, err)
 
-	m4, err = pq.GetByID(m4.ID)
+	m4, err = pq.Get(m4.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(55), m4.Priority)
@@ -329,7 +329,7 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 	m1, err := pq.Enqueue(1, "default", priority, "delayed message 1", map[string]string{})
 	assert.Nil(t, err)
 
-	m1, err = pq.GetByID(m1.ID)
+	m1, err = pq.Get(m1.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed message 1", m1.Content)
 	assert.Equal(t, priority, m1.Priority)

@@ -130,7 +130,7 @@ func (n *Node) Nack(QueueName string, id uint64, metadata map[string]string) err
 	return nil
 }
 
-func (n *Node) GetByID(id uint64) (*queue.Message, error) {
+func (n *Node) Get(id uint64) (*queue.Message, error) {
 	return nil, nil
 }
 

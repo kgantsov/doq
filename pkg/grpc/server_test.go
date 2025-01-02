@@ -151,7 +151,7 @@ func (n *testNode) Nack(QueueName string, id uint64, metadata map[string]string)
 	return nil
 }
 
-func (n *testNode) GetByID(id uint64) (*queue.Message, error) {
+func (n *testNode) Get(id uint64) (*queue.Message, error) {
 	for _, m := range n.messages {
 		if m.ID == id {
 			return m, nil

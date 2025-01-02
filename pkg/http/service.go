@@ -52,7 +52,7 @@ type Node interface {
 	Dequeue(QueueName string, ack bool) (*queue.Message, error)
 	Ack(QueueName string, id uint64) error
 	Nack(QueueName string, id uint64, metadata map[string]string) error
-	GetByID(id uint64) (*queue.Message, error)
+	Get(id uint64) (*queue.Message, error)
 	UpdatePriority(queueName string, id uint64, priority int64) error
 }
 

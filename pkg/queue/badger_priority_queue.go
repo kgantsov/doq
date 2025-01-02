@@ -149,7 +149,7 @@ func (bpq *BadgerPriorityQueue) monitorAckQueue() {
 					break
 				}
 
-				message, err := bpq.GetByID(item.ID)
+				message, err := bpq.Get(item.ID)
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to get message by ID: %d", item.ID)
 					continue
@@ -409,7 +409,7 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 	return msg, nil
 }
 
-func (bpq *BadgerPriorityQueue) GetByID(id uint64) (*Message, error) {
+func (bpq *BadgerPriorityQueue) Get(id uint64) (*Message, error) {
 	var msg *Message
 
 	err := bpq.db.View(func(txn *badger.Txn) error {
@@ -451,10 +451,10 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 		}
 
 		group = msg.Group
-		queueItem := bpq.pq.GetByID(group, id)
+		queueItem := bpq.pq.Get(group, id)
 
 		if queueItem == nil {
-			queueItem = bpq.ackQueue.GetByID(group, id)
+			queueItem = bpq.ackQueue.Get(group, id)
 			if queueItem == nil {
 				return ErrMessageNotFound
 			}
@@ -486,7 +486,7 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 }
 
 func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
-	queueItem := bpq.ackQueue.GetByID("default", id)
+	queueItem := bpq.ackQueue.Get("default", id)
 
 	if queueItem == nil {
 		return ErrMessageNotFound
@@ -515,13 +515,13 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 }
 
 func (bpq *BadgerPriorityQueue) Nack(id uint64, metadata map[string]string) error {
-	item := bpq.ackQueue.GetByID("default", id)
+	item := bpq.ackQueue.Get("default", id)
 
 	if item == nil {
 		return ErrMessageNotFound
 	}
 
-	message, err := bpq.GetByID(item.ID)
+	message, err := bpq.Get(item.ID)
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to get message by ID: %d", item.ID)
 		return err
