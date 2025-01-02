@@ -405,7 +405,7 @@ func (f *FSM) updatePriorityApply(payload UpdatePriorityPayload) *FSMResponse {
 }
 
 func (f *FSM) createQueueApply(payload CreateQueuePayload) *FSMResponse {
-	_, err := f.queueManager.Create(payload.QueueType, payload.QueueName)
+	_, err := f.queueManager.CreateQueue(payload.QueueType, payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
 			QueueName: payload.QueueName,
@@ -421,7 +421,7 @@ func (f *FSM) createQueueApply(payload CreateQueuePayload) *FSMResponse {
 }
 
 func (f *FSM) deleteQueueApply(payload DeleteQueuePayload) *FSMResponse {
-	err := f.queueManager.Delete(payload.QueueName)
+	err := f.queueManager.DeleteQueue(payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
 			QueueName: payload.QueueName,

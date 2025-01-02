@@ -210,7 +210,7 @@ func (bpq *BadgerPriorityQueue) Create(queueType, queueName string) error {
 	return bpq.Init(queueType, queueName)
 }
 
-func (bpq *BadgerPriorityQueue) Delete() error {
+func (bpq *BadgerPriorityQueue) DeleteQueue() error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 

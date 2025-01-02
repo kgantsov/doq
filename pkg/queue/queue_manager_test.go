@@ -27,10 +27,10 @@ func TestNewQueueManager(t *testing.T) {
 		nil,
 	)
 
-	queue1, err := queueManager.Create("delayed", "queue_1")
+	queue1, err := queueManager.CreateQueue("delayed", "queue_1")
 	assert.Nil(t, err)
 
-	queue1, err = queueManager.Create("delayed", "queue_1")
+	queue1, err = queueManager.CreateQueue("delayed", "queue_1")
 	assert.Nil(t, err)
 
 	q1m1, err := queue1.Enqueue(1, "default", 10, "queue 1 message 1", nil)
@@ -38,7 +38,7 @@ func TestNewQueueManager(t *testing.T) {
 	q1m2, err := queue1.Enqueue(2, "default", 5, "queue 1 message 2", nil)
 	assert.Nil(t, err)
 
-	queue2, err := queueManager.Create("delayed", "queue_2")
+	queue2, err := queueManager.CreateQueue("delayed", "queue_2")
 	assert.Nil(t, err)
 
 	q2m1, err := queue2.Enqueue(1, "default", 20, "queue 2 message 1", nil)
@@ -85,10 +85,10 @@ func TestQueueManagerGetQueue(t *testing.T) {
 		nil,
 	)
 
-	queue1, err := queueManager.Create("delayed", "queue_1")
+	queue1, err := queueManager.CreateQueue("delayed", "queue_1")
 	assert.Nil(t, err)
 
-	queue2, err := queueManager.Create("delayed", "queue_2")
+	queue2, err := queueManager.CreateQueue("delayed", "queue_2")
 	assert.Nil(t, err)
 
 	queue1, err = queueManager.GetQueue("queue_1")

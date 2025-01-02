@@ -62,7 +62,7 @@ func (qm *QueueManager) LoadQueues() {
 	}
 }
 
-func (qm *QueueManager) Create(queueType, queueName string) (*BadgerPriorityQueue, error) {
+func (qm *QueueManager) CreateQueue(queueType, queueName string) (*BadgerPriorityQueue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
 
@@ -83,7 +83,7 @@ func (qm *QueueManager) Create(queueType, queueName string) (*BadgerPriorityQueu
 	return q, nil
 }
 
-func (qm *QueueManager) Delete(queueName string) error {
+func (qm *QueueManager) DeleteQueue(queueName string) error {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
 
@@ -93,7 +93,7 @@ func (qm *QueueManager) Delete(queueName string) error {
 		q.Load(queueName, false)
 	}
 
-	err := q.Delete()
+	err := q.DeleteQueue()
 	if err != nil {
 		return err
 	}

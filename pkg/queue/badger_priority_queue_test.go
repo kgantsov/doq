@@ -199,7 +199,7 @@ func TestBadgerPriorityQueueDelete(t *testing.T) {
 	pq.Enqueue(3, "default", 8, "test 3", map[string]string{"retry": "0"})
 	pq.Enqueue(4, "default", 1, "test 4", map[string]string{"retry": "0"})
 
-	err = pq.Delete()
+	err = pq.DeleteQueue()
 	assert.Nil(t, err)
 }
 
