@@ -145,7 +145,7 @@ func (fq *FairPriorityQueue) Get(group string, id uint64) *Item {
 	return fq.queues[group].Queue().Get(id)
 }
 
-func (fq *FairPriorityQueue) DeleteByID(group string, id uint64) *Item {
+func (fq *FairPriorityQueue) Delete(group string, id uint64) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -153,7 +153,7 @@ func (fq *FairPriorityQueue) DeleteByID(group string, id uint64) *Item {
 		return nil
 	}
 
-	item := fq.queues[group].Queue().DeleteByID(id)
+	item := fq.queues[group].Queue().Delete(id)
 	fq.totalMessages--
 
 	return item

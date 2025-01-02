@@ -229,7 +229,7 @@ func TestGet(t *testing.T) {
 	assert.Nil(t, m)
 }
 
-func TestDeleteByID(t *testing.T) {
+func TestDelete(t *testing.T) {
 	pq := NewPriorityQueue(true)
 
 	heap.Push(pq, &Item{ID: 4, Priority: 40})
@@ -240,7 +240,7 @@ func TestDeleteByID(t *testing.T) {
 	assert.Equal(t, uint64(4), m.ID)
 	assert.Equal(t, int64(40), m.Priority)
 
-	m = pq.DeleteByID(4)
+	m = pq.Delete(4)
 
 	m = pq.Get(4)
 	assert.Nil(t, m)
@@ -249,11 +249,11 @@ func TestDeleteByID(t *testing.T) {
 	assert.Equal(t, uint64(3), m.ID)
 	assert.Equal(t, int64(30), m.Priority)
 
-	m = pq.DeleteByID(3)
+	m = pq.Delete(3)
 
 	m = pq.Get(3)
 	assert.Nil(t, m)
 
-	m = pq.DeleteByID(1)
+	m = pq.Delete(1)
 	assert.Nil(t, m)
 }

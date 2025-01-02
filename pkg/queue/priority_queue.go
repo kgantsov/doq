@@ -87,7 +87,7 @@ func (pq *PriorityQueue) Get(id uint64) *Item {
 	return pq.items[index]
 }
 
-func (pq *PriorityQueue) DeleteByID(id uint64) *Item {
+func (pq *PriorityQueue) Delete(id uint64) *Item {
 	index, ok := pq.idToIndex[id]
 	if !ok {
 		return nil

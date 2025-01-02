@@ -50,11 +50,11 @@ func (pq *DelayedPriorityQueue) Get(group string, id uint64) *Item {
 	return pq.queue.Get(id)
 }
 
-func (pq *DelayedPriorityQueue) DeleteByID(group string, id uint64) *Item {
+func (pq *DelayedPriorityQueue) Delete(group string, id uint64) *Item {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
-	return pq.queue.DeleteByID(id)
+	return pq.queue.Delete(id)
 }
 
 func (pq *DelayedPriorityQueue) UpdatePriority(group string, id uint64, priority int64) {

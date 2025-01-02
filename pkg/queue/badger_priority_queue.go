@@ -497,7 +497,7 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 		if err != nil {
 			return err
 		}
-		bpq.ackQueue.DeleteByID("default", queueItem.ID)
+		bpq.ackQueue.Delete("default", queueItem.ID)
 
 		return nil
 	})
@@ -533,7 +533,7 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64, metadata map[string]string) erro
 	}
 
 	bpq.pq.Enqueue(message.Group, queueItem)
-	bpq.ackQueue.DeleteByID("default", item.ID)
+	bpq.ackQueue.Delete("default", item.ID)
 
 	if metadata != nil {
 		err = bpq.updateMessage(item.ID, 0, "", metadata)
