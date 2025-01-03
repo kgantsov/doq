@@ -41,6 +41,8 @@ services:
       dockerfile: Dockerfile
     environment:
       - BASE_URL=http://doq:8000
+    volumes:
+      - ./python:/opt/doq/e2e
 
     depends_on:
       doq:

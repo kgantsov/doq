@@ -68,7 +68,13 @@ func TestNodeSingleNode(t *testing.T) {
 	assert.Equal(t, int64(10), m3.Priority)
 	assert.Equal(t, "value", m3.Metadata["key"])
 
-	m, err := n.Dequeue("test_queue", true)
+	m, err := n.Get("test_queue", m1.ID)
+	assert.Nil(t, err)
+	assert.Equal(t, m1.ID, m.ID)
+	assert.Equal(t, m1.Content, m.Content)
+	assert.Equal(t, m1.Priority, m.Priority)
+
+	m, err = n.Dequeue("test_queue", true)
 	assert.Nil(t, err)
 	assert.Equal(t, m2.ID, m.ID)
 	assert.Equal(t, m2.Content, m.Content)

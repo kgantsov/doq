@@ -92,6 +92,25 @@ type DequeueOutput struct {
 	Body   DequeueOutputBody
 }
 
+type GetInput struct {
+	QueueName string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	ID        uint64 `path:"id" example:"123" doc:"ID of the message"`
+}
+
+type GetOutputBody struct {
+	Status   string            `json:"status" example:"DEQUEUED" doc:"Status of the dequeue operation"`
+	ID       string            `json:"id" doc:"ID of the message"`
+	Group    string            `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
+	Priority int64             `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
+	Content  string            `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`
+	Metadata map[string]string `json:"metadata,omitempty" example:"{\"retry\": \"0\"}" doc:"Metadata of the message"`
+}
+
+type GetOutput struct {
+	Status int
+	Body   GetOutputBody
+}
+
 type AckInput struct {
 	QueueName string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
 	ID        uint64 `path:"id" example:"123" doc:"ID of the message"`

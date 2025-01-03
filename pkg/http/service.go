@@ -50,9 +50,9 @@ type Node interface {
 		metadata map[string]string,
 	) (*queue.Message, error)
 	Dequeue(QueueName string, ack bool) (*queue.Message, error)
+	Get(QueueName string, id uint64) (*queue.Message, error)
 	Ack(QueueName string, id uint64) error
 	Nack(QueueName string, id uint64, metadata map[string]string) error
-	Get(id uint64) (*queue.Message, error)
 	UpdatePriority(queueName string, id uint64, priority int64) error
 }
 
@@ -194,6 +194,18 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Tags:        []string{"Messages"},
 		},
 		h.Dequeue,
+	)
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "get",
+			Method:      http.MethodGet,
+			Path:        "/API/v1/queues/:queue_name/messages/:id",
+			Summary:     "Get a message",
+			Description: "Get a message by it's ID without removing it from a queue",
+			Tags:        []string{"Messages"},
+		},
+		h.Get,
 	)
 	huma.Register(
 		api,

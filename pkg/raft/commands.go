@@ -77,6 +77,39 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 	}, nil
 }
 
+func (n *Node) Get(QueueName string, id uint64) (*queue.Message, error) {
+	cmd := Command{
+		Op: "get",
+		Payload: GetPayload{
+			QueueName: QueueName,
+			// Group:     group,
+			ID: id,
+		},
+	}
+	data, err := json.Marshal(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	f := n.Raft.Apply(data, 5*time.Second)
+	if f.Error() != nil {
+		return nil, f.Error()
+	}
+
+	r := f.Response().(*FSMResponse)
+	if r.error != nil {
+		return nil, r.error
+	}
+
+	return &queue.Message{
+		ID:       r.ID,
+		Group:    r.Group,
+		Priority: r.Priority,
+		Content:  r.Content,
+		Metadata: r.Metadata,
+	}, nil
+}
+
 func (n *Node) Ack(QueueName string, id uint64) error {
 	cmd := Command{
 		Op: "ack",
@@ -128,10 +161,6 @@ func (n *Node) Nack(QueueName string, id uint64, metadata map[string]string) err
 	}
 
 	return nil
-}
-
-func (n *Node) Get(id uint64) (*queue.Message, error) {
-	return nil, nil
 }
 
 func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error {

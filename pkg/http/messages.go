@@ -103,6 +103,41 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 	return res, nil
 }
 
+func (h *Handler) Get(ctx context.Context, input *GetInput) (*GetOutput, error) {
+	queueName := input.QueueName
+
+	if !h.node.IsLeader() {
+		respBody, err := h.proxy.Get(ctx, h.node.Leader(), queueName, input.ID)
+		if err != nil {
+			return nil, err
+		}
+		res := &GetOutput{
+			Status: http.StatusOK,
+			Body:   *respBody,
+		}
+		return res, nil
+	}
+
+	msg, err := h.node.Get(queueName, input.ID)
+
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to get a message from a queue", err)
+	}
+
+	res := &GetOutput{
+		Status: http.StatusOK,
+		Body: GetOutputBody{
+			Status:   "GOT",
+			ID:       strconv.Itoa(int(msg.ID)),
+			Group:    msg.Group,
+			Priority: msg.Priority,
+			Content:  msg.Content,
+			Metadata: msg.Metadata,
+		},
+	}
+	return res, nil
+}
+
 func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) {
 	queueName := input.QueueName
 

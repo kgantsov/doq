@@ -83,6 +83,19 @@ async def test_fair_priority_queue(fixt_http_client, fixt_fair_queue):
             assert data["content"] == message["content"]
             assert data["metadata"] == message["metadata"]
 
+            response = await fixt_http_client.get(
+                url=f"/API/v1/queues/{queue_name}/messages/{data['id']}"
+            )
+
+            assert response.status_code == 200, response.text
+
+            data = response.json()
+
+            assert data["status"] == 'GOT'
+            assert data["priority"] == message["priority"]
+            assert data["content"] == message["content"]
+            assert data["metadata"] == message["metadata"]
+
         for index in test['expected_message_indexes']:
             response = await fixt_http_client.get(
                 url=f"/API/v1/queues/{queue_name}/messages?ack=true"

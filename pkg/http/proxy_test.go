@@ -218,6 +218,47 @@ func TestDequeue_Success(t *testing.T) {
 	assert.Equal(t, expectedOutput, output)
 }
 
+func TestGet_Success(t *testing.T) {
+	// Create a mock server that returns a successful response
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/API/v1/queues/indexing-queue/messages/75", r.URL.Path)
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+
+		response := GetOutputBody{
+			Status:   "GOT",
+			ID:       "75",
+			Group:    "customer-1",
+			Priority: 31,
+			Content:  "{\"id\": 114, \"name\": \"test\"}",
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	// Initialize the proxy with the test HTTP client
+	proxy := NewProxy(server.Client(), "")
+
+	output, err := proxy.Get(
+		context.Background(), strings.Replace(server.URL, "http://", "", 1), "indexing-queue", 75,
+	)
+
+	require.NoError(t, err)
+
+	// Assert that the response matches the expected output
+	expectedOutput := &GetOutputBody{
+		Status:   "GOT",
+		ID:       "75",
+		Group:    "customer-1",
+		Priority: 31,
+		Content:  "{\"id\": 114, \"name\": \"test\"}",
+	}
+	assert.Equal(t, expectedOutput, output)
+}
+
 func TestAck_Success(t *testing.T) {
 	// Create a mock server that returns a successful response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

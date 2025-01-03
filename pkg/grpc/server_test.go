@@ -151,7 +151,7 @@ func (n *testNode) Nack(QueueName string, id uint64, metadata map[string]string)
 	return nil
 }
 
-func (n *testNode) Get(id uint64) (*queue.Message, error) {
+func (n *testNode) Get(QueueName string, id uint64) (*queue.Message, error) {
 	for _, m := range n.messages {
 		if m.ID == id {
 			return m, nil
@@ -335,6 +335,46 @@ func TestDequeue(t *testing.T) {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
 	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
+	assert.Equal(t, "3", resp.Metadata["retry"], "Metadata should match the enqueued message")
+}
+
+// Test for Get function
+func TestGet(t *testing.T) {
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	// Create a queue and enqueue a message first
+	reqCreate := &pb.CreateQueueRequest{Name: "test-queue"}
+	_, err = client.CreateQueue(ctx, reqCreate)
+	if err != nil {
+		t.Fatalf("CreateQueue failed: %v", err)
+	}
+
+	reqEnqueue := &pb.EnqueueRequest{
+		QueueName: "test-queue",
+		Content:   "test-message",
+		Group:     "default",
+		Priority:  10,
+		Metadata:  map[string]string{"retry": "3"},
+	}
+	respEnqueue, err := client.Enqueue(ctx, reqEnqueue)
+	if err != nil {
+		t.Fatalf("Enqueue failed: %v", err)
+	}
+
+	// Test case: Get the message successfully
+	reqGet := &pb.GetRequest{QueueName: "test-queue", Id: respEnqueue.Id}
+	resp, err := client.Get(ctx, reqGet)
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	assert.Equal(t, "test-message", resp.Content, "Got message should match the enqueued message")
 	assert.Equal(t, "3", resp.Metadata["retry"], "Metadata should match the enqueued message")
 }
 

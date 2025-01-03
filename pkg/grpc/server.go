@@ -289,6 +289,27 @@ func (s *QueueServer) broadcastMessage(queueName string, message struct{}) {
 	}
 }
 
+// Get implements server-side streaming for dequeuing messages
+func (s *QueueServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
+	if !s.node.IsLeader() {
+		return s.proxy.Get(ctx, s.node.Leader(), req)
+	}
+
+	message, err := s.node.Get(req.QueueName, req.Id)
+	if err != nil {
+		return &pb.GetResponse{Success: false}, fmt.Errorf("failed to get a message")
+	}
+
+	return &pb.GetResponse{
+		Success:  true,
+		Id:       message.ID,
+		Group:    message.Group,
+		Priority: message.Priority,
+		Content:  message.Content,
+		Metadata: message.Metadata,
+	}, nil
+}
+
 // Ack message handling (this could be used to confirm message processing, depending on your requirements)
 func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckResponse, error) {
 	if !s.node.IsLeader() {

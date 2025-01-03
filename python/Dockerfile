@@ -1,6 +1,6 @@
 FROM python:3.12
 
-ENV INSTALL_DIR=/opt/doq/e2d
+ENV INSTALL_DIR=/opt/doq/e2e
 RUN mkdir -p $INSTALL_DIR
 
 WORKDIR $INSTALL_DIR

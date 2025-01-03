@@ -77,6 +77,15 @@ func (p *GRPCProxy) Dequeue(ctx context.Context, host string, req *pb.DequeueReq
 	return p.client.Dequeue(ctx, req)
 }
 
+func (p *GRPCProxy) Get(ctx context.Context, host string, req *pb.GetRequest) (*pb.GetResponse, error) {
+	log.Debug().Msgf("PROXY Get: %+v to the leader node: %s", req, host)
+
+	if p.leader != host {
+		p.initClient(host)
+	}
+	return p.client.Get(ctx, req)
+}
+
 func (p *GRPCProxy) Ack(ctx context.Context, host string, req *pb.AckRequest) (*pb.AckResponse, error) {
 	log.Debug().Msgf("PROXY Ack: %+v to the leader node: %s", req, host)
 

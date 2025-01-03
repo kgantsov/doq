@@ -37,6 +37,12 @@ type DequeuePayload struct {
 	Ack       bool   `json:"ack"`
 }
 
+type GetPayload struct {
+	QueueName string `json:"queue_name"`
+	Group     string `json:"group"`
+	ID        uint64 `json:"id"`
+}
+
 type AckPayload struct {
 	QueueName string `json:"queue_name"`
 	ID        uint64 `json:"id"`
@@ -84,6 +90,12 @@ func (c *Command) UnmarshalJSON(data []byte) error {
 		c.Payload = payload
 	case "dequeue":
 		var payload DequeuePayload
+		if err := json.Unmarshal(temp.Payload, &payload); err != nil {
+			return err
+		}
+		c.Payload = payload
+	case "get":
+		var payload GetPayload
 		if err := json.Unmarshal(temp.Payload, &payload); err != nil {
 			return err
 		}
@@ -181,6 +193,12 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v %v", c, c.Payload)}
 		}
 		return f.dequeueApply(payload)
+	case "get":
+		payload, ok := c.Payload.(GetPayload)
+		if !ok {
+			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v %v", c, c.Payload)}
+		}
+		return f.getApply(payload)
 	case "ack":
 		payload, ok := c.Payload.(AckPayload)
 		if !ok {
@@ -272,6 +290,43 @@ func (f *FSM) dequeueApply(payload DequeuePayload) *FSMResponse {
 		return &FSMResponse{
 			QueueName: payload.QueueName,
 			error:     fmt.Errorf("Failed to dequeue a message from a queue: %s", payload.QueueName),
+		}
+	}
+
+	return &FSMResponse{
+		QueueName: payload.QueueName,
+		ID:        msg.ID,
+		Group:     msg.Group,
+		Priority:  msg.Priority,
+		Content:   msg.Content,
+		Metadata:  msg.Metadata,
+		error:     nil,
+	}
+}
+
+func (f *FSM) getApply(payload GetPayload) *FSMResponse {
+	q, err := f.queueManager.GetQueue(payload.QueueName)
+	if err != nil {
+		return &FSMResponse{
+			QueueName: payload.QueueName,
+			error:     fmt.Errorf("Failed to get a queue: %s", payload.QueueName),
+		}
+	}
+
+	msg, err := q.Get(payload.ID)
+
+	log.Debug().Msgf("Node %s got a message: %+v %v", f.NodeID, msg, err)
+
+	if err != nil {
+		if err == queue.ErrEmptyQueue {
+			return &FSMResponse{
+				QueueName: payload.QueueName,
+				error:     fmt.Errorf("Queue is empty: %s", payload.QueueName),
+			}
+		}
+		return &FSMResponse{
+			QueueName: payload.QueueName,
+			error:     fmt.Errorf("Failed to get a message from a queue: %s", payload.QueueName),
 		}
 	}
 

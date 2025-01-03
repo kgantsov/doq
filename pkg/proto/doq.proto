@@ -14,6 +14,7 @@ service DOQ {
     rpc Dequeue(DequeueRequest) returns (DequeueResponse) {}
     rpc DequeueStream(DequeueRequest) returns (stream DequeueResponse) {}
 
+    rpc Get(GetRequest) returns (GetResponse) {}
     rpc Ack(AckRequest) returns (AckResponse);
     rpc Nack(NackRequest) returns (NackResponse);
     rpc UpdatePriority(UpdatePriorityRequest) returns (UpdatePriorityResponse);
@@ -60,6 +61,21 @@ message DequeueRequest {
 }
 
 message DequeueResponse {
+    bool success = 1;
+    string queueName = 2;
+    uint64 id = 3;
+    string group = 4;
+    int64 priority = 5;
+    string content = 6;
+    map<string, string> metadata = 7;
+}
+
+message GetRequest {
+    string queueName = 1;
+    uint64 id = 2;
+}
+
+message GetResponse {
     bool success = 1;
     string queueName = 2;
     uint64 id = 3;

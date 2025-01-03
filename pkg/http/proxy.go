@@ -177,6 +177,43 @@ func (p *Proxy) Dequeue(
 	return &data, nil
 }
 
+func (p *Proxy) Get(
+	ctx context.Context, host string, queueName string, id uint64,
+) (*GetOutputBody, huma.StatusError) {
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf(
+			"%s/API/v1/queues/%s/messages/%d",
+			p.getHost(host),
+			queueName,
+			id,
+		),
+		nil,
+	)
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to create a request", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, huma.Error503ServiceUnavailable("Failed to proxy get message request", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, huma.Error400BadRequest("Failed to get message", nil)
+	}
+
+	var data GetOutputBody
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nil, huma.Error400BadRequest("Failed to decode response", err)
+	}
+
+	return &data, nil
+}
+
 func (p *Proxy) Ack(
 	ctx context.Context,
 	host string,

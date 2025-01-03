@@ -25,6 +25,7 @@ const (
 	DOQ_EnqueueStream_FullMethodName  = "/queue.DOQ/EnqueueStream"
 	DOQ_Dequeue_FullMethodName        = "/queue.DOQ/Dequeue"
 	DOQ_DequeueStream_FullMethodName  = "/queue.DOQ/DequeueStream"
+	DOQ_Get_FullMethodName            = "/queue.DOQ/Get"
 	DOQ_Ack_FullMethodName            = "/queue.DOQ/Ack"
 	DOQ_Nack_FullMethodName           = "/queue.DOQ/Nack"
 	DOQ_UpdatePriority_FullMethodName = "/queue.DOQ/UpdatePriority"
@@ -40,6 +41,7 @@ type DOQClient interface {
 	EnqueueStream(ctx context.Context, opts ...grpc.CallOption) (DOQ_EnqueueStreamClient, error)
 	Dequeue(ctx context.Context, in *DequeueRequest, opts ...grpc.CallOption) (*DequeueResponse, error)
 	DequeueStream(ctx context.Context, in *DequeueRequest, opts ...grpc.CallOption) (DOQ_DequeueStreamClient, error)
+	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
 	Ack(ctx context.Context, in *AckRequest, opts ...grpc.CallOption) (*AckResponse, error)
 	Nack(ctx context.Context, in *NackRequest, opts ...grpc.CallOption) (*NackResponse, error)
 	UpdatePriority(ctx context.Context, in *UpdatePriorityRequest, opts ...grpc.CallOption) (*UpdatePriorityResponse, error)
@@ -152,6 +154,15 @@ func (x *dOQDequeueStreamClient) Recv() (*DequeueResponse, error) {
 	return m, nil
 }
 
+func (c *dOQClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error) {
+	out := new(GetResponse)
+	err := c.cc.Invoke(ctx, DOQ_Get_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *dOQClient) Ack(ctx context.Context, in *AckRequest, opts ...grpc.CallOption) (*AckResponse, error) {
 	out := new(AckResponse)
 	err := c.cc.Invoke(ctx, DOQ_Ack_FullMethodName, in, out, opts...)
@@ -189,6 +200,7 @@ type DOQServer interface {
 	EnqueueStream(DOQ_EnqueueStreamServer) error
 	Dequeue(context.Context, *DequeueRequest) (*DequeueResponse, error)
 	DequeueStream(*DequeueRequest, DOQ_DequeueStreamServer) error
+	Get(context.Context, *GetRequest) (*GetResponse, error)
 	Ack(context.Context, *AckRequest) (*AckResponse, error)
 	Nack(context.Context, *NackRequest) (*NackResponse, error)
 	UpdatePriority(context.Context, *UpdatePriorityRequest) (*UpdatePriorityResponse, error)
@@ -216,6 +228,9 @@ func (UnimplementedDOQServer) Dequeue(context.Context, *DequeueRequest) (*Dequeu
 }
 func (UnimplementedDOQServer) DequeueStream(*DequeueRequest, DOQ_DequeueStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method DequeueStream not implemented")
+}
+func (UnimplementedDOQServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
 func (UnimplementedDOQServer) Ack(context.Context, *AckRequest) (*AckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ack not implemented")
@@ -358,6 +373,24 @@ func (x *dOQDequeueStreamServer) Send(m *DequeueResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _DOQ_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DOQServer).Get(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DOQ_Get_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DOQServer).Get(ctx, req.(*GetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DOQ_Ack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AckRequest)
 	if err := dec(in); err != nil {
@@ -434,6 +467,10 @@ var DOQ_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Dequeue",
 			Handler:    _DOQ_Dequeue_Handler,
+		},
+		{
+			MethodName: "Get",
+			Handler:    _DOQ_Get_Handler,
 		},
 		{
 			MethodName: "Ack",
