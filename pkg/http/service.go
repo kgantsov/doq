@@ -51,6 +51,7 @@ type Node interface {
 	) (*queue.Message, error)
 	Dequeue(QueueName string, ack bool) (*queue.Message, error)
 	Get(QueueName string, id uint64) (*queue.Message, error)
+	Delete(QueueName string, id uint64) error
 	Ack(QueueName string, id uint64) error
 	Nack(QueueName string, id uint64, metadata map[string]string) error
 	UpdatePriority(queueName string, id uint64, priority int64) error
@@ -210,6 +211,18 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 	huma.Register(
 		api,
 		huma.Operation{
+			OperationID: "delete",
+			Method:      http.MethodDelete,
+			Path:        "/API/v1/queues/:queue_name/messages/:id",
+			Summary:     "Delete a message",
+			Description: "Delete a message from a queue",
+			Tags:        []string{"Messages"},
+		},
+		h.Delete,
+	)
+	huma.Register(
+		api,
+		huma.Operation{
 			OperationID: "ack",
 			Method:      http.MethodPost,
 			Path:        "/API/v1/queues/:queue_name/messages/:id/ack",
@@ -225,8 +238,8 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			OperationID: "nack",
 			Method:      http.MethodPost,
 			Path:        "/API/v1/queues/:queue_name/messages/:id/nack",
-			Summary:     "Unacknowledge a message",
-			Description: "Unacknowledge the message",
+			Summary:     "Negative acknowledge a message",
+			Description: "Negative acknowledge the message",
 			Tags:        []string{"Messages"},
 		},
 		h.Nack,

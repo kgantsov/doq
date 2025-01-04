@@ -86,11 +86,12 @@ func TestNodeSingleNode(t *testing.T) {
 	assert.Equal(t, m1.Content, m.Content)
 	assert.Equal(t, m1.Priority, m.Priority)
 
-	m, err = n.Dequeue("test_queue", false)
+	err = n.Delete("test_queue", m3.ID)
 	assert.Nil(t, err)
-	assert.Equal(t, m3.ID, m.ID)
-	assert.Equal(t, m3.Content, m.Content)
-	assert.Equal(t, m3.Priority, m.Priority)
+
+	m, err = n.Dequeue("test_queue", false)
+	assert.Nil(t, m)
+	assert.Error(t, err)
 
 	err = n.DeleteQueue("test_queue")
 	assert.Nil(t, err)

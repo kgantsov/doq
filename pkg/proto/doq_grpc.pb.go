@@ -26,6 +26,7 @@ const (
 	DOQ_Dequeue_FullMethodName        = "/queue.DOQ/Dequeue"
 	DOQ_DequeueStream_FullMethodName  = "/queue.DOQ/DequeueStream"
 	DOQ_Get_FullMethodName            = "/queue.DOQ/Get"
+	DOQ_Delete_FullMethodName         = "/queue.DOQ/Delete"
 	DOQ_Ack_FullMethodName            = "/queue.DOQ/Ack"
 	DOQ_Nack_FullMethodName           = "/queue.DOQ/Nack"
 	DOQ_UpdatePriority_FullMethodName = "/queue.DOQ/UpdatePriority"
@@ -42,6 +43,7 @@ type DOQClient interface {
 	Dequeue(ctx context.Context, in *DequeueRequest, opts ...grpc.CallOption) (*DequeueResponse, error)
 	DequeueStream(ctx context.Context, in *DequeueRequest, opts ...grpc.CallOption) (DOQ_DequeueStreamClient, error)
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
+	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error)
 	Ack(ctx context.Context, in *AckRequest, opts ...grpc.CallOption) (*AckResponse, error)
 	Nack(ctx context.Context, in *NackRequest, opts ...grpc.CallOption) (*NackResponse, error)
 	UpdatePriority(ctx context.Context, in *UpdatePriorityRequest, opts ...grpc.CallOption) (*UpdatePriorityResponse, error)
@@ -163,6 +165,15 @@ func (c *dOQClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOp
 	return out, nil
 }
 
+func (c *dOQClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*DeleteResponse, error) {
+	out := new(DeleteResponse)
+	err := c.cc.Invoke(ctx, DOQ_Delete_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *dOQClient) Ack(ctx context.Context, in *AckRequest, opts ...grpc.CallOption) (*AckResponse, error) {
 	out := new(AckResponse)
 	err := c.cc.Invoke(ctx, DOQ_Ack_FullMethodName, in, out, opts...)
@@ -201,6 +212,7 @@ type DOQServer interface {
 	Dequeue(context.Context, *DequeueRequest) (*DequeueResponse, error)
 	DequeueStream(*DequeueRequest, DOQ_DequeueStreamServer) error
 	Get(context.Context, *GetRequest) (*GetResponse, error)
+	Delete(context.Context, *DeleteRequest) (*DeleteResponse, error)
 	Ack(context.Context, *AckRequest) (*AckResponse, error)
 	Nack(context.Context, *NackRequest) (*NackResponse, error)
 	UpdatePriority(context.Context, *UpdatePriorityRequest) (*UpdatePriorityResponse, error)
@@ -231,6 +243,9 @@ func (UnimplementedDOQServer) DequeueStream(*DequeueRequest, DOQ_DequeueStreamSe
 }
 func (UnimplementedDOQServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+}
+func (UnimplementedDOQServer) Delete(context.Context, *DeleteRequest) (*DeleteResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 func (UnimplementedDOQServer) Ack(context.Context, *AckRequest) (*AckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ack not implemented")
@@ -391,6 +406,24 @@ func _DOQ_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DOQ_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DOQServer).Delete(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DOQ_Delete_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DOQServer).Delete(ctx, req.(*DeleteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _DOQ_Ack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AckRequest)
 	if err := dec(in); err != nil {
@@ -471,6 +504,10 @@ var DOQ_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Get",
 			Handler:    _DOQ_Get_Handler,
+		},
+		{
+			MethodName: "Delete",
+			Handler:    _DOQ_Delete_Handler,
 		},
 		{
 			MethodName: "Ack",

@@ -110,6 +110,32 @@ func (n *Node) Get(QueueName string, id uint64) (*queue.Message, error) {
 	}, nil
 }
 
+func (n *Node) Delete(QueueName string, id uint64) error {
+	cmd := Command{
+		Op: "delete",
+		Payload: DeletePayload{
+			QueueName: QueueName,
+			ID:        id,
+		},
+	}
+	data, err := json.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+
+	f := n.Raft.Apply(data, 5*time.Second)
+	if f.Error() != nil {
+		return f.Error()
+	}
+
+	r := f.Response().(*FSMResponse)
+	if r.error != nil {
+		return r.error
+	}
+
+	return nil
+}
+
 func (n *Node) Ack(QueueName string, id uint64) error {
 	cmd := Command{
 		Op: "ack",

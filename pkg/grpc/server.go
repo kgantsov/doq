@@ -66,21 +66,29 @@ func (s *QueueServer) putTimer(timer *time.Timer) {
 }
 
 // CreateQueue creates a new queue
-func (s *QueueServer) CreateQueue(ctx context.Context, req *pb.CreateQueueRequest) (*pb.CreateQueueResponse, error) {
+func (s *QueueServer) CreateQueue(
+	ctx context.Context,
+	req *pb.CreateQueueRequest,
+) (*pb.CreateQueueResponse, error) {
 	if !s.node.IsLeader() {
 		return s.proxy.CreateQueue(ctx, s.node.Leader(), req)
 	}
 
 	err := s.node.CreateQueue(req.Type, req.Name)
 	if err != nil {
-		return &pb.CreateQueueResponse{Success: false}, fmt.Errorf("failed to create a queue %s", req.Name)
+		return &pb.CreateQueueResponse{Success: false}, fmt.Errorf(
+			"failed to create a queue %s", req.Name,
+		)
 	}
 
 	return &pb.CreateQueueResponse{Success: true}, nil
 }
 
-// DeleteQueue deletes a queue
-func (s *QueueServer) DeleteQueue(ctx context.Context, req *pb.DeleteQueueRequest) (*pb.DeleteQueueResponse, error) {
+// DeleteQueue deletes a queue with all messages
+func (s *QueueServer) DeleteQueue(
+	ctx context.Context,
+	req *pb.DeleteQueueRequest,
+) (*pb.DeleteQueueResponse, error) {
 	if !s.node.IsLeader() {
 		return s.proxy.DeleteQueue(ctx, s.node.Leader(), req)
 	}
@@ -88,14 +96,19 @@ func (s *QueueServer) DeleteQueue(ctx context.Context, req *pb.DeleteQueueReques
 	err := s.node.DeleteQueue(req.Name)
 
 	if err != nil {
-		return &pb.DeleteQueueResponse{Success: false}, fmt.Errorf("failed to delete a queue %s", req.Name)
+		return &pb.DeleteQueueResponse{Success: false}, fmt.Errorf(
+			"failed to delete a queue %s", req.Name,
+		)
 	}
 
 	return &pb.DeleteQueueResponse{Success: true}, nil
 }
 
-// Enqueue implements client-side streaming for enqueuing messages
-func (s *QueueServer) Enqueue(ctx context.Context, req *pb.EnqueueRequest) (*pb.EnqueueResponse, error) {
+// Enqueue enqueues a message to a queue
+func (s *QueueServer) Enqueue(
+	ctx context.Context,
+	req *pb.EnqueueRequest,
+) (*pb.EnqueueResponse, error) {
 	if !s.node.IsLeader() {
 		return s.proxy.Enqueue(ctx, s.node.Leader(), req)
 	}
@@ -159,8 +172,11 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 	}
 }
 
-// Dequeue implements server-side streaming for dequeuing messages
-func (s *QueueServer) Dequeue(ctx context.Context, req *pb.DequeueRequest) (*pb.DequeueResponse, error) {
+// Dequeue dequeues a message from a queue
+func (s *QueueServer) Dequeue(
+	ctx context.Context,
+	req *pb.DequeueRequest,
+) (*pb.DequeueResponse, error) {
 	if !s.node.IsLeader() {
 		return s.proxy.Dequeue(ctx, s.node.Leader(), req)
 	}
@@ -203,7 +219,10 @@ func (s *QueueServer) unregisterConsumer(queueName string, id uint64) {
 }
 
 // DequeueStream implements server-side streaming for dequeuing messages
-func (s *QueueServer) DequeueStream(req *pb.DequeueRequest, stream pb.DOQ_DequeueStreamServer) error {
+func (s *QueueServer) DequeueStream(
+	req *pb.DequeueRequest,
+	stream pb.DOQ_DequeueStreamServer,
+) error {
 	if !s.node.IsLeader() {
 		return s.proxy.DequeueStream(req, stream, s.node.Leader())
 	}
@@ -289,7 +308,7 @@ func (s *QueueServer) broadcastMessage(queueName string, message struct{}) {
 	}
 }
 
-// Get implements server-side streaming for dequeuing messages
+// Get returns a message from a queue by ID
 func (s *QueueServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
 	if !s.node.IsLeader() {
 		return s.proxy.Get(ctx, s.node.Leader(), req)
@@ -310,7 +329,27 @@ func (s *QueueServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespo
 	}, nil
 }
 
-// Ack message handling (this could be used to confirm message processing, depending on your requirements)
+// Delete deletes a message from a queue by ID (this could be used to remove a message from a queue
+// in case of processing failure if max attempts reached)
+func (s *QueueServer) Delete(
+	ctx context.Context,
+	req *pb.DeleteRequest,
+) (*pb.DeleteResponse, error) {
+	if !s.node.IsLeader() {
+		return s.proxy.Delete(ctx, s.node.Leader(), req)
+	}
+
+	err := s.node.Delete(req.QueueName, req.Id)
+	if err != nil {
+		return &pb.DeleteResponse{Success: false}, fmt.Errorf("failed to delete a message")
+	}
+
+	return &pb.DeleteResponse{
+		Success: true,
+	}, nil
+}
+
+// Ack acknowledges a message (this could be used to confirm message processing)
 func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckResponse, error) {
 	if !s.node.IsLeader() {
 		return s.proxy.Ack(ctx, s.node.Leader(), req)
@@ -324,7 +363,8 @@ func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckRespo
 	return &pb.AckResponse{Success: true}, nil
 }
 
-// Nack message handling (this could be used to confirm message processing, depending on your requirements)
+// Nack negatively acknowledges a message (this could be used to put a message back to the queue
+// in case of processing failure)
 func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackResponse, error) {
 	if !s.node.IsLeader() {
 		return s.proxy.Nack(ctx, s.node.Leader(), req)
@@ -338,15 +378,20 @@ func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackRe
 	return &pb.NackResponse{Success: true}, nil
 }
 
-// Acknowledge message handling (this could be used to confirm message processing, depending on your requirements)
-func (s *QueueServer) UpdatePriority(ctx context.Context, req *pb.UpdatePriorityRequest) (*pb.UpdatePriorityResponse, error) {
+// UpdatePriority updates priority of a message
+func (s *QueueServer) UpdatePriority(
+	ctx context.Context,
+	req *pb.UpdatePriorityRequest,
+) (*pb.UpdatePriorityResponse, error) {
 	if !s.node.IsLeader() {
 		return s.proxy.UpdatePriority(ctx, s.node.Leader(), req)
 	}
 
 	err := s.node.UpdatePriority(req.QueueName, req.Id, req.Priority)
 	if err != nil {
-		return &pb.UpdatePriorityResponse{Success: false}, fmt.Errorf("failed to update prioprity of a message")
+		return &pb.UpdatePriorityResponse{Success: false}, fmt.Errorf(
+			"failed to update prioprity of a message",
+		)
 	}
 
 	return &pb.UpdatePriorityResponse{Success: true}, nil

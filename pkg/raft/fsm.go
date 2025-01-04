@@ -39,7 +39,11 @@ type DequeuePayload struct {
 
 type GetPayload struct {
 	QueueName string `json:"queue_name"`
-	Group     string `json:"group"`
+	ID        uint64 `json:"id"`
+}
+
+type DeletePayload struct {
+	QueueName string `json:"queue_name"`
 	ID        uint64 `json:"id"`
 }
 
@@ -96,6 +100,12 @@ func (c *Command) UnmarshalJSON(data []byte) error {
 		c.Payload = payload
 	case "get":
 		var payload GetPayload
+		if err := json.Unmarshal(temp.Payload, &payload); err != nil {
+			return err
+		}
+		c.Payload = payload
+	case "delete":
+		var payload DeletePayload
 		if err := json.Unmarshal(temp.Payload, &payload); err != nil {
 			return err
 		}
@@ -199,6 +209,12 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v %v", c, c.Payload)}
 		}
 		return f.getApply(payload)
+	case "delete":
+		payload, ok := c.Payload.(DeletePayload)
+		if !ok {
+			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v %v", c, c.Payload)}
+		}
+		return f.deleteApply(payload)
 	case "ack":
 		payload, ok := c.Payload.(AckPayload)
 		if !ok {
@@ -337,6 +353,38 @@ func (f *FSM) getApply(payload GetPayload) *FSMResponse {
 		Priority:  msg.Priority,
 		Content:   msg.Content,
 		Metadata:  msg.Metadata,
+		error:     nil,
+	}
+}
+
+func (f *FSM) deleteApply(payload DeletePayload) *FSMResponse {
+	q, err := f.queueManager.GetQueue(payload.QueueName)
+	if err != nil {
+		return &FSMResponse{
+			QueueName: payload.QueueName,
+			error:     fmt.Errorf("Failed to get a queue: %s", payload.QueueName),
+		}
+	}
+
+	err = q.Delete(payload.ID)
+
+	if err != nil {
+		if err == queue.ErrEmptyQueue {
+			return &FSMResponse{
+				QueueName: payload.QueueName,
+				error:     fmt.Errorf("Queue is empty: %s", payload.QueueName),
+			}
+		}
+
+		return &FSMResponse{
+			QueueName: payload.QueueName,
+			error:     fmt.Errorf("Failed to delete a message from a queue: %s", payload.QueueName),
+		}
+	}
+
+	return &FSMResponse{
+		QueueName: payload.QueueName,
+		ID:        payload.ID,
 		error:     nil,
 	}
 }

@@ -170,7 +170,7 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	assert.Equal(t, "test 1", m.Content)
 }
 
-func TestBadgerPriorityQueueDelete(t *testing.T) {
+func TestBadgerPriorityQueueDeleteQueue(t *testing.T) {
 	dirname, err := os.MkdirTemp("", "store")
 	require.NoError(t, err)
 
@@ -201,6 +201,43 @@ func TestBadgerPriorityQueueDelete(t *testing.T) {
 
 	err = pq.DeleteQueue()
 	assert.Nil(t, err)
+}
+
+func TestBadgerPriorityQueueDelete(t *testing.T) {
+	dirname, err := os.MkdirTemp("", "store")
+	require.NoError(t, err)
+
+	opts := badger.DefaultOptions(dirname)
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	defer db.Close()
+
+	pq := NewBadgerPriorityQueue(
+		db,
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
+		nil,
+	)
+	err = pq.Create("delayed", "test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, "delayed", pq.config.Type)
+	assert.Equal(t, "test_queue", pq.config.Name)
+
+	pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "0"})
+	pq.Enqueue(2, "default", 5, "test 2", map[string]string{"retry": "0"})
+	pq.Enqueue(3, "default", 8, "test 3", map[string]string{"retry": "0"})
+	pq.Enqueue(4, "default", 1, "test 4", map[string]string{"retry": "0"})
+
+	err = pq.Delete(2)
+	assert.Nil(t, err)
+
+	m, err := pq.Get(2)
+	assert.Nil(t, m)
+	assert.EqualError(t, err, ErrMessageNotFound.Error())
 }
 
 func TestBadgerPriorityQueueChangePriority(t *testing.T) {

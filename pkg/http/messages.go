@@ -138,6 +138,36 @@ func (h *Handler) Get(ctx context.Context, input *GetInput) (*GetOutput, error) 
 	return res, nil
 }
 
+func (h *Handler) Delete(ctx context.Context, input *DeleteInput) (*DeleteOutput, error) {
+	queueName := input.QueueName
+
+	if !h.node.IsLeader() {
+		err := h.proxy.Delete(ctx, h.node.Leader(), queueName, input.ID)
+		if err != nil {
+			return nil, err
+		}
+		res := &DeleteOutput{
+			Status: http.StatusNoContent,
+		}
+		return res, nil
+	}
+
+	err := h.node.Delete(queueName, input.ID)
+
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to delete a message from a queue", err)
+	}
+
+	res := &DeleteOutput{
+		Status: http.StatusNoContent,
+		// Body: DeleteOutputBody{
+		// 	Status: "DELETED",
+		// 	ID:     strconv.Itoa(int(msg.ID)),
+		// },
+	}
+	return res, nil
+}
+
 func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) {
 	queueName := input.QueueName
 

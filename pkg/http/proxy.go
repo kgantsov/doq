@@ -214,6 +214,42 @@ func (p *Proxy) Get(
 	return &data, nil
 }
 
+func (p *Proxy) Delete(
+	ctx context.Context, host string, queueName string, id uint64,
+) huma.StatusError {
+	req, err := http.NewRequest(
+		"DELETE",
+		fmt.Sprintf(
+			"%s/API/v1/queues/%s/messages/%d",
+			p.getHost(host),
+			queueName,
+			id,
+		),
+		nil,
+	)
+	if err != nil {
+		return huma.Error400BadRequest("Failed to create a request", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return huma.Error503ServiceUnavailable("Failed to proxy get message request", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return huma.Error404NotFound("Message not found", nil)
+		}
+
+		return huma.Error400BadRequest("Failed to get message", nil)
+	}
+
+	return nil
+}
+
 func (p *Proxy) Ack(
 	ctx context.Context,
 	host string,

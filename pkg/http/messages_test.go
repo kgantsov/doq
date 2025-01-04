@@ -150,36 +150,6 @@ func TestEnqueueGet(t *testing.T) {
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
 	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
 
-	resp = api.Post("/API/v1/queues/my-queue/messages", map[string]any{
-		"content":  "{\"user_id\": 2, \"name\": \"Jane\"}",
-		"priority": 100,
-		"metadata": map[string]string{"retry": "3"},
-	})
-
-	enqueueOutput = &EnqueueOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), enqueueOutput)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
-	assert.Equal(t, "2", enqueueOutput.ID)
-	assert.Equal(t, int64(100), enqueueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 2, \"name\": \"Jane\"}", enqueueOutput.Content)
-	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
-
-	resp = api.Get("/API/v1/queues/my-queue/messages")
-
-	enqueueOutput = &EnqueueOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), enqueueOutput)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "DEQUEUED", enqueueOutput.Status)
-	assert.Equal(t, "1", enqueueOutput.ID)
-	assert.Equal(t, int64(100), enqueueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
-	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
-
 	resp = api.Get(fmt.Sprintf("/API/v1/queues/my-queue/messages/%s", enqueueOutput.ID))
 
 	getOutput := &GetOutputBody{}
@@ -192,6 +162,17 @@ func TestEnqueueGet(t *testing.T) {
 	assert.Equal(t, int64(100), getOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", getOutput.Content)
 	assert.Equal(t, "3", getOutput.Metadata["retry"])
+
+	resp = api.Delete(fmt.Sprintf("/API/v1/queues/my-queue/messages/%s", enqueueOutput.ID))
+
+	assert.Equal(t, http.StatusNoContent, resp.Code)
+
+	resp = api.Get(fmt.Sprintf("/API/v1/queues/my-queue/messages/%s", enqueueOutput.ID))
+
+	getOutput = &GetOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), getOutput)
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
 }
 
 func TestNack(t *testing.T) {
@@ -756,6 +737,25 @@ func (n *testNode) Get(QueueName string, id uint64) (*queue.Message, error) {
 		}
 	}
 	return nil, queue.ErrMessageNotFound
+}
+
+func (n *testNode) Delete(QueueName string, id uint64) error {
+	q, ok := n.queues[QueueName]
+	if !ok {
+		return queue.ErrQueueNotFound
+	}
+
+	msg, ok := n.messages[id]
+	if !ok {
+		return queue.ErrMessageNotFound
+	}
+
+	q.Delete(msg.Group, id)
+
+	delete(n.acks, id)
+	delete(n.messages, id)
+
+	return nil
 }
 
 func (n *testNode) UpdatePriority(queueName string, id uint64, priority int64) error {

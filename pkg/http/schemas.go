@@ -111,6 +111,15 @@ type GetOutput struct {
 	Body   GetOutputBody
 }
 
+type DeleteInput struct {
+	QueueName string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	ID        uint64 `path:"id" example:"123" doc:"ID of the message"`
+}
+
+type DeleteOutput struct {
+	Status int
+}
+
 type AckInput struct {
 	QueueName string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
 	ID        uint64 `path:"id" example:"123" doc:"ID of the message"`

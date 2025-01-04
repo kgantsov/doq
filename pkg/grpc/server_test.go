@@ -160,6 +160,25 @@ func (n *testNode) Get(QueueName string, id uint64) (*queue.Message, error) {
 	return nil, queue.ErrMessageNotFound
 }
 
+func (n *testNode) Delete(QueueName string, id uint64) error {
+	q, ok := n.queues[QueueName]
+	if !ok {
+		return queue.ErrQueueNotFound
+	}
+
+	msg, ok := n.messages[id]
+	if !ok {
+		return queue.ErrMessageNotFound
+	}
+
+	q.Delete(msg.Group, id)
+
+	delete(n.acks, id)
+	delete(n.messages, id)
+
+	return nil
+}
+
 func (n *testNode) UpdatePriority(queueName string, id uint64, priority int64) error {
 	q, ok := n.queues[queueName]
 	if !ok {
@@ -203,7 +222,9 @@ func bufDialer(context.Context, string) (net.Conn, error) {
 func TestCreateQueue(t *testing.T) {
 	// Create a connection to the test gRPC server
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -226,7 +247,9 @@ func TestCreateQueue(t *testing.T) {
 // Test for DeleteQueue function
 func TestDeleteQueue(t *testing.T) {
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -251,14 +274,21 @@ func TestDeleteQueue(t *testing.T) {
 
 	// // Test case 2: Try to delete a non-existent queue (should fail)
 	resp, err = client.DeleteQueue(ctx, reqDelete)
-	assert.Equal(t, "rpc error: code = Unknown desc = failed to delete a queue test-queue", err.Error(), "Error message should match")
+	assert.Equal(
+		t,
+		"rpc error: code = Unknown desc = failed to delete a queue test-queue",
+		err.Error(),
+		"Error message should match",
+	)
 	// assert.False(t, resp.Success, "Queue deletion should fail for a non-existent queue")
 }
 
 // Test for Enqueue function
 func TestEnqueue(t *testing.T) {
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -294,14 +324,21 @@ func TestEnqueue(t *testing.T) {
 		Priority:  10,
 	}
 	resp, err = client.Enqueue(ctx, reqEnqueue)
-	assert.Equal(t, "rpc error: code = Unknown desc = failed to enqueue a message", err.Error(), "Error message should match")
+	assert.Equal(
+		t,
+		"rpc error: code = Unknown desc = failed to enqueue a message",
+		err.Error(),
+		"Error message should match",
+	)
 	// assert.False(t, resp.Success, "Enqueue should fail for a non-existent queue")
 }
 
 // Test for Dequeue function
 func TestDequeue(t *testing.T) {
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -334,14 +371,21 @@ func TestDequeue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
-	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
+	assert.Equal(
+		t,
+		"test-message",
+		resp.Content,
+		"Dequeued message should match the enqueued message",
+	)
 	assert.Equal(t, "3", resp.Metadata["retry"], "Metadata should match the enqueued message")
 }
 
 // Test for Get function
 func TestGet(t *testing.T) {
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -380,7 +424,9 @@ func TestGet(t *testing.T) {
 
 func TestUpdatePriority(t *testing.T) {
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -395,19 +441,33 @@ func TestUpdatePriority(t *testing.T) {
 		t.Fatalf("CreateQueue failed: %v", err)
 	}
 
-	reqEnqueue := &pb.EnqueueRequest{QueueName: "test-queue", Content: "test-message-1", Group: "default", Priority: 10}
+	reqEnqueue := &pb.EnqueueRequest{
+		QueueName: "test-queue",
+		Content:   "test-message-1",
+		Group:     "default",
+		Priority:  10,
+	}
 	_, err = client.Enqueue(ctx, reqEnqueue)
 	if err != nil {
 		t.Fatalf("Enqueue failed: %v", err)
 	}
 
-	reqEnqueue = &pb.EnqueueRequest{QueueName: "test-queue", Content: "test-message-2", Group: "default", Priority: 20}
+	reqEnqueue = &pb.EnqueueRequest{
+		QueueName: "test-queue",
+		Content:   "test-message-2",
+		Group:     "default",
+		Priority:  20,
+	}
 	resEnqueue, err := client.Enqueue(ctx, reqEnqueue)
 	if err != nil {
 		t.Fatalf("Enqueue failed: %v", err)
 	}
 
-	reqUpdatePriority := &pb.UpdatePriorityRequest{QueueName: "test-queue", Id: resEnqueue.Id, Priority: 2}
+	reqUpdatePriority := &pb.UpdatePriorityRequest{
+		QueueName: "test-queue",
+		Id:        resEnqueue.Id,
+		Priority:  2,
+	}
 	respUpdatePriority, err := client.UpdatePriority(ctx, reqUpdatePriority)
 	assert.Nil(t, err, "UpdatePriority should succeed")
 	assert.Equal(t, true, respUpdatePriority.Success, "UpdatePriority should succeed")
@@ -417,20 +477,29 @@ func TestUpdatePriority(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
-	assert.Equal(t, "test-message-2", resp.Content, "Dequeued message should match the enqueued message")
+	assert.Equal(
+		t,
+		"test-message-2",
+		resp.Content,
+		"Dequeued message should match the enqueued message",
+	)
 
 	reqDequeue = &pb.DequeueRequest{QueueName: "test-queue", Ack: true}
 	resp, err = client.Dequeue(ctx, reqDequeue)
 	if err != nil {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
-	assert.Equal(t, "test-message-1", resp.Content, "Dequeued message should match the enqueued message")
+	assert.Equal(
+		t, "test-message-1", resp.Content, "Dequeued message should match the enqueued message",
+	)
 }
 
 // Test for Acknowledge function
 func TestAck(t *testing.T) {
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -445,7 +514,12 @@ func TestAck(t *testing.T) {
 		t.Fatalf("CreateQueue failed: %v", err)
 	}
 
-	reqEnqueue := &pb.EnqueueRequest{QueueName: "test-queue", Content: "test-message", Group: "default", Priority: 10}
+	reqEnqueue := &pb.EnqueueRequest{
+		QueueName: "test-queue",
+		Content:   "test-message",
+		Group:     "default",
+		Priority:  10,
+	}
 	_, err = client.Enqueue(ctx, reqEnqueue)
 	if err != nil {
 		t.Fatalf("Enqueue failed: %v", err)
@@ -457,7 +531,9 @@ func TestAck(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
-	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
+	assert.Equal(
+		t, "test-message", resp.Content, "Dequeued message should match the enqueued message",
+	)
 
 	// Test case: Acknowledge message successfully (implement actual logic in the server if needed)
 	req := &pb.AckRequest{QueueName: "test-queue", Id: resp.Id}
@@ -470,7 +546,9 @@ func TestAck(t *testing.T) {
 
 func TestNack(t *testing.T) {
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -485,7 +563,12 @@ func TestNack(t *testing.T) {
 		t.Fatalf("CreateQueue failed: %v", err)
 	}
 
-	reqEnqueue := &pb.EnqueueRequest{QueueName: "test-queue", Content: "test-message", Group: "default", Priority: 10}
+	reqEnqueue := &pb.EnqueueRequest{
+		QueueName: "test-queue",
+		Content:   "test-message",
+		Group:     "default",
+		Priority:  10,
+	}
 	_, err = client.Enqueue(ctx, reqEnqueue)
 	if err != nil {
 		t.Fatalf("Enqueue failed: %v", err)
@@ -497,7 +580,9 @@ func TestNack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
-	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
+	assert.Equal(
+		t, "test-message", resp.Content, "Dequeued message should match the enqueued message",
+	)
 
 	// Test case: Acknowledge message successfully (implement actual logic in the server if needed)
 	req := &pb.NackRequest{QueueName: "test-queue", Id: resp.Id}
@@ -512,12 +597,16 @@ func TestNack(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
-	assert.Equal(t, "test-message", resp.Content, "Dequeued message should match the enqueued message")
+	assert.Equal(
+		t, "test-message", resp.Content, "Dequeued message should match the enqueued message",
+	)
 }
 
 func TestEnqueuetDequeueStream(t *testing.T) {
 	ctx := context.Background()
-	conn, err := grpc.DialContext(ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure())
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
 	if err != nil {
 		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
@@ -571,7 +660,9 @@ func TestEnqueuetDequeueStream(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Open a dequeueStream to receive messages from the queue
-	dequeueStream, err := client.DequeueStream(ctx, &pb.DequeueRequest{QueueName: "test-queue", Ack: true})
+	dequeueStream, err := client.DequeueStream(
+		ctx, &pb.DequeueRequest{QueueName: "test-queue", Ack: true},
+	)
 	if err != nil {
 		t.Fatalf("Failed to open stream: %v", err)
 	}

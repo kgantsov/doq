@@ -415,6 +415,9 @@ func (bpq *BadgerPriorityQueue) Get(id uint64) (*Message, error) {
 	err := bpq.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(bpq.GetMessagesKey(id))
 		if err != nil {
+			if err == badger.ErrKeyNotFound {
+				return ErrMessageNotFound
+			}
 			return err
 		}
 
@@ -428,6 +431,53 @@ func (bpq *BadgerPriorityQueue) Get(id uint64) (*Message, error) {
 	}
 
 	return msg, nil
+}
+
+func (bpq *BadgerPriorityQueue) Delete(id uint64) error {
+	group := "default"
+
+	err := bpq.db.Update(func(txn *badger.Txn) error {
+		var msg *Message
+
+		item, err := txn.Get(bpq.GetMessagesKey(id))
+		if err != nil {
+			if err == badger.ErrKeyNotFound {
+				return ErrMessageNotFound
+			}
+			return err
+		}
+
+		err = item.Value(func(val []byte) error {
+			msg, err = MessageFromBytes(val)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+
+		group = msg.Group
+		bpq.pq.Delete(group, id)
+		bpq.ackQueue.Delete(group, id)
+
+		err = txn.Delete(bpq.GetMessagesKey(msg.ID))
+		if err != nil {
+			if err == badger.ErrKeyNotFound {
+				return ErrMessageNotFound
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) error {

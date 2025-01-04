@@ -86,6 +86,15 @@ func (p *GRPCProxy) Get(ctx context.Context, host string, req *pb.GetRequest) (*
 	return p.client.Get(ctx, req)
 }
 
+func (p *GRPCProxy) Delete(ctx context.Context, host string, req *pb.DeleteRequest) (*pb.DeleteResponse, error) {
+	log.Debug().Msgf("PROXY Delete: %+v to the leader node: %s", req, host)
+
+	if p.leader != host {
+		p.initClient(host)
+	}
+	return p.client.Delete(ctx, req)
+}
+
 func (p *GRPCProxy) Ack(ctx context.Context, host string, req *pb.AckRequest) (*pb.AckResponse, error) {
 	log.Debug().Msgf("PROXY Ack: %+v to the leader node: %s", req, host)
 
