@@ -420,6 +420,19 @@ func TestGet(t *testing.T) {
 	}
 	assert.Equal(t, "test-message", resp.Content, "Got message should match the enqueued message")
 	assert.Equal(t, "3", resp.Metadata["retry"], "Metadata should match the enqueued message")
+
+	// Test case: Delete the message successfully
+	reqDelete := &pb.DeleteRequest{QueueName: "test-queue", Id: respEnqueue.Id}
+	respDelete, err := client.Delete(ctx, reqDelete)
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	assert.True(t, respDelete.Success, "Delete should succeed")
+
+	// Test case: Get the message successfully
+	reqGet = &pb.GetRequest{QueueName: "test-queue", Id: respEnqueue.Id}
+	resp, err = client.Get(ctx, reqGet)
+	assert.Equal(t, "rpc error: code = Unknown desc = failed to get a message", err.Error())
 }
 
 func TestUpdatePriority(t *testing.T) {

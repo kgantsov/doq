@@ -259,6 +259,28 @@ func TestGet_Success(t *testing.T) {
 	assert.Equal(t, expectedOutput, output)
 }
 
+func TestDelete_Success(t *testing.T) {
+	// Create a mock server that returns a successful response
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/API/v1/queues/indexing-queue/messages/75", r.URL.Path)
+		assert.Equal(t, "DELETE", r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	// Initialize the proxy with the test HTTP client
+	proxy := NewProxy(server.Client(), "")
+
+	err := proxy.Delete(
+		context.Background(), strings.Replace(server.URL, "http://", "", 1), "indexing-queue", 75,
+	)
+
+	require.NoError(t, err)
+}
+
 func TestAck_Success(t *testing.T) {
 	// Create a mock server that returns a successful response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

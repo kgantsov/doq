@@ -239,7 +239,7 @@ func (p *Proxy) Delete(
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusNoContent {
 		if resp.StatusCode == http.StatusNotFound {
 			return huma.Error404NotFound("Message not found", nil)
 		}

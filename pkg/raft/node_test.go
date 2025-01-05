@@ -192,6 +192,69 @@ func TestNodeSingleNodeAck(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestNodeSingleNodeNack(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	tmpRaftDir, _ := os.MkdirTemp("", "raft*")
+	defer os.RemoveAll(tmpRaftDir)
+
+	opts := badger.DefaultOptions(tmpDir)
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	cfg := &config.Config{
+		Cluster: config.ClusterConfig{
+			NodeID: "localhost",
+		},
+		Http: config.HttpConfig{
+			Port: "9150",
+		},
+		Raft: config.RaftConfig{
+			Address: "localhost:9151",
+		},
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+		},
+	}
+
+	n := NewNode(db, tmpRaftDir, cfg, []string{})
+	n.Initialize()
+
+	// Simple way to ensure there is a leader.
+	time.Sleep(3 * time.Second)
+	err = n.CreateQueue("delayed", "test_queue")
+	assert.Nil(t, err)
+
+	assert.True(t, n.IsLeader())
+
+	m1, err := n.Enqueue("test_queue", "default", 10, "message 1", nil)
+	assert.Nil(t, err)
+	assert.NotNil(t, m1)
+	assert.Equal(t, "message 1", m1.Content)
+	assert.Equal(t, int64(10), m1.Priority)
+
+	m, err := n.Dequeue("test_queue", false)
+	assert.Nil(t, err)
+	assert.Equal(t, m1.ID, m.ID)
+	assert.Equal(t, m1.Content, m.Content)
+	assert.Equal(t, m1.Priority, m.Priority)
+
+	err = n.Nack("test_queue", m.ID, map[string]string{})
+	assert.Nil(t, err)
+
+	m, err = n.Dequeue("test_queue", false)
+	assert.Nil(t, err)
+	assert.Equal(t, m1.ID, m.ID)
+	assert.Equal(t, m1.Content, m.Content)
+	assert.Equal(t, m1.Priority, m.Priority)
+
+	err = n.DeleteQueue("test_queue")
+	assert.Nil(t, err)
+}
+
 func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "db*")
 	defer os.RemoveAll(tmpDir)

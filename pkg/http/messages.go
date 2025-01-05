@@ -160,10 +160,6 @@ func (h *Handler) Delete(ctx context.Context, input *DeleteInput) (*DeleteOutput
 
 	res := &DeleteOutput{
 		Status: http.StatusNoContent,
-		// Body: DeleteOutputBody{
-		// 	Status: "DELETED",
-		// 	ID:     strconv.Itoa(int(msg.ID)),
-		// },
 	}
 	return res, nil
 }
