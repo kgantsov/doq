@@ -41,7 +41,7 @@ func TestNewQueueManager(t *testing.T) {
 	queue2, err := queueManager.CreateQueue("delayed", "queue_2")
 	assert.Nil(t, err)
 
-	q2m1, err := queue2.Enqueue(1, "default", 20, "queue 2 message 1", nil)
+	_, err = queue2.Enqueue(1, "default", 20, "queue 2 message 1", nil)
 	assert.Nil(t, err)
 	q2m2, err := queue2.Enqueue(2, "default", 15, "queue 2 message 2", nil)
 	assert.Nil(t, err)
@@ -61,10 +61,15 @@ func TestNewQueueManager(t *testing.T) {
 	assert.Equal(t, q2m2.ID, m.ID)
 	assert.Equal(t, q2m2.Content, m.Content)
 
-	m, err = queue2.Dequeue(true)
+	err = queueManager.DeleteQueue("queue_2")
 	assert.Nil(t, err)
-	assert.Equal(t, q2m1.ID, m.ID)
-	assert.Equal(t, q2m1.Content, m.Content)
+
+	queue2, err = queueManager.GetQueue("queue_2")
+	assert.Nil(t, err)
+
+	m, err = queue2.Dequeue(true)
+	assert.NotNil(t, err)
+	assert.Nil(t, m)
 }
 
 func TestQueueManagerGetQueue(t *testing.T) {
@@ -129,4 +134,94 @@ func TestQueueManagerGetQueue(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, q2m1.ID, m.ID)
 	assert.Equal(t, q2m1.Content, m.Content)
+}
+
+func TestQueueManagerLoadQueues(t *testing.T) {
+	opts := badger.DefaultOptions("/tmp/badger11")
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	queueManager := NewQueueManager(
+		db,
+		&config.Config{
+			Queue: config.QueueConfig{
+				AcknowledgementCheckInterval: 1,
+			},
+		},
+		nil,
+	)
+
+	queue, err := queueManager.CreateQueue("delayed", "queue_1")
+	assert.Nil(t, err)
+
+	q1m1, err := queue.Enqueue(1, "default", 10, "queue 1 message 1", nil)
+	assert.Nil(t, err)
+	q1m2, err := queue.Enqueue(2, "default", 5, "queue 1 message 2", map[string]string{})
+	assert.Nil(t, err)
+	db.Close()
+
+	db, err = badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	queueManager = NewQueueManager(
+		db,
+		&config.Config{
+			Queue: config.QueueConfig{
+				AcknowledgementCheckInterval: 1,
+			},
+		},
+		nil,
+	)
+
+	queueManager.LoadQueues()
+
+	queue, err = queueManager.GetQueue("queue_1")
+
+	m, err := queue.Dequeue(true)
+	assert.Nil(t, err)
+	assert.Equal(t, q1m2.ID, m.ID)
+	assert.Equal(t, q1m2.Content, m.Content)
+
+	m, err = queue.Dequeue(true)
+	assert.Nil(t, err)
+	assert.Equal(t, q1m1.ID, m.ID)
+	assert.Equal(t, q1m1.Content, m.Content)
+}
+
+func TestQueueManagerGetQueues(t *testing.T) {
+	opts := badger.DefaultOptions("/tmp/badger12")
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	defer db.Close()
+
+	queueManager := NewQueueManager(
+		db,
+		&config.Config{
+			Queue: config.QueueConfig{
+				AcknowledgementCheckInterval: 1,
+			},
+		},
+		nil,
+	)
+
+	_, err = queueManager.CreateQueue("delayed", "queue_1")
+	assert.Nil(t, err)
+
+	_, err = queueManager.CreateQueue("delayed", "queue_2")
+	assert.Nil(t, err)
+
+	queues := queueManager.GetQueues()
+	assert.Len(t, queues, 2)
+
+	for _, q := range queues {
+		assert.NotNil(t, q)
+
+		assert.Contains(t, []string{"queue_1", "queue_2"}, q.Name)
+	}
 }
