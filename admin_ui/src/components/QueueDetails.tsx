@@ -65,7 +65,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
   });
 
   const { isPending, data: queue } = useQuery({
-    queryKey: ["queues"],
+    queryKey: ["queue"],
     queryFn: () => getQueue(queueName),
     refetchInterval: 1000,
   });
