@@ -196,61 +196,61 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 		if !ok {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v", c.Payload)}
 		}
-		return f.enqueueApply(payload)
+		return f.applyEnqueue(payload)
 	case "dequeue":
 		payload, ok := c.Payload.(DequeuePayload)
 		if !ok {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v %v", c, c.Payload)}
 		}
-		return f.dequeueApply(payload)
+		return f.applyDequeue(payload)
 	case "get":
 		payload, ok := c.Payload.(GetPayload)
 		if !ok {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v %v", c, c.Payload)}
 		}
-		return f.getApply(payload)
+		return f.applyGet(payload)
 	case "delete":
 		payload, ok := c.Payload.(DeletePayload)
 		if !ok {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v %v", c, c.Payload)}
 		}
-		return f.deleteApply(payload)
+		return f.applyDelete(payload)
 	case "ack":
 		payload, ok := c.Payload.(AckPayload)
 		if !ok {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v", c.Payload)}
 		}
-		return f.ackApply(payload)
+		return f.applyAck(payload)
 	case "nack":
 		payload, ok := c.Payload.(NackPayload)
 		if !ok {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v", c.Payload)}
 		}
-		return f.nackApply(payload)
+		return f.applyNack(payload)
 	case "updatePriority":
 		payload, ok := c.Payload.(UpdatePriorityPayload)
 		if !ok {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v", c.Payload)}
 		}
-		return f.updatePriorityApply(payload)
+		return f.applyUpdatePriority(payload)
 	case "createQueue":
 		payload, ok := c.Payload.(CreateQueuePayload)
 		if !ok {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v", c.Payload)}
 		}
-		return f.createQueueApply(payload)
+		return f.applyCreateQueue(payload)
 	case "deleteQueue":
 		payload, ok := c.Payload.(DeleteQueuePayload)
 		if !ok {
 			return &FSMResponse{error: fmt.Errorf("Failed to decode payload: %v", c.Payload)}
 		}
-		return f.deleteQueueApply(payload)
+		return f.applyDeleteQueue(payload)
 	}
 
 	return &FSMResponse{error: fmt.Errorf("Unknown command: %s", c.Op)}
 }
 
-func (f *FSM) enqueueApply(payload EnqueuePayload) *FSMResponse {
+func (f *FSM) applyEnqueue(payload EnqueuePayload) *FSMResponse {
 	queue, err := f.queueManager.GetQueue(payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
@@ -283,7 +283,7 @@ func (f *FSM) enqueueApply(payload EnqueuePayload) *FSMResponse {
 	}
 }
 
-func (f *FSM) dequeueApply(payload DequeuePayload) *FSMResponse {
+func (f *FSM) applyDequeue(payload DequeuePayload) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
@@ -320,7 +320,7 @@ func (f *FSM) dequeueApply(payload DequeuePayload) *FSMResponse {
 	}
 }
 
-func (f *FSM) getApply(payload GetPayload) *FSMResponse {
+func (f *FSM) applyGet(payload GetPayload) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
@@ -357,7 +357,7 @@ func (f *FSM) getApply(payload GetPayload) *FSMResponse {
 	}
 }
 
-func (f *FSM) deleteApply(payload DeletePayload) *FSMResponse {
+func (f *FSM) applyDelete(payload DeletePayload) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
@@ -389,7 +389,7 @@ func (f *FSM) deleteApply(payload DeletePayload) *FSMResponse {
 	}
 }
 
-func (f *FSM) ackApply(payload AckPayload) *FSMResponse {
+func (f *FSM) applyAck(payload AckPayload) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
@@ -427,7 +427,7 @@ func (f *FSM) ackApply(payload AckPayload) *FSMResponse {
 	}
 }
 
-func (f *FSM) nackApply(payload NackPayload) *FSMResponse {
+func (f *FSM) applyNack(payload NackPayload) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
@@ -466,7 +466,7 @@ func (f *FSM) nackApply(payload NackPayload) *FSMResponse {
 	}
 }
 
-func (f *FSM) updatePriorityApply(payload UpdatePriorityPayload) *FSMResponse {
+func (f *FSM) applyUpdatePriority(payload UpdatePriorityPayload) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
@@ -507,7 +507,7 @@ func (f *FSM) updatePriorityApply(payload UpdatePriorityPayload) *FSMResponse {
 	}
 }
 
-func (f *FSM) createQueueApply(payload CreateQueuePayload) *FSMResponse {
+func (f *FSM) applyCreateQueue(payload CreateQueuePayload) *FSMResponse {
 	_, err := f.queueManager.CreateQueue(payload.QueueType, payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
@@ -523,7 +523,7 @@ func (f *FSM) createQueueApply(payload CreateQueuePayload) *FSMResponse {
 	}
 }
 
-func (f *FSM) deleteQueueApply(payload DeleteQueuePayload) *FSMResponse {
+func (f *FSM) applyDeleteQueue(payload DeleteQueuePayload) *FSMResponse {
 	err := f.queueManager.DeleteQueue(payload.QueueName)
 	if err != nil {
 		return &FSMResponse{
