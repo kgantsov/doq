@@ -30,3 +30,4 @@ grpc:
 
 raft:
   address: "localhost:9000"
+  apply_timeout: 5

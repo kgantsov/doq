@@ -26,7 +26,7 @@ func (n *Node) Enqueue(
 		return nil, err
 	}
 
-	f := n.Raft.Apply(data, 5*time.Second)
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
 	if f.Error() != nil {
 		return nil, f.Error()
 	}
@@ -58,7 +58,7 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 		return nil, err
 	}
 
-	f := n.Raft.Apply(data, 5*time.Second)
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
 	if f.Error() != nil {
 		return nil, f.Error()
 	}
@@ -91,7 +91,7 @@ func (n *Node) Get(QueueName string, id uint64) (*queue.Message, error) {
 		return nil, err
 	}
 
-	f := n.Raft.Apply(data, 5*time.Second)
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
 	if f.Error() != nil {
 		return nil, f.Error()
 	}
@@ -123,7 +123,7 @@ func (n *Node) Delete(QueueName string, id uint64) error {
 		return err
 	}
 
-	f := n.Raft.Apply(data, 5*time.Second)
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
 	if f.Error() != nil {
 		return f.Error()
 	}
@@ -149,7 +149,7 @@ func (n *Node) Ack(QueueName string, id uint64) error {
 		return err
 	}
 
-	f := n.Raft.Apply(data, 5*time.Second)
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
 	if f.Error() != nil {
 		return f.Error()
 	}
@@ -176,7 +176,7 @@ func (n *Node) Nack(QueueName string, id uint64, metadata map[string]string) err
 		return err
 	}
 
-	f := n.Raft.Apply(data, 5*time.Second)
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
 	if f.Error() != nil {
 		return f.Error()
 	}
@@ -203,7 +203,7 @@ func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error
 		return err
 	}
 
-	f := n.Raft.Apply(data, 5*time.Second)
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
 	if f.Error() != nil {
 		return f.Error()
 	}
@@ -242,7 +242,7 @@ func (n *Node) CreateQueue(queueType, queueName string) error {
 		return err
 	}
 
-	f := n.Raft.Apply(data, 5*time.Second)
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
 	if f.Error() != nil {
 		return f.Error()
 	}
@@ -266,7 +266,7 @@ func (n *Node) DeleteQueue(queueName string) error {
 		return err
 	}
 
-	f := n.Raft.Apply(data, 5*time.Second)
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
 	if f.Error() != nil {
 		return f.Error()
 	}

@@ -32,7 +32,8 @@ type GrpcConfig struct {
 }
 
 type RaftConfig struct {
-	Address string `mapstructure:"address"`
+	Address      string `mapstructure:"address"`
+	ApplyTimeout int64  `mapstructure:"apply_timeout"`
 }
 
 type StorageConfig struct {
@@ -138,6 +139,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	rootCmd.Flags().String("http.port", "8000", "Port to run the HTTP server on")
 	rootCmd.Flags().String("grpc.address", "", "Address to run the GRPC server on")
 	rootCmd.Flags().String("raft.address", "localhost:9000", "Raft bind address")
+	rootCmd.Flags().Int("raft.apply_timeout", 5, "Raft apply timeout in seconds")
 	rootCmd.Flags().String("storage.data_dir", "data", "Data directory")
 	rootCmd.Flags().Int64("storage.gc_interval", 300, "Garbage collection interval in seconds")
 	rootCmd.Flags().Float64("storage.gc_discard_ratio", 0.7, "Garbage collection discard ratio")
@@ -166,6 +168,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	viper.BindPFlag("http.port", rootCmd.Flags().Lookup("http.port"))
 	viper.BindPFlag("grpc.address", rootCmd.Flags().Lookup("grpc.address"))
 	viper.BindPFlag("raft.address", rootCmd.Flags().Lookup("raft.address"))
+	viper.BindPFlag("raft.apply_timeout", rootCmd.Flags().Lookup("raft.apply_timeout"))
 	viper.BindPFlag("storage.data_dir", rootCmd.Flags().Lookup("storage.data_dir"))
 	viper.BindPFlag("storage.gc_interval", rootCmd.Flags().Lookup("storage.gc_interval"))
 	viper.BindPFlag("storage.gc_discard_ratio", rootCmd.Flags().Lookup("storage.gc_discard_ratio"))
