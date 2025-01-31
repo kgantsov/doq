@@ -564,7 +564,7 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) Nack(id uint64, metadata map[string]string) error {
+func (bpq *BadgerPriorityQueue) Nack(id uint64, priority int64, metadata map[string]string) error {
 	item := bpq.ackQueue.Get("default", id)
 
 	if item == nil {
@@ -577,6 +577,10 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64, metadata map[string]string) erro
 		return err
 	}
 
+	if priority != 0 {
+		message.Priority = priority
+	}
+
 	queueItem := &Item{
 		ID:       message.ID,
 		Priority: message.Priority,
@@ -586,7 +590,7 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64, metadata map[string]string) erro
 	bpq.ackQueue.Delete("default", item.ID)
 
 	if metadata != nil {
-		err = bpq.updateMessage(item.ID, 0, "", metadata)
+		err = bpq.updateMessage(item.ID, priority, "", metadata)
 
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to update message: %d", item.ID)

@@ -136,6 +136,7 @@ type AckOutput struct {
 }
 
 type NackInputBody struct {
+	Priority int64             `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Metadata map[string]string `json:"metadata,omitempty" example:"{\"retry\": \"0\"}" doc:"Metadata of the message"`
 }
 
@@ -148,6 +149,7 @@ type NackInput struct {
 type NackOutputBody struct {
 	Status   string            `json:"status" example:"UNACKNOWLEDGED" doc:"Status of the dequeue operation"`
 	ID       string            `json:"id" doc:"ID of the message"`
+	Priority int64             `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Metadata map[string]string `json:"metadata,omitempty" example:"{\"retry\": \"0\"}" doc:"Metadata of the message"`
 }
 

@@ -242,14 +242,14 @@ func TestNodeSingleNodeNack(t *testing.T) {
 	assert.Equal(t, m1.Content, m.Content)
 	assert.Equal(t, m1.Priority, m.Priority)
 
-	err = n.Nack("test_queue", m.ID, map[string]string{})
+	err = n.Nack("test_queue", m.ID, 5, map[string]string{})
 	assert.Nil(t, err)
 
 	m, err = n.Dequeue("test_queue", false)
 	assert.Nil(t, err)
 	assert.Equal(t, m1.ID, m.ID)
 	assert.Equal(t, m1.Content, m.Content)
-	assert.Equal(t, m1.Priority, m.Priority)
+	assert.Equal(t, int64(5), m.Priority)
 
 	err = n.DeleteQueue("test_queue")
 	assert.Nil(t, err)

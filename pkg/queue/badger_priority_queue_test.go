@@ -511,30 +511,30 @@ func TestBadgerPriorityQueueNack(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 
-	err = pq.Nack(m1.ID, map[string]string{"retry": "1"})
+	err = pq.Nack(m1.ID, 30, map[string]string{"retry": "1"})
 	assert.Nil(t, err)
 
-	err = pq.Nack(m2.ID, map[string]string{"retry": "2"})
+	err = pq.Nack(m2.ID, m2.Priority, map[string]string{"retry": "2"})
 	assert.Nil(t, err)
 
-	err = pq.Nack(m3.ID, nil)
+	err = pq.Nack(m3.ID, m3.Priority, nil)
 	assert.Nil(t, err)
 
-	err = pq.Nack(m4.ID, nil)
+	err = pq.Nack(m4.ID, m4.Priority, nil)
 	assert.Nil(t, err)
 
-	err = pq.Nack(100, nil)
+	err = pq.Nack(100, 10, nil)
 	assert.EqualError(t, err, ErrMessageNotFound.Error())
 
 	m1, err = pq.Dequeue(true)
 	assert.Nil(t, err)
-	assert.Equal(t, "test 1", m1.Content)
-	assert.Equal(t, map[string]string{"retry": "1"}, m1.Metadata)
+	assert.Equal(t, "test 2", m1.Content)
+	assert.Equal(t, map[string]string{"retry": "2"}, m1.Metadata)
 
 	m2, err = pq.Dequeue(true)
 	assert.Nil(t, err)
-	assert.Equal(t, "test 2", m2.Content)
-	assert.Equal(t, map[string]string{"retry": "2"}, m2.Metadata)
+	assert.Equal(t, "test 1", m2.Content)
+	assert.Equal(t, map[string]string{"retry": "1"}, m2.Metadata)
 
 	m3, err = pq.Dequeue(true)
 	assert.Nil(t, err)

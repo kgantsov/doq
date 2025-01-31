@@ -55,6 +55,7 @@ type AckPayload struct {
 type NackPayload struct {
 	QueueName string            `json:"queue_name"`
 	ID        uint64            `json:"id"`
+	Priority  int64             `json:"priority"`
 	Metadata  map[string]string `json:"metadata"`
 }
 
@@ -436,7 +437,7 @@ func (f *FSM) applyNack(payload NackPayload) *FSMResponse {
 		}
 	}
 
-	err = q.Nack(payload.ID, payload.Metadata)
+	err = q.Nack(payload.ID, payload.Priority, payload.Metadata)
 
 	log.Debug().Msgf("Node %s Nacked a message: %v", f.NodeID, err)
 

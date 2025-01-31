@@ -212,7 +212,7 @@ func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, erro
 		return res, nil
 	}
 
-	err := h.node.Nack(queueName, input.ID, metadata)
+	err := h.node.Nack(queueName, input.ID, input.Body.Priority, metadata)
 
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to nack a message from a queue", err)

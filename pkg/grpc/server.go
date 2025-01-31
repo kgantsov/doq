@@ -370,7 +370,7 @@ func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackRe
 		return s.proxy.Nack(ctx, s.node.Leader(), req)
 	}
 
-	err := s.node.Nack(req.QueueName, req.Id, req.Metadata)
+	err := s.node.Nack(req.QueueName, req.Id, req.Priority, req.Metadata)
 	if err != nil {
 		return &pb.NackResponse{Success: false}, fmt.Errorf("failed to ack a message")
 	}

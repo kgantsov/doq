@@ -131,7 +131,7 @@ func (n *testNode) Ack(QueueName string, id uint64) error {
 	return nil
 }
 
-func (n *testNode) Nack(QueueName string, id uint64, metadata map[string]string) error {
+func (n *testNode) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
 	q, ok := n.queues[QueueName]
 	if !ok {
 		return queue.ErrQueueNotFound

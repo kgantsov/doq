@@ -221,6 +221,7 @@ func TestNack(t *testing.T) {
 	resp = api.Post(
 		fmt.Sprintf("/API/v1/queues/my-queue/messages/%s/nack", dequeueOutput.ID),
 		map[string]any{
+			"priority": 100,
 			"metadata": map[string]string{"retry": "3"},
 		},
 	)
@@ -498,7 +499,9 @@ func TestNackProxy(t *testing.T) {
 	h.node.CreateQueue("delayed", "indexing-queue")
 
 	resp := api.Post(
-		"/API/v1/queues/indexing-queue/messages/1122/nack", map[string]any{})
+		"/API/v1/queues/indexing-queue/messages/1122/nack", map[string]any{
+			"priority": 100,
+		})
 
 	output := &NackOutputBody{}
 
@@ -710,7 +713,7 @@ func (n *testNode) Ack(QueueName string, id uint64) error {
 	return nil
 }
 
-func (n *testNode) Nack(QueueName string, id uint64, metadata map[string]string) error {
+func (n *testNode) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
 	q, ok := n.queues[QueueName]
 	if !ok {
 		return queue.ErrQueueNotFound
@@ -719,6 +722,10 @@ func (n *testNode) Nack(QueueName string, id uint64, metadata map[string]string)
 	message, ok := n.acks[id]
 	if !ok {
 		return queue.ErrMessageNotFound
+	}
+
+	if priority != 0 {
+		message.Priority = priority
 	}
 
 	message.Metadata = metadata
