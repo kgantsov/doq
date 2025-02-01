@@ -529,7 +529,7 @@ async def test_message_nack(fixt_http_client, fixt_regular_queue_manual_nack):
         for message_id in message_ids:
             response = await fixt_http_client.post(
                 url=f"/API/v1/queues/{queue_name}/messages/{message_id}/nack",
-                json={"metadata": {"retry": "1"}}
+                json={"priority": data["priority"], "metadata": {"retry": "1"}}
             )
             assert response.status_code == 200, response.text
 
