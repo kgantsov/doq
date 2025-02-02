@@ -59,7 +59,9 @@ export const NackMessage = async (queueName: string, id: string) => {
         "Content-Type": "application/json",
         Accept: "application/json, application/problem+json",
       },
-      body: undefined,
+      body: JSON.stringify({
+        priority: 0,
+      }),
     }
   );
   return await response.json();
