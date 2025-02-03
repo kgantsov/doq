@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"os"
 	"testing"
 
 	"github.com/dgraph-io/badger/v4"
@@ -10,7 +11,10 @@ import (
 )
 
 func TestNewQueueManager(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger")
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -73,7 +77,10 @@ func TestNewQueueManager(t *testing.T) {
 }
 
 func TestQueueManagerGetQueue(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger10")
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -137,7 +144,10 @@ func TestQueueManagerGetQueue(t *testing.T) {
 }
 
 func TestQueueManagerLoadQueues(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger11")
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -193,7 +203,10 @@ func TestQueueManagerLoadQueues(t *testing.T) {
 }
 
 func TestQueueManagerGetQueues(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger12")
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())

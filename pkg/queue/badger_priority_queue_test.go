@@ -45,7 +45,9 @@ func TestBadgerPriorityQueue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			opts := badger.DefaultOptions("/tmp/badger1")
+			tmpDir, _ := os.MkdirTemp("", "db*")
+			defer os.RemoveAll(tmpDir)
+			opts := badger.DefaultOptions(tmpDir)
 			db, err := badger.Open(opts)
 			if err != nil {
 				log.Fatal().Msg(err.Error())
@@ -241,7 +243,10 @@ func TestBadgerPriorityQueueDelete(t *testing.T) {
 }
 
 func TestBadgerPriorityQueueChangePriority(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger3")
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -346,7 +351,10 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 }
 
 func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger4")
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -384,7 +392,10 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 }
 
 func TestBadgerPriorityQueueAck(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger6")
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
@@ -455,7 +466,10 @@ func TestBadgerPriorityQueueAck(t *testing.T) {
 }
 
 func TestBadgerPriorityQueueNack(t *testing.T) {
-	opts := badger.DefaultOptions("/tmp/badger7")
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
 	db, err := badger.Open(opts)
 	if err != nil {
 		log.Fatal().Msg(err.Error())
