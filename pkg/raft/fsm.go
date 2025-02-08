@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -546,18 +547,54 @@ func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	defer f.mu.Unlock()
 
 	return &FSMSnapshot{
-		queueManager: f.queueManager,
-		db:           f.db,
-		config:       f.config,
 		NodeID:       f.NodeID,
+		queueManager: f.queueManager,
 	}, nil
 }
 
 func (f *FSM) Restore(rc io.ReadCloser) error {
+	log.Info().Msgf("=====> Restoring snapshot <=====")
+
 	defer rc.Close()
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
+	scanner := bufio.NewScanner(rc)
+	linesTotal := 0
+	linesRestored := 0
+
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		linesTotal++
+
+		msg, err := queue.MessageFromBytes(line)
+		if err != nil {
+			log.Warn().Msgf("Failed to unmarshal command: %v %v", err, string(line))
+			continue
+		}
+
+		q, err := f.queueManager.CreateQueue(msg.QueueType, msg.QueueName)
+		if err != nil {
+			log.Warn().Msgf("Failed to create a queue: %v", err)
+			continue
+		}
+
+		q.Enqueue(msg.ID, msg.Group, msg.Priority, msg.Content, msg.Metadata)
+
+		linesRestored++
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Info().Msgf(
+			"Error while reading snapshot: %v. Restored %d out of %d lines",
+			err,
+			linesRestored,
+			linesTotal,
+		)
+		return err
+	}
+	log.Warn().Msgf("Restored %d out of %d lines", linesRestored, linesTotal)
 
 	return nil
 }
@@ -565,11 +602,15 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 type FSMSnapshot struct {
 	NodeID       string
 	queueManager *queue.QueueManager
-	db           *badger.DB
-	config       *config.Config
 }
 
 func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
+	if err := f.queueManager.PersistSnapshot(sink); err != nil {
+		log.Debug().Msg("Error copying logs to sink")
+		sink.Cancel()
+		return err
+	}
+
 	return nil
 }
 

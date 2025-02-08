@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
@@ -45,6 +46,9 @@ type Message struct {
 	Priority int64
 	Content  string
 	Metadata map[string]string
+
+	QueueName string `json:"QueueName,omitempty"`
+	QueueType string `json:"QueueType,omitempty"`
 }
 
 func (m *Message) ToBytes() ([]byte, error) {
@@ -158,6 +162,7 @@ func (bpq *BadgerPriorityQueue) monitorAckQueue() {
 				queueItem := &Item{
 					ID:       message.ID,
 					Priority: message.Priority,
+					Group:    message.Group,
 				}
 
 				bpq.pq.Enqueue(message.Group, queueItem)
@@ -285,7 +290,9 @@ func (bpq *BadgerPriorityQueue) Load(queueName string, loadMessages bool) error 
 					if err != nil {
 						return err
 					}
-					bpq.pq.Enqueue(msg.Group, &Item{ID: msg.ID, Priority: msg.Priority})
+					bpq.pq.Enqueue(
+						msg.Group, &Item{ID: msg.ID, Priority: msg.Priority, Group: msg.Group},
+					)
 					return nil
 				})
 				if err != nil {
@@ -326,6 +333,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(
 	queueItem := &Item{
 		ID:       msg.ID,
 		Priority: msg.Priority,
+		Group:    msg.Group,
 	}
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
@@ -388,6 +396,7 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 					Priority: time.Now().UTC().Add(
 						time.Duration(bpq.cfg.Queue.AcknowledgementTimeout) * time.Second,
 					).Unix(),
+					Group: msg.Group,
 				},
 			)
 		}
@@ -584,6 +593,7 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64, priority int64, metadata map[str
 	queueItem := &Item{
 		ID:       message.ID,
 		Priority: message.Priority,
+		Group:    message.Group,
 	}
 
 	bpq.pq.Enqueue(message.Group, queueItem)
@@ -652,4 +662,60 @@ func (bpq *BadgerPriorityQueue) updateMessage(
 
 func (bpq *BadgerPriorityQueue) Len() int {
 	return int(bpq.pq.Len())
+}
+
+func (bpq *BadgerPriorityQueue) PersistSnapshot(sink raft.SnapshotSink) error {
+	err := bpq.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+
+		prefix := bpq.getMessagesPrefix()
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+
+			err := item.Value(func(val []byte) error {
+				msg, err := MessageFromBytes(val)
+
+				if err != nil {
+					return err
+				}
+
+				msg.QueueType = bpq.config.Type
+				msg.QueueName = bpq.config.Name
+
+				data, err := json.Marshal(msg)
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to marshal queue %s item", bpq.config.Name)
+					return err
+				}
+
+				_, err = sink.Write(data)
+				if err != nil {
+					log.Error().Err(err).Msgf(
+						"Failed to write a queue %s item to snapshot sink", bpq.config.Name,
+					)
+					return err
+				}
+
+				_, err = sink.Write([]byte("\n"))
+				if err != nil {
+					log.Error().Err(err).Msgf(
+						"Failed to write a newline to snapshot sink for queue %s", bpq.config.Name,
+					)
+				}
+
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

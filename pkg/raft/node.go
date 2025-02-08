@@ -93,6 +93,13 @@ func (node *Node) Initialize() {
 
 	os.MkdirAll(node.raftDir, 0700)
 
+	idGenerator, err := snowflake.NewNode(1)
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to create snowflake node")
+	}
+
+	node.idGenerator = idGenerator
+
 	raftNode, err := node.createRaftNode(nodeID, node.raftDir, node.raftAddr, queueManager)
 	if err != nil {
 		log.Fatal().Msgf("failed to create raft node: '%s' %s", node.raftAddr, err.Error())
@@ -100,13 +107,6 @@ func (node *Node) Initialize() {
 
 	node.Raft = raftNode
 	node.QueueManager = queueManager
-
-	idGenerator, err := snowflake.NewNode(1)
-	if err != nil {
-		log.Warn().Err(err).Msg("failed to create snowflake node")
-	}
-
-	node.idGenerator = idGenerator
 
 	go node.monitorLeadership()
 	go node.ListenToLeaderChanges()
@@ -249,7 +249,12 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 		return nil, err
 	}
 
-	fsm := &FSM{queueManager: queueManager, NodeID: nodeID, db: n.db, config: n.cfg}
+	fsm := &FSM{
+		queueManager: queueManager,
+		NodeID:       nodeID,
+		db:           n.db,
+		config:       n.cfg,
+	}
 
 	r, err := raft.NewRaft(config, fsm, logStore, stableStore, snapshots, transport)
 	if err != nil {

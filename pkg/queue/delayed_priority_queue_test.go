@@ -83,7 +83,7 @@ func TestDelayedPriorityQueueDelayed(t *testing.T) {
 	pq := NewDelayedPriorityQueue(true)
 
 	priority := time.Now().UTC().Add(1 * time.Second).Unix()
-	pq.Enqueue("test", &Item{ID: 1, Priority: priority})
+	pq.Enqueue("test", &Item{ID: 1, Priority: priority, Group: "default"})
 
 	m1 := pq.Get("test", 1)
 	assert.Equal(t, uint64(1), m1.ID)
@@ -104,7 +104,7 @@ func BenchmarkDelayedPriorityQueueEnqueue(b *testing.B) {
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
-		pq.Enqueue("default", &Item{ID: uint64(i), Priority: 10})
+		pq.Enqueue("default", &Item{ID: uint64(i), Priority: 10, Group: "default"})
 	}
 }
 
@@ -113,7 +113,7 @@ func BenchmarkDelayedPriorityQueueDequeue(b *testing.B) {
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
-		pq.Enqueue("default", &Item{ID: uint64(i), Priority: 10})
+		pq.Enqueue("default", &Item{ID: uint64(i), Priority: 10, Group: "default"})
 	}
 
 	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing

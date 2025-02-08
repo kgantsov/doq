@@ -8,7 +8,7 @@ import (
 type Item struct {
 	ID       uint64
 	Priority int64
-	Group    int64
+	Group    string
 }
 
 func (m *Item) UpdatePriority(newPriority int64) {

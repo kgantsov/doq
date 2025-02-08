@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/rs/zerolog/log"
 )
@@ -62,6 +63,20 @@ func (qm *QueueManager) LoadQueues() {
 	}
 }
 
+func (qm *QueueManager) PersistSnapshot(sink raft.SnapshotSink) error {
+	qm.mu.Lock()
+	defer qm.mu.Unlock()
+
+	for _, queue := range qm.queues {
+		err := queue.PersistSnapshot(sink)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (qm *QueueManager) CreateQueue(queueType, queueName string) (*BadgerPriorityQueue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
@@ -110,7 +125,7 @@ func (qm *QueueManager) GetQueue(queueName string) (*BadgerPriorityQueue, error)
 	q, ok := qm.queues[queueName]
 	if !ok {
 		q = NewBadgerPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
-		err := q.Load(queueName, true)
+		err := q.Load(queueName, false)
 		if err != nil {
 			return nil, ErrQueueNotFound
 		}
