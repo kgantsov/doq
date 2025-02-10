@@ -1,6 +1,7 @@
 # DOQ [![Build Status](https://drone.coroutine.dev/api/badges/kgantsov/doq/status.svg)](https://drone.coroutine.dev/kgantsov/doq) [![Go Report](https://goreportcard.com/badge/github.com/kgantsov/doq)](https://goreportcard.com/report/github.com/kgantsov/doq) [![codecov](https://codecov.io/gh/kgantsov/doq/graph/badge.svg?token=GMSIM3WYVX)](https://codecov.io/gh/kgantsov/doq)
 
-`DOQ` is a distributed ordered (by priority) queue based on the Raft consensus algorithm.
+`DOQ` is a distributed ordered (by priority) queue based on the Raft consensus algorithm by
+[hashicorp/raft](https://github.com/hashicorp/raft) and [BadgerDB](https://dgraph.io/docs/badger/).
 
 The Raft consensus algorithm is a protocol for managing a replicated log across a distributed system to ensure consistency and reliability. Raft is designed to be understandable and practical, offering a robust solution to the consensus problem, which is fundamental for building fault-tolerant distributed systems.
 
