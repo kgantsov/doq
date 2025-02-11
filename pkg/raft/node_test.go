@@ -43,11 +43,17 @@ func TestNodeSingleNode(t *testing.T) {
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
-	time.Sleep(3 * time.Second)
-	err = n.CreateQueue("delayed", "test_queue")
+	time.Sleep(1 * time.Second)
+	err = n.InitIDGenerator()
 	assert.Nil(t, err)
 
+	id := n.GenerateID()
+	assert.NotEqual(t, int64(0), id)
+
 	assert.True(t, n.IsLeader())
+
+	err = n.CreateQueue("delayed", "test_queue")
+	assert.Nil(t, err)
 
 	m1, err := n.Enqueue("test_queue", "default", 10, "message 1", nil)
 	assert.Nil(t, err)
