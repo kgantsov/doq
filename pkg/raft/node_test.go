@@ -52,8 +52,22 @@ func TestNodeSingleNode(t *testing.T) {
 
 	assert.True(t, n.IsLeader())
 
+	queues := n.GetQueues()
+	assert.Equal(t, 0, len(queues))
+
 	err = n.CreateQueue("delayed", "test_queue")
 	assert.Nil(t, err)
+
+	queues = n.GetQueues()
+	assert.Equal(t, 1, len(queues))
+
+	queueInfo, err := n.GetQueueInfo("test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, "test_queue", queueInfo.Name)
+	assert.Equal(t, "delayed", queueInfo.Type)
+	assert.Equal(t, int64(0), queueInfo.Ready)
+	assert.Equal(t, int64(0), queueInfo.Unacked)
+	assert.Equal(t, int64(0), queueInfo.Total)
 
 	m1, err := n.Enqueue("test_queue", "default", 10, "message 1", nil)
 	assert.Nil(t, err)
@@ -61,11 +75,23 @@ func TestNodeSingleNode(t *testing.T) {
 	assert.Equal(t, "message 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
+	queueInfo, err = n.GetQueueInfo("test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), queueInfo.Ready)
+	assert.Equal(t, int64(0), queueInfo.Unacked)
+	assert.Equal(t, int64(1), queueInfo.Total)
+
 	m2, err := n.Enqueue("test_queue", "default", 5, "message 2", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m2)
 	assert.Equal(t, "message 2", m2.Content)
 	assert.Equal(t, int64(5), m2.Priority)
+
+	queueInfo, err = n.GetQueueInfo("test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, int64(2), queueInfo.Ready)
+	assert.Equal(t, int64(0), queueInfo.Unacked)
+	assert.Equal(t, int64(2), queueInfo.Total)
 
 	m3, err := n.Enqueue("test_queue", "default", 10, "message 3", map[string]string{"key": "value"})
 	assert.Nil(t, err)
@@ -73,6 +99,12 @@ func TestNodeSingleNode(t *testing.T) {
 	assert.Equal(t, "message 3", m3.Content)
 	assert.Equal(t, int64(10), m3.Priority)
 	assert.Equal(t, "value", m3.Metadata["key"])
+
+	queueInfo, err = n.GetQueueInfo("test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, int64(3), queueInfo.Ready)
+	assert.Equal(t, int64(0), queueInfo.Unacked)
+	assert.Equal(t, int64(3), queueInfo.Total)
 
 	m, err := n.Get("test_queue", m1.ID)
 	assert.Nil(t, err)
@@ -86,11 +118,23 @@ func TestNodeSingleNode(t *testing.T) {
 	assert.Equal(t, m2.Content, m.Content)
 	assert.Equal(t, m2.Priority, m.Priority)
 
+	queueInfo, err = n.GetQueueInfo("test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, int64(2), queueInfo.Ready)
+	assert.Equal(t, int64(0), queueInfo.Unacked)
+	assert.Equal(t, int64(2), queueInfo.Total)
+
 	m, err = n.Dequeue("test_queue", true)
 	assert.Nil(t, err)
 	assert.Equal(t, m1.ID, m.ID)
 	assert.Equal(t, m1.Content, m.Content)
 	assert.Equal(t, m1.Priority, m.Priority)
+
+	queueInfo, err = n.GetQueueInfo("test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, int64(1), queueInfo.Ready)
+	assert.Equal(t, int64(0), queueInfo.Unacked)
+	assert.Equal(t, int64(1), queueInfo.Total)
 
 	err = n.Delete("test_queue", m3.ID)
 	assert.Nil(t, err)
@@ -101,6 +145,9 @@ func TestNodeSingleNode(t *testing.T) {
 
 	err = n.DeleteQueue("test_queue")
 	assert.Nil(t, err)
+
+	queues = n.GetQueues()
+	assert.Equal(t, 0, len(queues))
 }
 
 func TestNodeDeleteQueue(t *testing.T) {
