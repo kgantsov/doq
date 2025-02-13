@@ -15,7 +15,7 @@ func TestJoiner(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		// Test request parameters
 		assert.Equal(t, "POST", req.Method)
-		assert.Equal(t, "/join", req.URL.String())
+		assert.Equal(t, "/cluster/join", req.URL.String())
 		// Send response to be tested
 		rw.Write([]byte(`OK`))
 	}))
@@ -41,7 +41,7 @@ func TestJoinerRetry(t *testing.T) {
 	// Start a local HTTP server
 	server1 := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		assert.Equal(t, "POST", req.Method)
-		assert.Equal(t, "/join", req.URL.String())
+		assert.Equal(t, "/cluster/join", req.URL.String())
 
 		if attemptHost1 < 2 {
 			attemptHost1++
@@ -57,7 +57,7 @@ func TestJoinerRetry(t *testing.T) {
 	// Start a local HTTP server
 	server2 := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		assert.Equal(t, "POST", req.Method)
-		assert.Equal(t, "/join", req.URL.String())
+		assert.Equal(t, "/cluster/join", req.URL.String())
 
 		if attemptHost2 < 2 {
 			attemptHost2++

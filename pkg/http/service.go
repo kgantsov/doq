@@ -139,12 +139,12 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 	huma.Register(
 		api,
 		huma.Operation{
-			OperationID: "raft-join",
+			OperationID: "cluster-join",
 			Method:      http.MethodPost,
-			Path:        "/join",
+			Path:        "/cluster/join",
 			Summary:     "Join cluster",
 			Description: "An endpoint for joining cluster used that by raft consensus protocol",
-			Tags:        []string{"raft"},
+			Tags:        []string{"Cluster"},
 		},
 		h.Join,
 	)

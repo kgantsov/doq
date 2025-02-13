@@ -58,7 +58,9 @@ func (j *Joiner) join(joinAddr, raftAddr, nodeID string) error {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("http://%s/join", joinAddr), bytes.NewReader(b))
+	req, err := http.NewRequest(
+		"POST", fmt.Sprintf("http://%s/cluster/join", joinAddr), bytes.NewReader(b),
+	)
 	if err != nil {
 		return err
 	}
