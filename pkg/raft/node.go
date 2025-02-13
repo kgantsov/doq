@@ -63,63 +63,63 @@ func NewNode(db *badger.DB, raftDir string, cfg *config.Config, peers []string) 
 	return node
 }
 
-func (node *Node) PrometheusRegistry() prometheus.Registerer {
-	return node.prometheusRegistry
+func (n *Node) PrometheusRegistry() prometheus.Registerer {
+	return n.prometheusRegistry
 }
 
-func (node *Node) SetLeaderChangeFunc(leaderChangeFn func(bool)) {
-	node.leaderChangeFn = leaderChangeFn
+func (n *Node) SetLeaderChangeFunc(leaderChangeFn func(bool)) {
+	n.leaderChangeFn = leaderChangeFn
 }
 
-func (node *Node) Initialize() {
+func (n *Node) Initialize() {
 	nodes := make([]string, 0)
-	nodes = append(nodes, node.id)
-	for _, peer := range node.peers {
+	nodes = append(nodes, n.id)
+	for _, peer := range n.peers {
 		nodes = append(nodes, peer)
 	}
 	nodes = sort.StringSlice(nodes)
 
-	nodeID := node.id
+	nodeID := n.id
 
 	log.Debug().Msgf("=====> TEST Initialize %+v", nodes)
 
 	var prometheusMetrics *queue.PrometheusMetrics
-	if node.cfg.Prometheus.Enabled {
-		promRegistry := node.PrometheusRegistry()
+	if n.cfg.Prometheus.Enabled {
+		promRegistry := n.PrometheusRegistry()
 		prometheusMetrics = queue.NewPrometheusMetrics(promRegistry, "doq", "queues")
 		promRegistry.Register(collectors.NewGoCollector())
 	}
-	queueManager := queue.NewQueueManager(node.db, node.cfg, prometheusMetrics)
+	queueManager := queue.NewQueueManager(n.db, n.cfg, prometheusMetrics)
 
-	os.MkdirAll(node.raftDir, 0700)
+	os.MkdirAll(n.raftDir, 0700)
 
 	idGenerator, err := snowflake.NewNode(1)
 	if err != nil {
 		log.Warn().Err(err).Msg("failed to create snowflake node")
 	}
 
-	node.idGenerator = idGenerator
+	n.idGenerator = idGenerator
 
-	raftNode, err := node.createRaftNode(nodeID, node.raftDir, node.raftAddr, queueManager)
+	raftNode, err := n.createRaftNode(nodeID, n.raftDir, n.raftAddr, queueManager)
 	if err != nil {
-		log.Fatal().Msgf("failed to create raft node: '%s' %s", node.raftAddr, err.Error())
+		log.Fatal().Msgf("failed to create raft node: '%s' %s", n.raftAddr, err.Error())
 	}
 
-	node.Raft = raftNode
-	node.QueueManager = queueManager
+	n.Raft = raftNode
+	n.QueueManager = queueManager
 
-	go node.monitorLeadership()
-	go node.ListenToLeaderChanges()
+	go n.monitorLeadership()
+	go n.ListenToLeaderChanges()
 
 }
 
-func (node *Node) GenerateID() uint64 {
-	return uint64(node.idGenerator.Generate().Int64())
+func (n *Node) GenerateID() uint64 {
+	return uint64(n.idGenerator.Generate().Int64())
 }
 
-func (node *Node) InitIDGenerator() error {
+func (n *Node) InitIDGenerator() error {
 	time.Sleep(2 * time.Second)
-	configFuture := node.Raft.GetConfiguration()
+	configFuture := n.Raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
 		log.Info().Msgf("failed to get raft configuration: %v", err)
 		return err
@@ -127,7 +127,7 @@ func (node *Node) InitIDGenerator() error {
 
 	index := -1
 	for i, srv := range configFuture.Configuration().Servers {
-		if srv.ID == raft.ServerID(node.id) {
+		if srv.ID == raft.ServerID(n.id) {
 			index = i
 			break
 		}
@@ -142,27 +142,27 @@ func (node *Node) InitIDGenerator() error {
 		return err
 	}
 
-	node.idGenerator = idGenerator
+	n.idGenerator = idGenerator
 
 	return nil
 }
 
-func (node *Node) monitorLeadership() {
-	log.Debug().Msgf("Node %s Monitoring leadership for node %s", node.id, node.id)
+func (n *Node) monitorLeadership() {
+	log.Debug().Msgf("Node %s Monitoring leadership for node %s", n.id, n.id)
 
 	for {
-		leaderAddr, _ := node.Raft.LeaderWithID()
-		if string(leaderAddr) != node.leader {
-			node.leader = string(leaderAddr)
-			log.Info().Msgf("Node %s leader is now %s", node.id, leaderAddr)
+		leaderAddr, _ := n.Raft.LeaderWithID()
+		if string(leaderAddr) != n.leader {
+			n.leader = string(leaderAddr)
+			log.Info().Msgf("Node %s leader is now %s", n.id, leaderAddr)
 		}
 		time.Sleep(1 * time.Second)
 	}
 }
 
-func (node *Node) ListenToLeaderChanges() {
-	for isLeader := range node.Raft.LeaderCh() {
-		node.leaderChangeFn(isLeader)
+func (n *Node) ListenToLeaderChanges() {
+	for isLeader := range n.Raft.LeaderCh() {
+		n.leaderChangeFn(isLeader)
 	}
 }
 
