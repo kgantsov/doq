@@ -11,8 +11,6 @@ import (
 	netHttp "net/http"
 	_ "net/http/pprof"
 
-	_ "go.uber.org/automaxprocs"
-
 	"github.com/pkg/profile"
 
 	"github.com/dgraph-io/badger/v4"
