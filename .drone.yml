@@ -62,6 +62,8 @@ steps:
     context: .
     dockerfile: ./Dockerfile
     auto_tag: true
+  environment:
+    DOCKER_BUILDKIT: 1
 
 - name: publish
   image: plugins/github-release
