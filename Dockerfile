@@ -12,7 +12,7 @@ WORKDIR /usr/share/zoneinfo
 # tz loader doesn't handle compressed data.
 RUN zip -r -0 /zoneinfo.zip .
 
-FROM --platform=$BUILDPLATFORM golang:1.22.2 AS builder
+FROM golang:1.22.2 AS builder
 
 WORKDIR /src
 
