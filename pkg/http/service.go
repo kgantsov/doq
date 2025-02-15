@@ -3,6 +3,7 @@ package http
 import (
 	"embed"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -55,6 +56,8 @@ type Node interface {
 	Ack(QueueName string, id uint64) error
 	Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error
 	UpdatePriority(queueName string, id uint64, priority int64) error
+	Backup(w io.Writer) error
+	Restore(r io.Reader) error
 }
 
 // New returns an uninitialized HTTP service.
@@ -148,6 +151,32 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		},
 		h.Join,
 	)
+
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "db-backup",
+			Method:      http.MethodPost,
+			Path:        "/db/backup",
+			Summary:     "Create a backup",
+			Description: "An endpoint for creating a backup of the database",
+			Tags:        []string{"Database"},
+		},
+		h.Backup,
+	)
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "db-restore",
+			Method:      http.MethodPost,
+			Path:        "/db/restore",
+			Summary:     "Restore a backup",
+			Description: "An endpoint for restoring a backup of the database",
+			Tags:        []string{"Database"},
+		},
+		h.Restore,
+	)
+
 	huma.Register(
 		api,
 		huma.Operation{

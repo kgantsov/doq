@@ -1,5 +1,7 @@
 package http
 
+import "github.com/danielgtaylor/huma/v2"
+
 type JoinInput struct {
 	Body struct {
 		ID   string `json:"id" example:"node-0" doc:"ID of a node"`
@@ -11,6 +13,23 @@ type JoinOutput struct {
 	Body struct {
 		ID   string `json:"id" example:"node-0" doc:"ID of a node"`
 		Addr string `json:"addr" example:"localhost:12001" doc:"IP address and a port of a service"`
+	}
+}
+
+type BackupInput struct {
+	Body struct{}
+}
+
+type RestoreInput struct {
+	RawBody huma.MultipartFormFiles[struct {
+		File huma.FormFile `form:"file" contentType:"application/octet-stream" required:"true"`
+	}]
+}
+
+type RestoreOutput struct {
+	Status int
+	Body   struct {
+		Status string `json:"status" example:"SUCCEDED" doc:"Status of the restore operation"`
 	}
 }
 

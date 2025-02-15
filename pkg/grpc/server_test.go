@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/url"
@@ -33,6 +34,16 @@ func newTestNode() *testNode {
 }
 
 func (n *testNode) Join(nodeID, addr string) error {
+	return nil
+}
+
+func (n *testNode) Backup(w io.Writer) error {
+
+	return nil
+}
+
+func (n *testNode) Restore(r io.Reader) error {
+
 	return nil
 }
 

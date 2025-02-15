@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -580,6 +581,15 @@ func newTestNode(leader string, isLeader bool) *testNode {
 }
 
 func (n *testNode) Join(nodeID, addr string) error {
+	return nil
+}
+
+func (n *testNode) Backup(w io.Writer) error {
+
+	return nil
+}
+func (n *testNode) Restore(r io.Reader) error {
+
 	return nil
 }
 
