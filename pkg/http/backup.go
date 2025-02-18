@@ -2,8 +2,10 @@ package http
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/rs/zerolog/log"
 )
 
 func (h *Handler) Backup(ctx context.Context, input *BackupInput) (*huma.StreamResponse, error) {
@@ -13,11 +15,20 @@ func (h *Handler) Backup(ctx context.Context, input *BackupInput) (*huma.StreamR
 
 	return &huma.StreamResponse{
 		Body: func(ctx huma.Context) {
-			// Write header info before streaming the body.
 			ctx.SetHeader("Content-Type", "application/octet-stream")
-			writer := ctx.BodyWriter()
 
-			h.node.Backup(writer)
+			// Start streaming backup
+			writer := ctx.BodyWriter()
+			maxVersion, err := h.node.Backup(writer, 0)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to create a backup")
+				return
+			}
+
+			log.Info().Msgf("Backup created with version %d", maxVersion)
+
+			// ✅ Include version metadata in `Content-Disposition`
+			ctx.SetHeader("X-Last-Version", fmt.Sprintf("%d", maxVersion))
 		},
 	}, nil
 }
@@ -30,7 +41,7 @@ func (h *Handler) Restore(ctx context.Context, input *RestoreInput) (*RestoreOut
 
 	formData := input.RawBody.Data()
 
-	if err := h.node.Restore(formData.File); err != nil {
+	if err := h.node.Restore(formData.File, 10); err != nil {
 		return &RestoreOutput{}, err
 	}
 

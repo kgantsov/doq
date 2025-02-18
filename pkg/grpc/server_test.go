@@ -37,12 +37,12 @@ func (n *testNode) Join(nodeID, addr string) error {
 	return nil
 }
 
-func (n *testNode) Backup(w io.Writer) error {
+func (n *testNode) Backup(w io.Writer, since uint64) (uint64, error) {
 
-	return nil
+	return 0, nil
 }
 
-func (n *testNode) Restore(r io.Reader) error {
+func (n *testNode) Restore(r io.Reader, maxPendingWrites int) error {
 
 	return nil
 }

@@ -56,8 +56,8 @@ type Node interface {
 	Ack(QueueName string, id uint64) error
 	Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error
 	UpdatePriority(queueName string, id uint64, priority int64) error
-	Backup(w io.Writer) error
-	Restore(r io.Reader) error
+	Backup(w io.Writer, since uint64) (uint64, error)
+	Restore(r io.Reader, maxPendingWrites int) error
 }
 
 // New returns an uninitialized HTTP service.
@@ -159,7 +159,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Method:      http.MethodPost,
 			Path:        "/db/backup",
 			Summary:     "Create a backup",
-			Description: "An endpoint for creating a backup of the database",
+			Description: "Backup streams a protobuf-encoded list of all entries in the database that are newer than or equal to the specified version. It returns a timestamp(version) indicating the version of last entry that was dumped, which after incrementing by 1 can be passed into a later invocation to generate an incremental dump of entries that have been added/modified since the last invocation of Stream.Backup()",
 			Tags:        []string{"Database"},
 		},
 		h.Backup,
