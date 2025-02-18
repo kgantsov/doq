@@ -159,7 +159,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Method:      http.MethodPost,
 			Path:        "/db/backup",
 			Summary:     "Create a backup",
-			Description: "Backup streams a protobuf-encoded list of all entries in the database that are newer than or equal to the specified version. It returns a timestamp(version) indicating the version of last entry that was dumped, which after incrementing by 1 can be passed into a later invocation to generate an incremental dump of entries that have been added/modified since the last invocation of Stream.Backup()",
+			Description: "An endpoint for creating a backup of the database",
 			Tags:        []string{"Database"},
 		},
 		h.Backup,
