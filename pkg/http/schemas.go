@@ -17,7 +17,9 @@ type JoinOutput struct {
 }
 
 type BackupInput struct {
-	Body struct{}
+	Body struct {
+		Since uint64 `json:"since" example:"0" doc:"Minimum version of the log to include in the backup"`
+	}
 }
 
 type RestoreInput struct {
