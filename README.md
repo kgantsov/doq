@@ -260,6 +260,60 @@ func main() {
 
 ```
 
+## Backups and restores
+
+DOQ provides support for both full and incremental backups of the database on the leader node 
+via a simple HTTP API.
+
+### Creating a Backup
+To create a backup, send an HTTP POST request to the /db/backup endpoint.
+
+- A full backup is performed when the since parameter is set to 0.
+- An incremental backup captures only the entries added or modified since the last backup.
+  To generate an incremental backup, set the since parameter to the last backup’s X-Last-Version
+  header value, incremented by 1.
+
+#### Example: Full Backup Using `curl`
+
+```bash
+curl -v --raw --request POST \
+  --url http://localhost:8001/db/backup \
+  --header 'Accept: application/problem+json' \
+  --header 'Content-Type: application/json' \
+  --data '{"since": 0}' -o backup-0.bak
+```
+The response includes an X-Last-Version header, indicating the last dumped entry’s version.
+This value (incremented by 1) should be used in the since parameter for the next incremental backup.
+
+### Restoring a (full) Backup
+
+To restore a database on a standalone node (running on localhost), send an HTTP POST request to
+the /db/restore endpoint with the backup file.
+
+#### Example: Restore Using `curl`
+
+```bash
+curl --request POST \
+  --url http://localhost:8001/db/restore \
+  --header 'Accept: application/json, application/problem+json' \
+  --header 'Content-Type: multipart/form-data' \
+  --form 'file=@backup-0.bak'
+```
+
+### Restoring from Multiple Backups
+
+If restoring from multiple backups, first restore from the full backup, followed by the
+incremental backups in sequence.
+
+#### Example: Restore Using `restore` sub-command
+
+```bash
+./doq restore -f backup-0.bak -i backup-1.bak -i backup-2.bak
+```
+
+This command restores the full backup (backup-0.bak) first, then applies the incremental
+backups (backup-1.bak, backup-2.bak) in order.
+
 
 ## Consistency
 Achieving consistency in a distributed queue involves ensuring that only one process or node can enqueue a message at any given time, preventing race conditions and ensuring that operations on shared resources are conducted in a safe and coordinated manner. This means that all enqueue and dequeue requests must go through the cluster leader. The leader communicates with other nodes and acknowledges the request once a majority has agreed.
