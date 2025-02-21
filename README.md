@@ -266,11 +266,11 @@ DOQ provides support for both full and incremental backups of the database on th
 via a simple HTTP API.
 
 ### Creating a Backup
-To create a backup, send an HTTP POST request to the /db/backup endpoint.
+To create a backup, send an HTTP POST request to the `/db/backup` endpoint.
 
 - A full backup is performed when the since parameter is set to 0.
 - An incremental backup captures only the entries added or modified since the last backup.
-  To generate an incremental backup, set the since parameter to the last backup’s X-Last-Version
+  To generate an incremental backup, set the since parameter to the last backup’s `X-Last-Version`
   header value, incremented by 1.
 
 #### Example: Full Backup Using `curl`
@@ -282,13 +282,13 @@ curl -v --raw --request POST \
   --header 'Content-Type: application/json' \
   --data '{"since": 0}' -o backup-0.bak
 ```
-The response includes an X-Last-Version header, indicating the last dumped entry’s version.
+The response includes an `X-Last-Version` header, indicating the last dumped entry’s version.
 This value (incremented by 1) should be used in the since parameter for the next incremental backup.
 
 ### Restoring a (full) Backup
 
 To restore a database on a standalone node (running on localhost), send an HTTP POST request to
-the /db/restore endpoint with the backup file.
+the `/db/restore` endpoint with the backup file.
 
 #### Example: Restore Using `curl`
 
