@@ -16,7 +16,6 @@ import (
 	"github.com/pkg/profile"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
@@ -24,7 +23,6 @@ import (
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/grpc"
 	"github.com/kgantsov/doq/pkg/http"
-	"github.com/kgantsov/doq/pkg/logger"
 	"github.com/kgantsov/doq/pkg/raft"
 )
 
@@ -46,15 +44,7 @@ func Run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
-
-	logLevel, err := zerolog.ParseLevel(config.Logging.LogLevel)
-	if err != nil {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(logLevel)
-	}
+	config.ConfigureLogger()
 
 	if config.Storage.DataDir == "" {
 		log.Info().Msg("No storage directory specified")
@@ -88,45 +78,7 @@ func Run(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	opts := badger.DefaultOptions(
-		filepath.Join(config.Storage.DataDir, config.Cluster.NodeID, "store"),
-	)
-
-	if config.Storage.Compression != "" {
-		opts = opts.WithCompression(config.Storage.CompressionType())
-	}
-	if config.Storage.ZSTDCompressionLevel > 0 {
-		opts = opts.WithZSTDCompressionLevel(config.Storage.ZSTDCompressionLevel)
-	}
-	if config.Storage.BlockCacheSize > 0 {
-		opts = opts.WithBlockCacheSize(config.Storage.BlockCacheSize)
-	}
-
-	if config.Storage.IndexCacheSize > 0 {
-		opts = opts.WithIndexCacheSize(config.Storage.IndexCacheSize)
-	}
-	if config.Storage.BaseTableSize > 0 {
-		opts = opts.WithBaseTableSize(config.Storage.BaseTableSize)
-	}
-	if config.Storage.NumCompactors > 0 {
-		opts = opts.WithNumCompactors(config.Storage.NumCompactors)
-	}
-	if config.Storage.NumLevelZeroTables > 0 {
-		opts = opts.WithNumLevelZeroTables(config.Storage.NumLevelZeroTables)
-	}
-	if config.Storage.NumLevelZeroTablesStall > 0 {
-		opts = opts.WithNumLevelZeroTablesStall(config.Storage.NumLevelZeroTablesStall)
-	}
-	if config.Storage.NumMemtables > 0 {
-		opts = opts.WithNumMemtables(config.Storage.NumMemtables)
-	}
-	if config.Storage.ValueLogFileSize > 0 {
-		opts = opts.WithValueLogFileSize(config.Storage.ValueLogFileSize)
-	}
-
-	opts.Logger = &logger.BadgerLogger{}
-
-	log.Debug().Msgf("Badger options: %+v", opts)
+	opts := config.BadgerOptions()
 
 	db, err := badger.Open(opts)
 	if err != nil {
@@ -210,9 +162,87 @@ func Run(cmd *cobra.Command, args []string) {
 	}
 }
 
+func NewCmdRestore() *cobra.Command {
+	var fullBackup string
+	var incrementalBackups []string
+
+	cmd := &cobra.Command{
+		Use:     "restore",
+		Short:   "Restore DB from a backup",
+		Aliases: []string{"restore"},
+		Run: func(cmd *cobra.Command, args []string) {
+			config, err := config.LoadConfig()
+			if err != nil {
+				fmt.Printf("Error loading config: %v\n", err)
+				return
+			}
+
+			config.ConfigureLogger()
+
+			log.Info().Msgf("Full backup: %s", fullBackup)
+			log.Info().Msgf("Incremental backups: %v", incrementalBackups)
+
+			if config.Storage.DataDir == "" {
+				log.Info().Msg("No storage directory specified")
+			}
+			if err := os.MkdirAll(config.Storage.DataDir, 0700); err != nil {
+				log.Fatal().Msgf(
+					"failed to create path '%s' for a storage: %s", config.Storage.DataDir, err.Error(),
+				)
+			}
+
+			opts := config.BadgerOptions()
+
+			db, err := badger.Open(opts)
+			if err != nil {
+				log.Fatal().Msg(err.Error())
+			}
+			defer db.Close()
+
+			err = restoreFile(db, fullBackup)
+			if err != nil {
+				log.Error().Msgf("Error restoring from %s: %v", fullBackup, err)
+				return
+			}
+			for _, backup := range incrementalBackups {
+				err = restoreFile(db, backup)
+				if err != nil {
+					log.Error().Msgf("Error restoring from %s: %v", backup, err)
+					return
+				}
+			}
+		},
+	}
+
+	cmd.Flags().StringVarP(&fullBackup, "full", "f", "", "Full backup")
+	cmd.Flags().StringSliceVarP(
+		&incrementalBackups, "incremental", "i", []string{}, "List of incremental backups",
+	)
+
+	return cmd
+}
+
+func restoreFile(db *badger.DB, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		log.Error().Msgf("Error opening %s: %v", filename, err)
+		return err
+	}
+	defer file.Close()
+
+	err = db.Load(file, 256) // Load with concurrency
+	if err != nil {
+		log.Error().Err(err)
+		return err
+	}
+	log.Info().Msgf("Restored from %s", filename)
+	return nil
+}
+
 func main() {
 
 	rootCmd := config.InitCobraCommand(Run)
+	rootCmd.AddCommand(NewCmdRestore())
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Warn().Err(err)
