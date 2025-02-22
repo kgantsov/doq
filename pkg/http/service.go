@@ -199,7 +199,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "delete-queue",
 			Method:      http.MethodDelete,
-			Path:        "/API/v1/queues/:queue_name",
+			Path:        "/API/v1/queues/{queue_name}",
 			Summary:     "Delete a queue",
 			Description: "Delete a queue",
 			Tags:        []string{"Queues"},
@@ -211,7 +211,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "enqueue",
 			Method:      http.MethodPost,
-			Path:        "/API/v1/queues/:queue_name/messages",
+			Path:        "/API/v1/queues/{queue_name}/messages",
 			Summary:     "Enqueue a message",
 			Description: "Put a message in the queue",
 			Tags:        []string{"Messages"},
@@ -223,7 +223,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "dequeue",
 			Method:      http.MethodGet,
-			Path:        "/API/v1/queues/:queue_name/messages",
+			Path:        "/API/v1/queues/{queue_name}/messages",
 			Summary:     "Dequeue a message",
 			Description: "Get and remove the most prioritized message from the queue",
 			Tags:        []string{"Messages"},
@@ -235,7 +235,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "get",
 			Method:      http.MethodGet,
-			Path:        "/API/v1/queues/:queue_name/messages/:id",
+			Path:        "/API/v1/queues/{queue_name}/messages/{id}",
 			Summary:     "Get a message",
 			Description: "Get a message by it's ID without removing it from a queue",
 			Tags:        []string{"Messages"},
@@ -247,7 +247,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "delete",
 			Method:      http.MethodDelete,
-			Path:        "/API/v1/queues/:queue_name/messages/:id",
+			Path:        "/API/v1/queues/{queue_name}/messages/{id}",
 			Summary:     "Delete a message",
 			Description: "Delete a message from a queue",
 			Tags:        []string{"Messages"},
@@ -259,7 +259,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "ack",
 			Method:      http.MethodPost,
-			Path:        "/API/v1/queues/:queue_name/messages/:id/ack",
+			Path:        "/API/v1/queues/{queue_name}/messages/{id}/ack",
 			Summary:     "Acknowledge a message",
 			Description: "Acknowledge the message",
 			Tags:        []string{"Messages"},
@@ -271,7 +271,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "nack",
 			Method:      http.MethodPost,
-			Path:        "/API/v1/queues/:queue_name/messages/:id/nack",
+			Path:        "/API/v1/queues/{queue_name}/messages/{id}/nack",
 			Summary:     "Negative acknowledge a message",
 			Description: "Negative acknowledge the message",
 			Tags:        []string{"Messages"},
@@ -283,7 +283,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "update-priority",
 			Method:      http.MethodPut,
-			Path:        "/API/v1/queues/:queue_name/messages/:id/priority",
+			Path:        "/API/v1/queues/{queue_name}/messages/{id}/priority",
 			Summary:     "Update the priority of a message",
 			Description: "Update the priority of a message in the queue",
 			Tags:        []string{"Messages"},
@@ -309,7 +309,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "queue-info",
 			Method:      http.MethodGet,
-			Path:        "/API/v1/queues/:queue_name",
+			Path:        "/API/v1/queues/{queue_name}",
 			Summary:     "Info of a queue",
 			Description: "Get the information of a queue including stats",
 			Tags:        []string{"Queues"},
