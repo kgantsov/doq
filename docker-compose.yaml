@@ -1,6 +1,4 @@
 # deployment of 3 nodes of the server
-version: '3.8'
-
 services:
   node-1:
     container_name: node-1
