@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -390,4 +391,127 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 
 	err = n.DeleteQueue("test_queue")
 	assert.Nil(t, err)
+}
+
+func TestBackupRestore(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	tmpRaftDir, _ := os.MkdirTemp("", "raft*")
+	defer os.RemoveAll(tmpRaftDir)
+
+	opts := badger.DefaultOptions(tmpDir)
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	cfg := &config.Config{
+		Cluster: config.ClusterConfig{
+			NodeID: "localhost",
+		},
+		Http: config.HttpConfig{
+			Port: "9100",
+		},
+		Raft: config.RaftConfig{
+			Address: "localhost:9101",
+		},
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		},
+	}
+
+	n := NewNode(db, tmpRaftDir, cfg, []string{})
+	n.Initialize()
+
+	// Simple way to ensure there is a leader.
+	err = n.InitIDGenerator()
+	assert.Nil(t, err)
+
+	id := n.GenerateID()
+	assert.NotEqual(t, int64(0), id)
+
+	assert.True(t, n.IsLeader())
+
+	queues := n.GetQueues()
+	assert.Equal(t, 0, len(queues))
+
+	err = n.CreateQueue("delayed", "test_queue")
+	assert.Nil(t, err)
+
+	queues = n.GetQueues()
+	assert.Equal(t, 1, len(queues))
+
+	for i := 0; i < 10; i++ {
+		msg := fmt.Sprintf("message %d", i)
+		m, err := n.Enqueue("test_queue", "default", 10, msg, nil)
+		assert.Nil(t, err)
+		assert.NotNil(t, m)
+		assert.Equal(t, msg, m.Content)
+		assert.Equal(t, int64(10), m.Priority)
+	}
+
+	sink := &MockSink{}
+	_, err = n.Backup(sink, 0)
+	assert.Nil(t, err)
+
+	db.Close()
+
+	tmpDir1, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir1)
+
+	tmpRaftDir1, _ := os.MkdirTemp("", "raft*")
+	defer os.RemoveAll(tmpRaftDir1)
+
+	opts1 := badger.DefaultOptions(tmpDir1)
+	db1, err := badger.Open(opts1)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	cfg1 := &config.Config{
+		Cluster: config.ClusterConfig{
+			NodeID: "localhost",
+		},
+		Http: config.HttpConfig{
+			Port: "9000",
+		},
+		Raft: config.RaftConfig{
+			Address: "localhost:9001",
+		},
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		},
+	}
+
+	n1 := NewNode(db1, tmpRaftDir1, cfg1, []string{})
+
+	err = n1.Restore(sink, 10)
+	assert.Nil(t, err)
+
+	n1.Initialize()
+
+	// Simple way to ensure there is a leader.
+	err = n1.InitIDGenerator()
+	assert.Nil(t, err)
+
+	assert.True(t, n1.IsLeader())
+
+	queues = n1.GetQueues()
+	assert.Equal(t, 1, len(queues))
+
+	queueInfo, err := n1.GetQueueInfo("test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, "test_queue", queueInfo.Name)
+
+	for i := 0; i < 10; i++ {
+		msg := fmt.Sprintf("message %d", i)
+		m, err := n1.Dequeue("test_queue", false)
+		assert.Nil(t, err)
+		assert.NotNil(t, m)
+		assert.Equal(t, msg, m.Content)
+		assert.Equal(t, int64(10), m.Priority)
+	}
 }
