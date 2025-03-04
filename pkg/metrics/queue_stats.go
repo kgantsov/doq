@@ -1,18 +1,18 @@
-package queue
+package metrics
 
 import (
 	"sync/atomic"
 	"time"
 )
 
-type QueueStats struct {
+type Stats struct {
 	EnqueueRPS float64
 	DequeueRPS float64
 	AckRPS     float64
 	NackRPS    float64
 }
 
-type queueStats struct {
+type QueueStats struct {
 	enqueueCount uint64
 	dequeueCount uint64
 	ackCount     uint64
@@ -27,8 +27,8 @@ type queueStats struct {
 	quit chan struct{}
 }
 
-func NewQueueStats(windowSize int) *queueStats {
-	stats := &queueStats{
+func NewQueueStats(windowSize int) *QueueStats {
+	stats := &QueueStats{
 		enqueueHistory: make([]uint64, windowSize),
 		dequeueHistory: make([]uint64, windowSize),
 		ackHistory:     make([]uint64, windowSize),
@@ -40,7 +40,7 @@ func NewQueueStats(windowSize int) *queueStats {
 	return stats
 }
 
-func (rc *queueStats) Start() {
+func (rc *QueueStats) Start() {
 	// Ticker to update window every second
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -55,26 +55,26 @@ func (rc *queueStats) Start() {
 	}
 }
 
-func (rc *queueStats) Stop() {
+func (rc *QueueStats) Stop() {
 	close(rc.quit)
 }
 
-func (rc *queueStats) IncrementEnqueue() {
+func (rc *QueueStats) IncrementEnqueue() {
 	atomic.AddUint64(&rc.enqueueCount, 1)
 }
 
-func (rc *queueStats) IncrementDequeue() {
+func (rc *QueueStats) IncrementDequeue() {
 	atomic.AddUint64(&rc.dequeueCount, 1)
 }
 
-func (rc *queueStats) IncrementAck() {
+func (rc *QueueStats) IncrementAck() {
 	atomic.AddUint64(&rc.ackCount, 1)
 }
-func (rc *queueStats) IncrementNack() {
+func (rc *QueueStats) IncrementNack() {
 	atomic.AddUint64(&rc.nackCount, 1)
 }
 
-func (rc *queueStats) UpdateWindow() {
+func (rc *QueueStats) UpdateWindow() {
 	// Shift history to the left and store current counts
 	for i := 1; i < rc.windowSize; i++ {
 		rc.enqueueHistory[i-1] = rc.enqueueHistory[i]
@@ -88,7 +88,7 @@ func (rc *queueStats) UpdateWindow() {
 	rc.nackHistory[rc.windowSize-1] = atomic.SwapUint64(&rc.nackCount, 0)
 }
 
-func (rc *queueStats) GetRPS() *QueueStats {
+func (rc *QueueStats) GetRPS() *Stats {
 
 	var totalEnqueue, totalDequeue, totalAck, totalNack uint64
 
@@ -102,7 +102,7 @@ func (rc *queueStats) GetRPS() *QueueStats {
 
 	// Calculate average rate (requests per second)
 	seconds := float64(rc.windowSize)
-	return &QueueStats{
+	return &Stats{
 		EnqueueRPS: float64(totalEnqueue) / seconds,
 		DequeueRPS: float64(totalDequeue) / seconds,
 		AckRPS:     float64(totalAck) / seconds,

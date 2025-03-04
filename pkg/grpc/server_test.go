@@ -22,14 +22,14 @@ type testNode struct {
 	leader   string
 	messages map[uint64]*queue.Message
 	acks     map[uint64]*queue.Message
-	queues   map[string]*queue.DelayedPriorityQueue
+	queues   map[string]*queue.DelayedQueue
 }
 
 func newTestNode() *testNode {
 	return &testNode{
 		messages: make(map[uint64]*queue.Message),
 		acks:     make(map[uint64]*queue.Message),
-		queues:   make(map[string]*queue.DelayedPriorityQueue),
+		queues:   make(map[string]*queue.DelayedQueue),
 	}
 }
 
@@ -74,7 +74,7 @@ func (n *testNode) PrometheusRegistry() prometheus.Registerer {
 }
 
 func (n *testNode) CreateQueue(queueType, queueName string) error {
-	n.queues[queueName] = queue.NewDelayedPriorityQueue(true)
+	n.queues[queueName] = queue.NewDelayedQueue(true)
 	return nil
 }
 

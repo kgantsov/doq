@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
+	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -567,14 +568,14 @@ type testNode struct {
 	leader   string
 	messages map[uint64]*queue.Message
 	acks     map[uint64]*queue.Message
-	queues   map[string]*queue.DelayedPriorityQueue
+	queues   map[string]*queue.DelayedQueue
 }
 
 func newTestNode(leader string, isLeader bool) *testNode {
 	return &testNode{
 		messages: make(map[uint64]*queue.Message),
 		acks:     make(map[uint64]*queue.Message),
-		queues:   make(map[string]*queue.DelayedPriorityQueue),
+		queues:   make(map[string]*queue.DelayedQueue),
 		leader:   leader,
 		isLeader: isLeader,
 	}
@@ -617,7 +618,7 @@ func (n *testNode) GetQueues() []*queue.QueueInfo {
 			Ready:   int64(q.Len()),
 			Unacked: 0,
 			Total:   int64(q.Len()),
-			Stats: &queue.QueueStats{
+			Stats: &metrics.Stats{
 				EnqueueRPS: 1.6,
 				DequeueRPS: 1.1,
 				AckRPS:     1.1,
@@ -641,7 +642,7 @@ func (n *testNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 		Ready:   int64(q.Len()),
 		Unacked: 0,
 		Total:   int64(q.Len()),
-		Stats: &queue.QueueStats{
+		Stats: &metrics.Stats{
 			EnqueueRPS: 1.6,
 			DequeueRPS: 1.1,
 			AckRPS:     1.1,
@@ -655,7 +656,7 @@ func (n *testNode) PrometheusRegistry() prometheus.Registerer {
 }
 
 func (n *testNode) CreateQueue(queueType, queueName string) error {
-	n.queues[queueName] = queue.NewDelayedPriorityQueue(true)
+	n.queues[queueName] = queue.NewDelayedQueue(true)
 	return nil
 }
 

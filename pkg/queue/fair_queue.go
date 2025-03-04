@@ -64,7 +64,7 @@ func (l *LinkedList) Len() uint64 {
 }
 
 // FairQueue is a fair queue that balances between different groups
-type FairPriorityQueue struct {
+type FairQueue struct {
 	queues      map[string]*LinkedListNode
 	roundRobin  *LinkedList
 	currentNone *LinkedListNode
@@ -73,9 +73,9 @@ type FairPriorityQueue struct {
 	totalMessages uint64
 }
 
-// FairPriorityQueue creates a new FairQueue
-func NewFairPriorityQueue() *FairPriorityQueue {
-	return &FairPriorityQueue{
+// FairQueue creates a new FairQueue
+func NewFairQueue() *FairQueue {
+	return &FairQueue{
 		queues:      make(map[string]*LinkedListNode),
 		roundRobin:  &LinkedList{},
 		currentNone: nil,
@@ -83,7 +83,7 @@ func NewFairPriorityQueue() *FairPriorityQueue {
 }
 
 // Enqueue adds a message to the queue
-func (fq *FairPriorityQueue) Enqueue(group string, item *Item) {
+func (fq *FairQueue) Enqueue(group string, item *Item) {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -99,7 +99,7 @@ func (fq *FairPriorityQueue) Enqueue(group string, item *Item) {
 }
 
 // Dequeue removes and returns the next message in a fair way
-func (fq *FairPriorityQueue) Dequeue() *Item {
+func (fq *FairQueue) Dequeue() *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -134,7 +134,7 @@ func (fq *FairPriorityQueue) Dequeue() *Item {
 	return item
 }
 
-func (fq *FairPriorityQueue) Get(group string, id uint64) *Item {
+func (fq *FairQueue) Get(group string, id uint64) *Item {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
 
@@ -145,7 +145,7 @@ func (fq *FairPriorityQueue) Get(group string, id uint64) *Item {
 	return fq.queues[group].Queue().Get(id)
 }
 
-func (fq *FairPriorityQueue) Delete(group string, id uint64) *Item {
+func (fq *FairQueue) Delete(group string, id uint64) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -159,7 +159,7 @@ func (fq *FairPriorityQueue) Delete(group string, id uint64) *Item {
 	return item
 }
 
-func (fq *FairPriorityQueue) UpdatePriority(group string, id uint64, priority int64) {
+func (fq *FairQueue) UpdatePriority(group string, id uint64, priority int64) {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -170,7 +170,7 @@ func (fq *FairPriorityQueue) UpdatePriority(group string, id uint64, priority in
 	fq.queues[group].Queue().UpdatePriority(id, priority)
 }
 
-func (fq *FairPriorityQueue) Len() uint64 {
+func (fq *FairQueue) Len() uint64 {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
 

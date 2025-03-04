@@ -9,6 +9,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 )
@@ -19,7 +20,7 @@ var ErrMessageNotFound = fmt.Errorf("message not found")
 type QueueInfo struct {
 	Name    string
 	Type    string
-	Stats   *QueueStats
+	Stats   *metrics.Stats
 	Ready   int64
 	Unacked int64
 	Total   int64
@@ -68,9 +69,9 @@ func MessageFromBytes(data []byte) (*Message, error) {
 type BadgerPriorityQueue struct {
 	config            *QueueConfig
 	cfg               *config.Config
-	PrometheusMetrics *PrometheusMetrics
+	PrometheusMetrics *metrics.PrometheusMetrics
 
-	stats *queueStats
+	stats *metrics.QueueStats
 
 	pq Queue
 	db *badger.DB
@@ -82,14 +83,16 @@ type BadgerPriorityQueue struct {
 	ackQueue Queue
 }
 
-func NewBadgerPriorityQueue(db *badger.DB, cfg *config.Config, metrics *PrometheusMetrics) *BadgerPriorityQueue {
+func NewBadgerPriorityQueue(
+	db *badger.DB, cfg *config.Config, promMetrics *metrics.PrometheusMetrics,
+) *BadgerPriorityQueue {
 
 	bpq := &BadgerPriorityQueue{
 		db:                db,
 		cfg:               cfg,
-		ackQueue:          NewDelayedPriorityQueue(false),
-		PrometheusMetrics: metrics,
-		stats:             NewQueueStats(cfg.Queue.QueueStats.WindowSide),
+		ackQueue:          NewDelayedQueue(false),
+		PrometheusMetrics: promMetrics,
+		stats:             metrics.NewQueueStats(cfg.Queue.QueueStats.WindowSide),
 	}
 
 	return bpq
@@ -97,9 +100,9 @@ func NewBadgerPriorityQueue(db *badger.DB, cfg *config.Config, metrics *Promethe
 func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
 	var queue Queue
 	if queueType == "fair" {
-		queue = NewFairPriorityQueue()
+		queue = NewFairQueue()
 	} else {
-		queue = NewDelayedPriorityQueue(true)
+		queue = NewDelayedQueue(true)
 	}
 	bpq.config = &QueueConfig{Name: queueName, Type: queueType}
 	bpq.pq = queue
@@ -127,13 +130,13 @@ func (bpq *BadgerPriorityQueue) updatePrometheusQueueSizes() {
 		readyMessages := float64(bpq.pq.Len())
 		unackedMessages := float64(bpq.ackQueue.Len())
 
-		bpq.PrometheusMetrics.messages.With(
+		bpq.PrometheusMetrics.Messages.With(
 			prometheus.Labels{"queue_name": bpq.config.Name},
 		).Set(readyMessages + unackedMessages)
-		bpq.PrometheusMetrics.unackedMessages.With(
+		bpq.PrometheusMetrics.UnackedMessages.With(
 			prometheus.Labels{"queue_name": bpq.config.Name},
 		).Set(unackedMessages)
-		bpq.PrometheusMetrics.readyMessages.With(
+		bpq.PrometheusMetrics.ReadyMessages.With(
 			prometheus.Labels{"queue_name": bpq.config.Name},
 		).Set(readyMessages)
 	}
@@ -352,7 +355,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(
 	bpq.stats.IncrementEnqueue()
 
 	if bpq.cfg.Prometheus.Enabled {
-		bpq.PrometheusMetrics.enqueueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+		bpq.PrometheusMetrics.EnqueueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
 
 		bpq.updatePrometheusQueueSizes()
 	}
@@ -410,7 +413,7 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 
 	bpq.stats.IncrementDequeue()
 	if bpq.cfg.Prometheus.Enabled {
-		bpq.PrometheusMetrics.dequeueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+		bpq.PrometheusMetrics.DequeueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
 
 		bpq.updatePrometheusQueueSizes()
 	}
@@ -566,7 +569,7 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 
 	bpq.stats.IncrementAck()
 	if bpq.cfg.Prometheus.Enabled {
-		bpq.PrometheusMetrics.ackTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+		bpq.PrometheusMetrics.AckTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
 
 		bpq.updatePrometheusQueueSizes()
 	}
@@ -610,7 +613,7 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64, priority int64, metadata map[str
 
 	bpq.stats.IncrementNack()
 	if bpq.cfg.Prometheus.Enabled {
-		bpq.PrometheusMetrics.nackTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+		bpq.PrometheusMetrics.NackTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
 
 		bpq.updatePrometheusQueueSizes()
 	}

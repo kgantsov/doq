@@ -1,4 +1,4 @@
-package queue
+package metrics
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
@@ -6,20 +6,20 @@ import (
 )
 
 type PrometheusMetrics struct {
-	enqueueTotal    *prometheus.CounterVec
-	dequeueTotal    *prometheus.CounterVec
-	ackTotal        *prometheus.CounterVec
-	nackTotal       *prometheus.CounterVec
-	messages        *prometheus.GaugeVec
-	unackedMessages *prometheus.GaugeVec
-	readyMessages   *prometheus.GaugeVec
-	registry        *prometheus.Registry
+	EnqueueTotal    *prometheus.CounterVec
+	DequeueTotal    *prometheus.CounterVec
+	AckTotal        *prometheus.CounterVec
+	NackTotal       *prometheus.CounterVec
+	Messages        *prometheus.GaugeVec
+	UnackedMessages *prometheus.GaugeVec
+	ReadyMessages   *prometheus.GaugeVec
+	Registry        *prometheus.Registry
 }
 
 func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem string) *PrometheusMetrics {
 	m := &PrometheusMetrics{}
 
-	m.enqueueTotal = promauto.With(registry).NewCounterVec(
+	m.EnqueueTotal = promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -28,9 +28,9 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 		},
 		[]string{"queue_name"},
 	)
-	prometheus.MustRegister(m.enqueueTotal)
+	prometheus.MustRegister(m.EnqueueTotal)
 
-	m.dequeueTotal = promauto.With(registry).NewCounterVec(
+	m.DequeueTotal = promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -39,9 +39,9 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 		},
 		[]string{"queue_name"},
 	)
-	prometheus.MustRegister(m.dequeueTotal)
+	prometheus.MustRegister(m.DequeueTotal)
 
-	m.ackTotal = promauto.With(registry).NewCounterVec(
+	m.AckTotal = promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -50,9 +50,9 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 		},
 		[]string{"queue_name"},
 	)
-	prometheus.MustRegister(m.ackTotal)
+	prometheus.MustRegister(m.AckTotal)
 
-	m.nackTotal = promauto.With(registry).NewCounterVec(
+	m.NackTotal = promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -61,9 +61,9 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 		},
 		[]string{"queue_name"},
 	)
-	prometheus.MustRegister(m.nackTotal)
+	prometheus.MustRegister(m.NackTotal)
 
-	m.messages = promauto.With(registry).NewGaugeVec(
+	m.Messages = promauto.With(registry).NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -72,9 +72,9 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 		},
 		[]string{"queue_name"},
 	)
-	prometheus.MustRegister(m.messages)
+	prometheus.MustRegister(m.Messages)
 
-	m.unackedMessages = promauto.With(registry).NewGaugeVec(
+	m.UnackedMessages = promauto.With(registry).NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -83,9 +83,9 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 		},
 		[]string{"queue_name"},
 	)
-	prometheus.MustRegister(m.unackedMessages)
+	prometheus.MustRegister(m.UnackedMessages)
 
-	m.readyMessages = promauto.With(registry).NewGaugeVec(
+	m.ReadyMessages = promauto.With(registry).NewGaugeVec(
 		prometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: subsystem,
@@ -94,7 +94,7 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 		},
 		[]string{"queue_name"},
 	)
-	prometheus.MustRegister(m.readyMessages)
+	prometheus.MustRegister(m.ReadyMessages)
 
 	return m
 }

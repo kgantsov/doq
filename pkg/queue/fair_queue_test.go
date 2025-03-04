@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFairPriorityQueueSingleCustomer(t *testing.T) {
+func TestFairQueueSingleCustomer(t *testing.T) {
 	tests := []struct {
 		name     string
 		messages []struct {
@@ -117,7 +117,7 @@ func TestFairPriorityQueueSingleCustomer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fq := NewFairPriorityQueue()
+			fq := NewFairQueue()
 
 			for i, message := range tt.messages {
 				assert.Equal(t, uint64(i), fq.Len())
@@ -139,8 +139,8 @@ func TestFairPriorityQueueSingleCustomer(t *testing.T) {
 	}
 }
 
-func TestFairPriorityQueueDelete(t *testing.T) {
-	fq := NewFairPriorityQueue()
+func TestFairQueueDelete(t *testing.T) {
+	fq := NewFairQueue()
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 4, Priority: 10})
@@ -152,8 +152,8 @@ func TestFairPriorityQueueDelete(t *testing.T) {
 	assert.Equal(t, uint64(5), fq.Dequeue().ID)
 }
 
-func TestFairPriorityQueueUpdatePriority(t *testing.T) {
-	fq := NewFairPriorityQueue()
+func TestFairQueueUpdatePriority(t *testing.T) {
+	fq := NewFairQueue()
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 4, Priority: 10})
@@ -166,8 +166,8 @@ func TestFairPriorityQueueUpdatePriority(t *testing.T) {
 	assert.Equal(t, uint64(1), fq.Dequeue().ID)
 }
 
-func TestFairPriorityQueue(t *testing.T) {
-	fq := NewFairPriorityQueue()
+func TestFairQueue(t *testing.T) {
+	fq := NewFairQueue()
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 2, Priority: 10})
@@ -192,8 +192,8 @@ func TestFairPriorityQueue(t *testing.T) {
 	assert.Equal(t, uint64(4), fq.Dequeue().ID)
 }
 
-func TestFairPriorityQueue1(t *testing.T) {
-	fq := NewFairPriorityQueue()
+func TestFairQueue1(t *testing.T) {
+	fq := NewFairQueue()
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 2, Priority: 10})
@@ -205,8 +205,8 @@ func TestFairPriorityQueue1(t *testing.T) {
 	assert.Nil(t, fq.Dequeue())
 }
 
-func BenchmarkFairPriorityQueueEnqueue(b *testing.B) {
-	fq := NewFairPriorityQueue()
+func BenchmarkFairQueueEnqueue(b *testing.B) {
+	fq := NewFairQueue()
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
@@ -214,8 +214,8 @@ func BenchmarkFairPriorityQueueEnqueue(b *testing.B) {
 	}
 }
 
-func BenchmarkFairPriorityQueueDequeue(b *testing.B) {
-	fq := NewFairPriorityQueue()
+func BenchmarkFairQueueDequeue(b *testing.B) {
+	fq := NewFairQueue()
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {

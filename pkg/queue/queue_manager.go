@@ -9,6 +9,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/rs/zerolog/log"
 )
 
@@ -17,13 +18,13 @@ var ErrQueueNotFound = fmt.Errorf("queue not found")
 type QueueManager struct {
 	db                *badger.DB
 	config            *config.Config
-	PrometheusMetrics *PrometheusMetrics
+	PrometheusMetrics *metrics.PrometheusMetrics
 
 	queues map[string]*BadgerPriorityQueue
 	mu     sync.Mutex
 }
 
-func NewQueueManager(db *badger.DB, cfg *config.Config, metrics *PrometheusMetrics) *QueueManager {
+func NewQueueManager(db *badger.DB, cfg *config.Config, metrics *metrics.PrometheusMetrics) *QueueManager {
 	return &QueueManager{
 		db:                db,
 		config:            cfg,

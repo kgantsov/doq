@@ -17,6 +17,7 @@ import (
 	badgerstore "github.com/kgantsov/doq/pkg/badger-store"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/logger"
+	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/rs/zerolog/log"
 )
@@ -83,10 +84,10 @@ func (n *Node) Initialize() {
 
 	log.Debug().Msgf("=====> TEST Initialize %+v", nodes)
 
-	var prometheusMetrics *queue.PrometheusMetrics
+	var prometheusMetrics *metrics.PrometheusMetrics
 	if n.cfg.Prometheus.Enabled {
 		promRegistry := n.PrometheusRegistry()
-		prometheusMetrics = queue.NewPrometheusMetrics(promRegistry, "doq", "queues")
+		prometheusMetrics = metrics.NewPrometheusMetrics(promRegistry, "doq", "queues")
 		promRegistry.Register(collectors.NewGoCollector())
 	}
 	queueManager := queue.NewQueueManager(n.db, n.cfg, prometheusMetrics)
