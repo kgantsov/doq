@@ -14,9 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var ErrEmptyQueue = fmt.Errorf("queue is empty")
-var ErrMessageNotFound = fmt.Errorf("message not found")
-
 type QueueInfo struct {
 	Name    string
 	Type    string
@@ -26,46 +23,6 @@ type QueueInfo struct {
 	Total   int64
 }
 
-type QueueConfig struct {
-	Name string
-	Type string
-}
-
-func (qc *QueueConfig) ToBytes() ([]byte, error) {
-	return json.Marshal(qc)
-}
-
-func QueueConfigFromBytes(data []byte) (*QueueConfig, error) {
-	var qc QueueConfig
-	err := json.Unmarshal(data, &qc)
-	return &qc, err
-}
-
-type Message struct {
-	Group    string
-	ID       uint64
-	Priority int64
-	Content  string
-	Metadata map[string]string
-
-	QueueName string `json:"QueueName,omitempty"`
-	QueueType string `json:"QueueType,omitempty"`
-}
-
-func (m *Message) ToBytes() ([]byte, error) {
-	return json.Marshal(m)
-}
-
-func (m *Message) UpdatePriority(newPriority int64) {
-	m.Priority = newPriority
-}
-
-func MessageFromBytes(data []byte) (*Message, error) {
-	var msg Message
-	err := json.Unmarshal(data, &msg)
-	return &msg, err
-}
-
 type BadgerPriorityQueue struct {
 	config            *QueueConfig
 	cfg               *config.Config
@@ -73,14 +30,14 @@ type BadgerPriorityQueue struct {
 
 	stats *metrics.QueueStats
 
-	pq Queue
+	pq MemoryQueue
 	db *badger.DB
 
 	mu sync.Mutex
 
 	ackQueueMonitoringChan chan struct{}
 
-	ackQueue Queue
+	ackQueue MemoryQueue
 }
 
 func NewBadgerPriorityQueue(
@@ -98,7 +55,7 @@ func NewBadgerPriorityQueue(
 	return bpq
 }
 func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
-	var queue Queue
+	var queue MemoryQueue
 	if queueType == "fair" {
 		queue = NewFairQueue()
 	} else {

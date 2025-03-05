@@ -1,6 +1,6 @@
 package queue
 
-type Queue interface {
+type MemoryQueue interface {
 	Enqueue(group string, item *Item)
 	Dequeue() *Item
 	Get(group string, id uint64) *Item
