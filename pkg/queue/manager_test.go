@@ -26,6 +26,7 @@ func TestNewQueueManager(t *testing.T) {
 		&config.Config{
 			Queue: config.QueueConfig{
 				AcknowledgementCheckInterval: 1,
+				QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 			},
 		},
 		nil,
@@ -92,6 +93,7 @@ func TestQueueManagerGetQueue(t *testing.T) {
 		&config.Config{
 			Queue: config.QueueConfig{
 				AcknowledgementCheckInterval: 1,
+				QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 			},
 		},
 		nil,
@@ -158,6 +160,7 @@ func TestQueueManagerLoadQueues(t *testing.T) {
 		&config.Config{
 			Queue: config.QueueConfig{
 				AcknowledgementCheckInterval: 1,
+				QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 			},
 		},
 		nil,
@@ -182,6 +185,7 @@ func TestQueueManagerLoadQueues(t *testing.T) {
 		&config.Config{
 			Queue: config.QueueConfig{
 				AcknowledgementCheckInterval: 1,
+				QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 			},
 		},
 		nil,
@@ -218,6 +222,7 @@ func TestQueueManagerGetQueues(t *testing.T) {
 		&config.Config{
 			Queue: config.QueueConfig{
 				AcknowledgementCheckInterval: 1,
+				QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 			},
 		},
 		nil,
