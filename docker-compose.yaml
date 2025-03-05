@@ -1,4 +1,3 @@
-# deployment of 3 nodes of the server
 services:
   node-1:
     container_name: node-1
