@@ -21,6 +21,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -49,9 +50,9 @@ type Node interface {
 		priority int64,
 		content string,
 		metadata map[string]string,
-	) (*queue.Message, error)
-	Dequeue(QueueName string, ack bool) (*queue.Message, error)
-	Get(QueueName string, id uint64) (*queue.Message, error)
+	) (*entity.Message, error)
+	Dequeue(QueueName string, ack bool) (*entity.Message, error)
+	Get(QueueName string, id uint64) (*entity.Message, error)
 	Delete(QueueName string, id uint64) error
 	Ack(QueueName string, id uint64) error
 	Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error

@@ -7,7 +7,8 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
-	"github.com/kgantsov/doq/pkg/queue"
+	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,7 +30,7 @@ func (bpq *BadgerStore) GetMessagesKey(queueName string, id uint64) []byte {
 
 func (s *BadgerStore) CreateQueue(queueType, queueName string) error {
 	err := s.db.Update(func(txn *badger.Txn) error {
-		config := &queue.QueueConfig{Name: queueName, Type: queueType}
+		config := &entity.QueueConfig{Name: queueName, Type: queueType}
 
 		data, err := config.ToBytes()
 		if err != nil {
@@ -77,8 +78,8 @@ func (s *BadgerStore) Enqueue(
 	priority int64,
 	content string,
 	metadata map[string]string,
-) (*queue.Message, error) {
-	msg := &queue.Message{
+) (*entity.Message, error) {
+	msg := &entity.Message{
 		ID:       id,
 		Group:    group,
 		Priority: priority,
@@ -100,8 +101,8 @@ func (s *BadgerStore) Enqueue(
 	return msg, nil
 }
 
-func (s *BadgerStore) Dequeue(queueName string, id uint64, ack bool) (*queue.Message, error) {
-	var msg *queue.Message
+func (s *BadgerStore) Dequeue(queueName string, id uint64, ack bool) (*entity.Message, error) {
+	var msg *entity.Message
 
 	err := s.db.Update(func(txn *badger.Txn) error {
 		item, err := txn.Get(s.GetMessagesKey(queueName, id))
@@ -110,7 +111,7 @@ func (s *BadgerStore) Dequeue(queueName string, id uint64, ack bool) (*queue.Mes
 		}
 
 		item.Value(func(val []byte) error {
-			msg, err = queue.MessageFromBytes(val)
+			msg, err = entity.MessageFromBytes(val)
 			return err
 		})
 
@@ -142,20 +143,20 @@ func (s *BadgerStore) Dequeue(queueName string, id uint64, ack bool) (*queue.Mes
 	return msg, nil
 }
 
-func (s *BadgerStore) Get(queueName string, id uint64) (*queue.Message, error) {
-	var msg *queue.Message
+func (s *BadgerStore) Get(queueName string, id uint64) (*entity.Message, error) {
+	var msg *entity.Message
 
 	err := s.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(s.GetMessagesKey(queueName, id))
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
-				return queue.ErrMessageNotFound
+				return errors.ErrMessageNotFound
 			}
 			return err
 		}
 
 		return item.Value(func(val []byte) error {
-			msg, err = queue.MessageFromBytes(val)
+			msg, err = entity.MessageFromBytes(val)
 			return err
 		})
 	})
@@ -166,20 +167,20 @@ func (s *BadgerStore) Get(queueName string, id uint64) (*queue.Message, error) {
 	return msg, nil
 }
 
-func (s *BadgerStore) Delete(queueName string, id uint64) (*queue.Message, error) {
-	var msg *queue.Message
+func (s *BadgerStore) Delete(queueName string, id uint64) (*entity.Message, error) {
+	var msg *entity.Message
 
 	err := s.db.Update(func(txn *badger.Txn) error {
 		item, err := txn.Get(s.GetMessagesKey(queueName, id))
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
-				return queue.ErrMessageNotFound
+				return errors.ErrMessageNotFound
 			}
 			return err
 		}
 
 		err = item.Value(func(val []byte) error {
-			msg, err = queue.MessageFromBytes(val)
+			msg, err = entity.MessageFromBytes(val)
 			if err != nil {
 				return err
 			}
@@ -198,7 +199,7 @@ func (s *BadgerStore) Delete(queueName string, id uint64) (*queue.Message, error
 		err = txn.Delete(s.GetMessagesKey(queueName, msg.ID))
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
-				return queue.ErrMessageNotFound
+				return errors.ErrMessageNotFound
 			}
 		}
 
@@ -232,8 +233,8 @@ func (s *BadgerStore) Nack(queueName string, id uint64, priority int64, metadata
 	return nil
 }
 
-func (s *BadgerStore) UpdatePriority(queueName string, id uint64, priority int64) (*queue.Message, error) {
-	var msg *queue.Message
+func (s *BadgerStore) UpdatePriority(queueName string, id uint64, priority int64) (*entity.Message, error) {
+	var msg *entity.Message
 
 	err := s.db.Update(func(txn *badger.Txn) error {
 		item, err := txn.Get(s.GetMessagesKey(queueName, id))
@@ -242,7 +243,7 @@ func (s *BadgerStore) UpdatePriority(queueName string, id uint64, priority int64
 		}
 
 		err = item.Value(func(val []byte) error {
-			msg, err = queue.MessageFromBytes(val)
+			msg, err = entity.MessageFromBytes(val)
 			return err
 		})
 
@@ -296,9 +297,9 @@ func (s *BadgerStore) UpdateMessage(
 			return err
 		}
 
-		var msg *queue.Message
+		var msg *entity.Message
 		err = item.Value(func(val []byte) error {
-			msg, err = queue.MessageFromBytes(val)
+			msg, err = entity.MessageFromBytes(val)
 			return err
 		})
 		if err != nil {
@@ -344,7 +345,7 @@ func (s *BadgerStore) PersistSnapshot(queueType, queueName string, sink raft.Sna
 			item := it.Item()
 
 			err := item.Value(func(val []byte) error {
-				msg, err := queue.MessageFromBytes(val)
+				msg, err := entity.MessageFromBytes(val)
 
 				if err != nil {
 					return err

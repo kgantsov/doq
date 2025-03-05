@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/errors"
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/kgantsov/doq/pkg/queue/memory"
@@ -21,15 +23,15 @@ import (
 type testNode struct {
 	nextID   uint64
 	leader   string
-	messages map[uint64]*queue.Message
-	acks     map[uint64]*queue.Message
+	messages map[uint64]*entity.Message
+	acks     map[uint64]*entity.Message
 	queues   map[string]*memory.DelayedMemoryQueue
 }
 
 func newTestNode() *testNode {
 	return &testNode{
-		messages: make(map[uint64]*queue.Message),
-		acks:     make(map[uint64]*queue.Message),
+		messages: make(map[uint64]*entity.Message),
+		acks:     make(map[uint64]*entity.Message),
 		queues:   make(map[string]*memory.DelayedMemoryQueue),
 	}
 }
@@ -82,7 +84,7 @@ func (n *testNode) CreateQueue(queueType, queueName string) error {
 func (n *testNode) DeleteQueue(queueName string) error {
 	_, ok := n.queues[queueName]
 	if !ok {
-		return queue.ErrQueueNotFound
+		return errors.ErrQueueNotFound
 	}
 
 	delete(n.queues, queueName)
@@ -91,14 +93,14 @@ func (n *testNode) DeleteQueue(queueName string) error {
 
 func (n *testNode) Enqueue(
 	queueName string, group string, priority int64, content string, metadata map[string]string,
-) (*queue.Message, error) {
+) (*entity.Message, error) {
 	q, ok := n.queues[queueName]
 	if !ok {
-		return &queue.Message{}, queue.ErrQueueNotFound
+		return &entity.Message{}, errors.ErrQueueNotFound
 	}
 
 	n.nextID++
-	message := &queue.Message{
+	message := &entity.Message{
 		ID: n.nextID, Group: group, Priority: priority, Content: content, Metadata: metadata,
 	}
 	n.messages[message.ID] = message
@@ -106,14 +108,14 @@ func (n *testNode) Enqueue(
 	return message, nil
 }
 
-func (n *testNode) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
+func (n *testNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
 	q, ok := n.queues[QueueName]
 	if !ok {
-		return &queue.Message{}, queue.ErrQueueNotFound
+		return &entity.Message{}, errors.ErrQueueNotFound
 	}
 
 	if q.Len() == 0 {
-		return nil, queue.ErrEmptyQueue
+		return nil, errors.ErrEmptyQueue
 	}
 
 	item := q.Dequeue()
@@ -132,11 +134,11 @@ func (n *testNode) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 func (n *testNode) Ack(QueueName string, id uint64) error {
 	_, ok := n.queues[QueueName]
 	if !ok {
-		return queue.ErrQueueNotFound
+		return errors.ErrQueueNotFound
 	}
 
 	if _, ok := n.acks[id]; !ok {
-		return queue.ErrMessageNotFound
+		return errors.ErrMessageNotFound
 	}
 	delete(n.acks, id)
 	delete(n.messages, id)
@@ -146,12 +148,12 @@ func (n *testNode) Ack(QueueName string, id uint64) error {
 func (n *testNode) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
 	q, ok := n.queues[QueueName]
 	if !ok {
-		return queue.ErrQueueNotFound
+		return errors.ErrQueueNotFound
 	}
 
 	message, ok := n.acks[id]
 	if !ok {
-		return queue.ErrMessageNotFound
+		return errors.ErrMessageNotFound
 	}
 
 	message.Metadata = metadata
@@ -163,24 +165,24 @@ func (n *testNode) Nack(QueueName string, id uint64, priority int64, metadata ma
 	return nil
 }
 
-func (n *testNode) Get(QueueName string, id uint64) (*queue.Message, error) {
+func (n *testNode) Get(QueueName string, id uint64) (*entity.Message, error) {
 	for _, m := range n.messages {
 		if m.ID == id {
 			return m, nil
 		}
 	}
-	return nil, queue.ErrMessageNotFound
+	return nil, errors.ErrMessageNotFound
 }
 
 func (n *testNode) Delete(QueueName string, id uint64) error {
 	q, ok := n.queues[QueueName]
 	if !ok {
-		return queue.ErrQueueNotFound
+		return errors.ErrQueueNotFound
 	}
 
 	msg, ok := n.messages[id]
 	if !ok {
-		return queue.ErrMessageNotFound
+		return errors.ErrMessageNotFound
 	}
 
 	q.Delete(msg.Group, id)
@@ -194,12 +196,12 @@ func (n *testNode) Delete(QueueName string, id uint64) error {
 func (n *testNode) UpdatePriority(queueName string, id uint64, priority int64) error {
 	q, ok := n.queues[queueName]
 	if !ok {
-		return queue.ErrQueueNotFound
+		return errors.ErrQueueNotFound
 	}
 
 	message, ok := n.messages[id]
 	if !ok {
-		return queue.ErrMessageNotFound
+		return errors.ErrMessageNotFound
 	}
 
 	message.Priority = priority

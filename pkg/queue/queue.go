@@ -9,6 +9,8 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/queue/memory"
 	"github.com/prometheus/client_golang/prometheus"
@@ -25,7 +27,7 @@ type QueueInfo struct {
 }
 
 type Queue struct {
-	config            *QueueConfig
+	config            *entity.QueueConfig
 	cfg               *config.Config
 	PrometheusMetrics *metrics.PrometheusMetrics
 
@@ -62,7 +64,7 @@ func (bpq *Queue) Init(queueType, queueName string) error {
 	} else {
 		queue = memory.NewDelayedMemoryQueue(true)
 	}
-	bpq.config = &QueueConfig{Name: queueName, Type: queueType}
+	bpq.config = &entity.QueueConfig{Name: queueName, Type: queueType}
 	bpq.pq = queue
 
 	bpq.StartAckQueueMonitoring()
@@ -160,7 +162,7 @@ func (bpq *Queue) Create(queueType, queueName string) error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
-	bpq.config = &QueueConfig{Name: queueName, Type: queueType}
+	bpq.config = &entity.QueueConfig{Name: queueName, Type: queueType}
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
 		data, err := bpq.config.ToBytes()
@@ -181,7 +183,7 @@ func (bpq *Queue) DeleteQueue() error {
 	defer bpq.mu.Unlock()
 
 	if bpq.config == nil {
-		return ErrQueueNotFound
+		return errors.ErrQueueNotFound
 	}
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
@@ -220,7 +222,7 @@ func (bpq *Queue) Load(queueName string, loadMessages bool) error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
-	var qc *QueueConfig
+	var qc *entity.QueueConfig
 
 	err := bpq.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(bpq.GetQueueKey(queueName))
@@ -229,7 +231,7 @@ func (bpq *Queue) Load(queueName string, loadMessages bool) error {
 		}
 
 		err = item.Value(func(val []byte) error {
-			qc, err = QueueConfigFromBytes(val)
+			qc, err = entity.QueueConfigFromBytes(val)
 			return err
 		})
 
@@ -247,7 +249,7 @@ func (bpq *Queue) Load(queueName string, loadMessages bool) error {
 			for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 				item := it.Item()
 				err := item.Value(func(val []byte) error {
-					msg, err := MessageFromBytes(val)
+					msg, err := entity.MessageFromBytes(val)
 					if err != nil {
 						return err
 					}
@@ -278,12 +280,12 @@ func (bpq *Queue) Enqueue(
 	priority int64,
 	content string,
 	metadata map[string]string,
-) (*Message, error) {
+) (*entity.Message, error) {
 	if bpq.config.Type != "fair" {
 		group = "default"
 	}
 
-	msg := &Message{
+	msg := &entity.Message{
 		ID:       id,
 		Group:    group,
 		Priority: priority,
@@ -321,17 +323,17 @@ func (bpq *Queue) Enqueue(
 	return msg, nil
 }
 
-func (bpq *Queue) Dequeue(ack bool) (*Message, error) {
+func (bpq *Queue) Dequeue(ack bool) (*entity.Message, error) {
 	if bpq.pq.Len() == 0 {
-		return nil, ErrEmptyQueue
+		return nil, errors.ErrEmptyQueue
 	}
 
 	queueItem := bpq.pq.Dequeue()
 	if queueItem == nil {
-		return nil, ErrEmptyQueue
+		return nil, errors.ErrEmptyQueue
 	}
 
-	var msg *Message
+	var msg *entity.Message
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
 		item, err := txn.Get(bpq.GetMessagesKey(queueItem.ID))
@@ -340,7 +342,7 @@ func (bpq *Queue) Dequeue(ack bool) (*Message, error) {
 		}
 
 		item.Value(func(val []byte) error {
-			msg, err = MessageFromBytes(val)
+			msg, err = entity.MessageFromBytes(val)
 			return err
 		})
 
@@ -379,20 +381,20 @@ func (bpq *Queue) Dequeue(ack bool) (*Message, error) {
 	return msg, nil
 }
 
-func (bpq *Queue) Get(id uint64) (*Message, error) {
-	var msg *Message
+func (bpq *Queue) Get(id uint64) (*entity.Message, error) {
+	var msg *entity.Message
 
 	err := bpq.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(bpq.GetMessagesKey(id))
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
-				return ErrMessageNotFound
+				return errors.ErrMessageNotFound
 			}
 			return err
 		}
 
 		return item.Value(func(val []byte) error {
-			msg, err = MessageFromBytes(val)
+			msg, err = entity.MessageFromBytes(val)
 			return err
 		})
 	})
@@ -407,18 +409,18 @@ func (bpq *Queue) Delete(id uint64) error {
 	group := "default"
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
-		var msg *Message
+		var msg *entity.Message
 
 		item, err := txn.Get(bpq.GetMessagesKey(id))
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
-				return ErrMessageNotFound
+				return errors.ErrMessageNotFound
 			}
 			return err
 		}
 
 		err = item.Value(func(val []byte) error {
-			msg, err = MessageFromBytes(val)
+			msg, err = entity.MessageFromBytes(val)
 			if err != nil {
 				return err
 			}
@@ -437,7 +439,7 @@ func (bpq *Queue) Delete(id uint64) error {
 		err = txn.Delete(bpq.GetMessagesKey(msg.ID))
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
-				return ErrMessageNotFound
+				return errors.ErrMessageNotFound
 			}
 		}
 
@@ -455,14 +457,14 @@ func (bpq *Queue) UpdatePriority(id uint64, newPriority int64) error {
 
 	// Update BadgerDB
 	err := bpq.db.Update(func(txn *badger.Txn) error {
-		var msg *Message
+		var msg *entity.Message
 		item, err := txn.Get(bpq.GetMessagesKey(id))
 		if err != nil {
 			return err
 		}
 
 		err = item.Value(func(val []byte) error {
-			msg, err = MessageFromBytes(val)
+			msg, err = entity.MessageFromBytes(val)
 			return err
 		})
 
@@ -476,7 +478,7 @@ func (bpq *Queue) UpdatePriority(id uint64, newPriority int64) error {
 		if queueItem == nil {
 			queueItem = bpq.ackQueue.Get(group, id)
 			if queueItem == nil {
-				return ErrMessageNotFound
+				return errors.ErrMessageNotFound
 			}
 		}
 
@@ -509,7 +511,7 @@ func (bpq *Queue) Ack(id uint64) error {
 	queueItem := bpq.ackQueue.Get("default", id)
 
 	if queueItem == nil {
-		return ErrMessageNotFound
+		return errors.ErrMessageNotFound
 	}
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
@@ -538,7 +540,7 @@ func (bpq *Queue) Nack(id uint64, priority int64, metadata map[string]string) er
 	item := bpq.ackQueue.Get("default", id)
 
 	if item == nil {
-		return ErrMessageNotFound
+		return errors.ErrMessageNotFound
 	}
 
 	message, err := bpq.Get(item.ID)
@@ -591,9 +593,9 @@ func (bpq *Queue) updateMessage(
 			return err
 		}
 
-		var msg *Message
+		var msg *entity.Message
 		err = item.Value(func(val []byte) error {
-			msg, err = MessageFromBytes(val)
+			msg, err = entity.MessageFromBytes(val)
 			return err
 		})
 		if err != nil {
@@ -635,7 +637,7 @@ func (bpq *Queue) PersistSnapshot(sink raft.SnapshotSink) error {
 			item := it.Item()
 
 			err := item.Value(func(val []byte) error {
-				msg, err := MessageFromBytes(val)
+				msg, err := entity.MessageFromBytes(val)
 
 				if err != nil {
 					return err

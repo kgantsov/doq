@@ -1,7 +1,6 @@
 package queue
 
 import (
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -9,17 +8,14 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/metrics"
 
-	// "github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 )
 
-var ErrQueueNotFound = fmt.Errorf("queue not found")
-
 type QueueManager struct {
-	db *badger.DB
-	// store             storage.Store
+	db                *badger.DB
 	config            *config.Config
 	PrometheusMetrics *metrics.PrometheusMetrics
 
@@ -131,7 +127,7 @@ func (qm *QueueManager) GetQueue(queueName string) (*Queue, error) {
 		q = NewQueue(qm.db, qm.config, qm.PrometheusMetrics)
 		err := q.Load(queueName, false)
 		if err != nil {
-			return nil, ErrQueueNotFound
+			return nil, errors.ErrQueueNotFound
 		}
 		return q, nil
 	}

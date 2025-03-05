@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/queue"
 )
 
 func (n *Node) Enqueue(
 	queueName string, group string, priority int64, content string, metadata map[string]string,
-) (*queue.Message, error) {
+) (*entity.Message, error) {
 	cmd := Command{
 		Op: "enqueue",
 		Payload: EnqueuePayload{
@@ -36,7 +37,7 @@ func (n *Node) Enqueue(
 		return nil, r.error
 	}
 
-	return &queue.Message{
+	return &entity.Message{
 		ID:       r.ID,
 		Group:    group,
 		Priority: r.Priority,
@@ -45,7 +46,7 @@ func (n *Node) Enqueue(
 	}, nil
 }
 
-func (n *Node) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
+func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
 	cmd := Command{
 		Op: "dequeue",
 		Payload: DequeuePayload{
@@ -68,7 +69,7 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 		return nil, r.error
 	}
 
-	return &queue.Message{
+	return &entity.Message{
 		ID:       r.ID,
 		Group:    r.Group,
 		Priority: r.Priority,
@@ -77,7 +78,7 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*queue.Message, error) {
 	}, nil
 }
 
-func (n *Node) Get(QueueName string, id uint64) (*queue.Message, error) {
+func (n *Node) Get(QueueName string, id uint64) (*entity.Message, error) {
 	cmd := Command{
 		Op: "get",
 		Payload: GetPayload{
@@ -101,7 +102,7 @@ func (n *Node) Get(QueueName string, id uint64) (*queue.Message, error) {
 		return nil, r.error
 	}
 
-	return &queue.Message{
+	return &entity.Message{
 		ID:       r.ID,
 		Group:    r.Group,
 		Priority: r.Priority,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -105,7 +106,7 @@ func TestQueueEmptyQueue(t *testing.T) {
 	pq.Create("delayed", "test_queue_stored")
 
 	m, err := pq.Dequeue(true)
-	assert.EqualError(t, err, ErrEmptyQueue.Error())
+	assert.EqualError(t, err, errors.ErrEmptyQueue.Error())
 	assert.Nil(t, m)
 }
 
@@ -239,7 +240,7 @@ func TestQueueDelete(t *testing.T) {
 
 	m, err := pq.Get(2)
 	assert.Nil(t, m)
-	assert.EqualError(t, err, ErrMessageNotFound.Error())
+	assert.EqualError(t, err, errors.ErrMessageNotFound.Error())
 }
 
 func TestQueueChangePriority(t *testing.T) {
@@ -381,7 +382,7 @@ func TestQueueDelayedMessage(t *testing.T) {
 
 	m1, err = pq.Dequeue(true)
 	assert.Nil(t, m1)
-	assert.EqualError(t, err, ErrEmptyQueue.Error())
+	assert.EqualError(t, err, errors.ErrEmptyQueue.Error())
 
 	time.Sleep(1 * time.Second)
 
@@ -460,7 +461,7 @@ func TestQueueAck(t *testing.T) {
 	assert.Nil(t, err)
 
 	err = pq.Ack(100)
-	assert.EqualError(t, err, ErrMessageNotFound.Error())
+	assert.EqualError(t, err, errors.ErrMessageNotFound.Error())
 
 	db.Close()
 }
@@ -538,7 +539,7 @@ func TestQueueNack(t *testing.T) {
 	assert.Nil(t, err)
 
 	err = pq.Nack(100, 10, nil)
-	assert.EqualError(t, err, ErrMessageNotFound.Error())
+	assert.EqualError(t, err, errors.ErrMessageNotFound.Error())
 
 	m1, err = pq.Dequeue(true)
 	assert.Nil(t, err)
@@ -561,7 +562,7 @@ func TestQueueNack(t *testing.T) {
 	assert.Equal(t, map[string]string(nil), m4.Metadata)
 
 	m4, err = pq.Dequeue(true)
-	assert.EqualError(t, err, ErrEmptyQueue.Error())
+	assert.EqualError(t, err, errors.ErrEmptyQueue.Error())
 }
 
 func BenchmarkQueueEnqueue(b *testing.B) {

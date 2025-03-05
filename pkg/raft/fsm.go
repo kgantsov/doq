@@ -9,6 +9,8 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/rs/zerolog/log"
 
@@ -299,7 +301,7 @@ func (f *FSM) applyDequeue(payload DequeuePayload) *FSMResponse {
 	log.Debug().Msgf("Node %s Dequeued a message: %+v %v", f.NodeID, msg, err)
 
 	if err != nil {
-		if err == queue.ErrEmptyQueue {
+		if err == errors.ErrEmptyQueue {
 			return &FSMResponse{
 				QueueName: payload.QueueName,
 				error:     fmt.Errorf("Queue is empty: %s", payload.QueueName),
@@ -336,7 +338,7 @@ func (f *FSM) applyGet(payload GetPayload) *FSMResponse {
 	log.Debug().Msgf("Node %s got a message: %+v %v", f.NodeID, msg, err)
 
 	if err != nil {
-		if err == queue.ErrEmptyQueue {
+		if err == errors.ErrEmptyQueue {
 			return &FSMResponse{
 				QueueName: payload.QueueName,
 				error:     fmt.Errorf("Queue is empty: %s", payload.QueueName),
@@ -371,7 +373,7 @@ func (f *FSM) applyDelete(payload DeletePayload) *FSMResponse {
 	err = q.Delete(payload.ID)
 
 	if err != nil {
-		if err == queue.ErrEmptyQueue {
+		if err == errors.ErrEmptyQueue {
 			return &FSMResponse{
 				QueueName: payload.QueueName,
 				error:     fmt.Errorf("Queue is empty: %s", payload.QueueName),
@@ -405,12 +407,12 @@ func (f *FSM) applyAck(payload AckPayload) *FSMResponse {
 	log.Debug().Msgf("Node %s Acked a message: %v", f.NodeID, err)
 
 	if err != nil {
-		if err == queue.ErrEmptyQueue {
+		if err == errors.ErrEmptyQueue {
 			return &FSMResponse{
 				QueueName: payload.QueueName,
 				error:     fmt.Errorf("Queue is empty: %s", payload.QueueName),
 			}
-		} else if err == queue.ErrMessageNotFound {
+		} else if err == errors.ErrMessageNotFound {
 			return &FSMResponse{
 				QueueName: payload.QueueName,
 				error:     fmt.Errorf("Message not found: %s", payload.QueueName),
@@ -443,12 +445,12 @@ func (f *FSM) applyNack(payload NackPayload) *FSMResponse {
 	log.Debug().Msgf("Node %s Nacked a message: %v", f.NodeID, err)
 
 	if err != nil {
-		if err == queue.ErrEmptyQueue {
+		if err == errors.ErrEmptyQueue {
 			return &FSMResponse{
 				QueueName: payload.QueueName,
 				error:     fmt.Errorf("Queue is empty: %s", payload.QueueName),
 			}
-		} else if err == queue.ErrMessageNotFound {
+		} else if err == errors.ErrMessageNotFound {
 			return &FSMResponse{
 				QueueName: payload.QueueName,
 				error:     fmt.Errorf("Message not found: %s", payload.QueueName),
@@ -488,7 +490,7 @@ func (f *FSM) applyUpdatePriority(payload UpdatePriorityPayload) *FSMResponse {
 	)
 
 	if err != nil {
-		if err == queue.ErrEmptyQueue {
+		if err == errors.ErrEmptyQueue {
 			return &FSMResponse{
 				QueueName: payload.QueueName,
 				error:     fmt.Errorf("Queue is empty: %s", payload.QueueName),
@@ -568,7 +570,7 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 		line := scanner.Bytes()
 		linesTotal++
 
-		msg, err := queue.MessageFromBytes(line)
+		msg, err := entity.MessageFromBytes(line)
 		if err != nil {
 			log.Warn().Msgf("Failed to unmarshal command: %v %v", err, string(line))
 			continue
