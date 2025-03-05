@@ -10,17 +10,20 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/metrics"
+
+	// "github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 )
 
 var ErrQueueNotFound = fmt.Errorf("queue not found")
 
 type QueueManager struct {
-	db                *badger.DB
+	db *badger.DB
+	// store             storage.Store
 	config            *config.Config
 	PrometheusMetrics *metrics.PrometheusMetrics
 
-	queues map[string]*PriorityQueue
+	queues map[string]*Queue
 	mu     sync.Mutex
 }
 
@@ -28,7 +31,7 @@ func NewQueueManager(db *badger.DB, cfg *config.Config, metrics *metrics.Prometh
 	return &QueueManager{
 		db:                db,
 		config:            cfg,
-		queues:            make(map[string]*PriorityQueue),
+		queues:            make(map[string]*Queue),
 		PrometheusMetrics: metrics,
 	}
 }
@@ -48,7 +51,7 @@ func (qm *QueueManager) LoadQueues() {
 
 			log.Debug().Msgf("Loading queue: %s", queueName)
 
-			q := NewPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
+			q := NewQueue(qm.db, qm.config, qm.PrometheusMetrics)
 			err := q.Load(queueName, true)
 			if err != nil {
 				log.Error().Err(err).Str("queue", queueName).Msg("Failed to load queue")
@@ -78,7 +81,7 @@ func (qm *QueueManager) PersistSnapshot(sink raft.SnapshotSink) error {
 	return nil
 }
 
-func (qm *QueueManager) CreateQueue(queueType, queueName string) (*PriorityQueue, error) {
+func (qm *QueueManager) CreateQueue(queueType, queueName string) (*Queue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
 
@@ -87,7 +90,7 @@ func (qm *QueueManager) CreateQueue(queueType, queueName string) (*PriorityQueue
 		return q, nil
 	}
 
-	q = NewPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
+	q = NewQueue(qm.db, qm.config, qm.PrometheusMetrics)
 	err := q.Create(queueType, queueName)
 
 	if err != nil {
@@ -105,7 +108,7 @@ func (qm *QueueManager) DeleteQueue(queueName string) error {
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
+		q = NewQueue(qm.db, qm.config, qm.PrometheusMetrics)
 		q.Load(queueName, false)
 	}
 
@@ -119,13 +122,13 @@ func (qm *QueueManager) DeleteQueue(queueName string) error {
 	return nil
 }
 
-func (qm *QueueManager) GetQueue(queueName string) (*PriorityQueue, error) {
+func (qm *QueueManager) GetQueue(queueName string) (*Queue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
+		q = NewQueue(qm.db, qm.config, qm.PrometheusMetrics)
 		err := q.Load(queueName, false)
 		if err != nil {
 			return nil, ErrQueueNotFound

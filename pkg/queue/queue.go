@@ -24,7 +24,7 @@ type QueueInfo struct {
 	Total   int64
 }
 
-type PriorityQueue struct {
+type Queue struct {
 	config            *QueueConfig
 	cfg               *config.Config
 	PrometheusMetrics *metrics.PrometheusMetrics
@@ -41,11 +41,11 @@ type PriorityQueue struct {
 	ackQueue memory.MemoryQueue
 }
 
-func NewPriorityQueue(
+func NewQueue(
 	db *badger.DB, cfg *config.Config, promMetrics *metrics.PrometheusMetrics,
-) *PriorityQueue {
+) *Queue {
 
-	bpq := &PriorityQueue{
+	bpq := &Queue{
 		db:                db,
 		cfg:               cfg,
 		ackQueue:          memory.NewDelayedMemoryQueue(false),
@@ -55,7 +55,7 @@ func NewPriorityQueue(
 
 	return bpq
 }
-func (bpq *PriorityQueue) Init(queueType, queueName string) error {
+func (bpq *Queue) Init(queueType, queueName string) error {
 	var queue memory.MemoryQueue
 	if queueType == "fair" {
 		queue = memory.NewFairMemoryQueue()
@@ -72,7 +72,7 @@ func (bpq *PriorityQueue) Init(queueType, queueName string) error {
 	return nil
 }
 
-func (bpq *PriorityQueue) GetStats() *QueueInfo {
+func (bpq *Queue) GetStats() *QueueInfo {
 	return &QueueInfo{
 		Name:    bpq.config.Name,
 		Type:    bpq.config.Type,
@@ -83,7 +83,7 @@ func (bpq *PriorityQueue) GetStats() *QueueInfo {
 	}
 }
 
-func (bpq *PriorityQueue) updatePrometheusQueueSizes() {
+func (bpq *Queue) updatePrometheusQueueSizes() {
 	if bpq.cfg.Prometheus.Enabled {
 		readyMessages := float64(bpq.pq.Len())
 		unackedMessages := float64(bpq.ackQueue.Len())
@@ -100,7 +100,7 @@ func (bpq *PriorityQueue) updatePrometheusQueueSizes() {
 	}
 }
 
-func (bpq *PriorityQueue) monitorAckQueue() {
+func (bpq *Queue) monitorAckQueue() {
 	ticker := time.NewTicker(
 		time.Duration(bpq.cfg.Queue.AcknowledgementCheckInterval) * time.Second,
 	)
@@ -135,28 +135,28 @@ func (bpq *PriorityQueue) monitorAckQueue() {
 	}
 }
 
-func (bpq *PriorityQueue) StartAckQueueMonitoring() {
+func (bpq *Queue) StartAckQueueMonitoring() {
 	bpq.ackQueueMonitoringChan = make(chan struct{})
 	go bpq.monitorAckQueue()
 }
 
-func (bpq *PriorityQueue) StopAckQueueMonitoring() {
+func (bpq *Queue) StopAckQueueMonitoring() {
 	close(bpq.ackQueueMonitoringChan)
 }
 
-func (bpq *PriorityQueue) getMessagesPrefix() []byte {
+func (bpq *Queue) getMessagesPrefix() []byte {
 	return []byte(fmt.Sprintf("messages:%s:", bpq.config.Name))
 }
 
-func (bpq *PriorityQueue) GetQueueKey(queueName string) []byte {
+func (bpq *Queue) GetQueueKey(queueName string) []byte {
 	return []byte(fmt.Sprintf("queues:%s:", queueName))
 }
 
-func (bpq *PriorityQueue) GetMessagesKey(id uint64) []byte {
+func (bpq *Queue) GetMessagesKey(id uint64) []byte {
 	return addPrefix(bpq.getMessagesPrefix(), uint64ToBytes(id))
 }
 
-func (bpq *PriorityQueue) Create(queueType, queueName string) error {
+func (bpq *Queue) Create(queueType, queueName string) error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -176,7 +176,7 @@ func (bpq *PriorityQueue) Create(queueType, queueName string) error {
 	return bpq.Init(queueType, queueName)
 }
 
-func (bpq *PriorityQueue) DeleteQueue() error {
+func (bpq *Queue) DeleteQueue() error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -216,7 +216,7 @@ func (bpq *PriorityQueue) DeleteQueue() error {
 	return nil
 }
 
-func (bpq *PriorityQueue) Load(queueName string, loadMessages bool) error {
+func (bpq *Queue) Load(queueName string, loadMessages bool) error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -272,7 +272,7 @@ func (bpq *PriorityQueue) Load(queueName string, loadMessages bool) error {
 	return nil
 }
 
-func (bpq *PriorityQueue) Enqueue(
+func (bpq *Queue) Enqueue(
 	id uint64,
 	group string,
 	priority int64,
@@ -321,7 +321,7 @@ func (bpq *PriorityQueue) Enqueue(
 	return msg, nil
 }
 
-func (bpq *PriorityQueue) Dequeue(ack bool) (*Message, error) {
+func (bpq *Queue) Dequeue(ack bool) (*Message, error) {
 	if bpq.pq.Len() == 0 {
 		return nil, ErrEmptyQueue
 	}
@@ -379,7 +379,7 @@ func (bpq *PriorityQueue) Dequeue(ack bool) (*Message, error) {
 	return msg, nil
 }
 
-func (bpq *PriorityQueue) Get(id uint64) (*Message, error) {
+func (bpq *Queue) Get(id uint64) (*Message, error) {
 	var msg *Message
 
 	err := bpq.db.View(func(txn *badger.Txn) error {
@@ -403,7 +403,7 @@ func (bpq *PriorityQueue) Get(id uint64) (*Message, error) {
 	return msg, nil
 }
 
-func (bpq *PriorityQueue) Delete(id uint64) error {
+func (bpq *Queue) Delete(id uint64) error {
 	group := "default"
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
@@ -450,7 +450,7 @@ func (bpq *PriorityQueue) Delete(id uint64) error {
 	return nil
 }
 
-func (bpq *PriorityQueue) UpdatePriority(id uint64, newPriority int64) error {
+func (bpq *Queue) UpdatePriority(id uint64, newPriority int64) error {
 	group := "default"
 
 	// Update BadgerDB
@@ -505,7 +505,7 @@ func (bpq *PriorityQueue) UpdatePriority(id uint64, newPriority int64) error {
 	return nil
 }
 
-func (bpq *PriorityQueue) Ack(id uint64) error {
+func (bpq *Queue) Ack(id uint64) error {
 	queueItem := bpq.ackQueue.Get("default", id)
 
 	if queueItem == nil {
@@ -534,7 +534,7 @@ func (bpq *PriorityQueue) Ack(id uint64) error {
 	return nil
 }
 
-func (bpq *PriorityQueue) Nack(id uint64, priority int64, metadata map[string]string) error {
+func (bpq *Queue) Nack(id uint64, priority int64, metadata map[string]string) error {
 	item := bpq.ackQueue.Get("default", id)
 
 	if item == nil {
@@ -579,7 +579,7 @@ func (bpq *PriorityQueue) Nack(id uint64, priority int64, metadata map[string]st
 	return nil
 }
 
-func (bpq *PriorityQueue) updateMessage(
+func (bpq *Queue) updateMessage(
 	id uint64,
 	priority int64,
 	content string,
@@ -621,11 +621,11 @@ func (bpq *PriorityQueue) updateMessage(
 	})
 }
 
-func (bpq *PriorityQueue) Len() int {
+func (bpq *Queue) Len() int {
 	return int(bpq.pq.Len())
 }
 
-func (bpq *PriorityQueue) PersistSnapshot(sink raft.SnapshotSink) error {
+func (bpq *Queue) PersistSnapshot(sink raft.SnapshotSink) error {
 	err := bpq.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
