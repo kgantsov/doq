@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestPriorityQueue tests the priority queue
-func TestPriorityQueue(t *testing.T) {
+// TestPriorityMemoryQueue tests the priority queue
+func TestPriorityMemoryQueue(t *testing.T) {
 	tests := []struct {
 		name     string
 		messages []Item
@@ -57,7 +57,7 @@ func TestPriorityQueue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pq := NewPriorityQueue(true)
+			pq := NewPriorityMemoryQueue(true)
 
 			for i, m := range tt.messages {
 				heap.Push(pq, &m)
@@ -80,8 +80,8 @@ func TestPriorityQueue(t *testing.T) {
 	}
 }
 
-// TestPriorityQueue tests the priority queue
-func TestPriorityQueueMaxFirst(t *testing.T) {
+// TestPriorityMemoryQueue tests the priority queue
+func TestPriorityMemoryQueueMaxFirst(t *testing.T) {
 	tests := []struct {
 		name     string
 		messages []Item
@@ -129,7 +129,7 @@ func TestPriorityQueueMaxFirst(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pq := NewPriorityQueue(false)
+			pq := NewPriorityMemoryQueue(false)
 
 			for i, m := range tt.messages {
 				heap.Push(pq, &m)
@@ -152,8 +152,8 @@ func TestPriorityQueueMaxFirst(t *testing.T) {
 	}
 }
 
-func TestPriorityQueueUpdatePriority(t *testing.T) {
-	pq := NewPriorityQueue(true)
+func TestPriorityMemoryQueueUpdatePriority(t *testing.T) {
+	pq := NewPriorityMemoryQueue(true)
 
 	heap.Push(pq, &Item{ID: 1, Priority: 1})
 	heap.Push(pq, &Item{ID: 2, Priority: 2})
@@ -178,8 +178,8 @@ func TestPriorityQueueUpdatePriority(t *testing.T) {
 	pq.UpdatePriority(400, 0)
 }
 
-func TestPriorityQueuePeek(t *testing.T) {
-	pq := NewPriorityQueue(true)
+func TestPriorityMemoryQueuePeek(t *testing.T) {
+	pq := NewPriorityMemoryQueue(true)
 
 	heap.Push(pq, &Item{ID: 4, Priority: 4})
 	m := pq.Peek().(*Item)
@@ -207,7 +207,7 @@ func TestPriorityQueuePeek(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	pq := NewPriorityQueue(true)
+	pq := NewPriorityMemoryQueue(true)
 
 	heap.Push(pq, &Item{ID: 4, Priority: 40})
 	heap.Push(pq, &Item{ID: 5, Priority: 50})
@@ -230,7 +230,7 @@ func TestGet(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	pq := NewPriorityQueue(true)
+	pq := NewPriorityMemoryQueue(true)
 
 	heap.Push(pq, &Item{ID: 4, Priority: 40})
 	heap.Push(pq, &Item{ID: 5, Priority: 50})

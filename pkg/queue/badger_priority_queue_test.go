@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBadgerPriorityQueue(t *testing.T) {
+func TestPriorityQueue(t *testing.T) {
 	tests := []struct {
 		name     string
 		messages []struct {
@@ -53,7 +53,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 				log.Fatal().Msg(err.Error())
 			}
 
-			pq := NewBadgerPriorityQueue(
+			pq := NewPriorityQueue(
 				db,
 				&config.Config{Queue: config.QueueConfig{
 					AcknowledgementCheckInterval: 1,
@@ -83,7 +83,7 @@ func TestBadgerPriorityQueue(t *testing.T) {
 	}
 }
 
-func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
+func TestPriorityQueueEmptyQueue(t *testing.T) {
 	dirname, err := os.MkdirTemp("", "store")
 	require.NoError(t, err)
 
@@ -94,7 +94,7 @@ func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
 	}
 	defer db.Close()
 
-	pq := NewBadgerPriorityQueue(
+	pq := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
@@ -109,7 +109,7 @@ func TestBadgerPriorityQueueEmptyQueue(t *testing.T) {
 	assert.Nil(t, m)
 }
 
-func TestBadgerPriorityQueueLoad(t *testing.T) {
+func TestPriorityQueueLoad(t *testing.T) {
 	dirname, err := os.MkdirTemp("", "store")
 	require.NoError(t, err)
 
@@ -120,7 +120,7 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	}
 	defer db.Close()
 
-	pq := NewBadgerPriorityQueue(
+	pq := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
@@ -138,7 +138,7 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	pq.Enqueue(3, "default", 8, "test 3", map[string]string{"retry": "0"})
 	pq.Enqueue(4, "default", 1, "test 4", map[string]string{"retry": "0"})
 
-	pq1 := NewBadgerPriorityQueue(
+	pq1 := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
@@ -172,7 +172,7 @@ func TestBadgerPriorityQueueLoad(t *testing.T) {
 	assert.Equal(t, "test 1", m.Content)
 }
 
-func TestBadgerPriorityQueueDeleteQueue(t *testing.T) {
+func TestPriorityQueueDeleteQueue(t *testing.T) {
 	dirname, err := os.MkdirTemp("", "store")
 	require.NoError(t, err)
 
@@ -183,7 +183,7 @@ func TestBadgerPriorityQueueDeleteQueue(t *testing.T) {
 	}
 	defer db.Close()
 
-	pq := NewBadgerPriorityQueue(
+	pq := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
@@ -205,7 +205,7 @@ func TestBadgerPriorityQueueDeleteQueue(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestBadgerPriorityQueueDelete(t *testing.T) {
+func TestPriorityQueueDelete(t *testing.T) {
 	dirname, err := os.MkdirTemp("", "store")
 	require.NoError(t, err)
 
@@ -216,7 +216,7 @@ func TestBadgerPriorityQueueDelete(t *testing.T) {
 	}
 	defer db.Close()
 
-	pq := NewBadgerPriorityQueue(
+	pq := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
@@ -242,7 +242,7 @@ func TestBadgerPriorityQueueDelete(t *testing.T) {
 	assert.EqualError(t, err, ErrMessageNotFound.Error())
 }
 
-func TestBadgerPriorityQueueChangePriority(t *testing.T) {
+func TestPriorityQueueChangePriority(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "db*")
 	defer os.RemoveAll(tmpDir)
 
@@ -252,7 +252,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(
+	pq := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
@@ -350,7 +350,7 @@ func TestBadgerPriorityQueueChangePriority(t *testing.T) {
 	db.Close()
 }
 
-func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
+func TestPriorityQueueDelayedMessage(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "db*")
 	defer os.RemoveAll(tmpDir)
 
@@ -360,7 +360,7 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(
+	pq := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
@@ -391,7 +391,7 @@ func TestBadgerPriorityQueueDelayedMessage(t *testing.T) {
 	assert.Equal(t, priority, m1.Priority)
 }
 
-func TestBadgerPriorityQueueAck(t *testing.T) {
+func TestPriorityQueueAck(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "db*")
 	defer os.RemoveAll(tmpDir)
 
@@ -401,7 +401,7 @@ func TestBadgerPriorityQueueAck(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(
+	pq := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
@@ -465,7 +465,7 @@ func TestBadgerPriorityQueueAck(t *testing.T) {
 	db.Close()
 }
 
-func TestBadgerPriorityQueueNack(t *testing.T) {
+func TestPriorityQueueNack(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "db*")
 	defer os.RemoveAll(tmpDir)
 
@@ -475,7 +475,7 @@ func TestBadgerPriorityQueueNack(t *testing.T) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(
+	pq := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
@@ -564,7 +564,7 @@ func TestBadgerPriorityQueueNack(t *testing.T) {
 	assert.EqualError(t, err, ErrEmptyQueue.Error())
 }
 
-func BenchmarkBadgerPriorityQueueEnqueue(b *testing.B) {
+func BenchmarkPriorityQueueEnqueue(b *testing.B) {
 	tempFolder, _ := os.MkdirTemp("", "testdir")
 
 	opts := badger.DefaultOptions(tempFolder)
@@ -573,7 +573,7 @@ func BenchmarkBadgerPriorityQueueEnqueue(b *testing.B) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(
+	pq := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
@@ -589,7 +589,7 @@ func BenchmarkBadgerPriorityQueueEnqueue(b *testing.B) {
 	}
 }
 
-func BenchmarkBadgerPriorityQueueDequeue(b *testing.B) {
+func BenchmarkPriorityQueueDequeue(b *testing.B) {
 	tempFolder, _ := os.MkdirTemp("", "testdir")
 	opts := badger.DefaultOptions(tempFolder)
 	db, err := badger.Open(opts)
@@ -597,7 +597,7 @@ func BenchmarkBadgerPriorityQueueDequeue(b *testing.B) {
 		log.Fatal().Msg(err.Error())
 	}
 
-	pq := NewBadgerPriorityQueue(
+	pq := NewPriorityQueue(
 		db,
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,

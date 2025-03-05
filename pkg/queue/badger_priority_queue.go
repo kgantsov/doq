@@ -23,7 +23,7 @@ type QueueInfo struct {
 	Total   int64
 }
 
-type BadgerPriorityQueue struct {
+type PriorityQueue struct {
 	config            *QueueConfig
 	cfg               *config.Config
 	PrometheusMetrics *metrics.PrometheusMetrics
@@ -40,26 +40,26 @@ type BadgerPriorityQueue struct {
 	ackQueue MemoryQueue
 }
 
-func NewBadgerPriorityQueue(
+func NewPriorityQueue(
 	db *badger.DB, cfg *config.Config, promMetrics *metrics.PrometheusMetrics,
-) *BadgerPriorityQueue {
+) *PriorityQueue {
 
-	bpq := &BadgerPriorityQueue{
+	bpq := &PriorityQueue{
 		db:                db,
 		cfg:               cfg,
-		ackQueue:          NewDelayedQueue(false),
+		ackQueue:          NewDelayedMemoryQueue(false),
 		PrometheusMetrics: promMetrics,
 		stats:             metrics.NewQueueStats(cfg.Queue.QueueStats.WindowSide),
 	}
 
 	return bpq
 }
-func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
+func (bpq *PriorityQueue) Init(queueType, queueName string) error {
 	var queue MemoryQueue
 	if queueType == "fair" {
-		queue = NewFairQueue()
+		queue = NewFairMemoryQueue()
 	} else {
-		queue = NewDelayedQueue(true)
+		queue = NewDelayedMemoryQueue(true)
 	}
 	bpq.config = &QueueConfig{Name: queueName, Type: queueType}
 	bpq.pq = queue
@@ -71,7 +71,7 @@ func (bpq *BadgerPriorityQueue) Init(queueType, queueName string) error {
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) GetStats() *QueueInfo {
+func (bpq *PriorityQueue) GetStats() *QueueInfo {
 	return &QueueInfo{
 		Name:    bpq.config.Name,
 		Type:    bpq.config.Type,
@@ -82,7 +82,7 @@ func (bpq *BadgerPriorityQueue) GetStats() *QueueInfo {
 	}
 }
 
-func (bpq *BadgerPriorityQueue) updatePrometheusQueueSizes() {
+func (bpq *PriorityQueue) updatePrometheusQueueSizes() {
 	if bpq.cfg.Prometheus.Enabled {
 		readyMessages := float64(bpq.pq.Len())
 		unackedMessages := float64(bpq.ackQueue.Len())
@@ -99,7 +99,7 @@ func (bpq *BadgerPriorityQueue) updatePrometheusQueueSizes() {
 	}
 }
 
-func (bpq *BadgerPriorityQueue) monitorAckQueue() {
+func (bpq *PriorityQueue) monitorAckQueue() {
 	ticker := time.NewTicker(
 		time.Duration(bpq.cfg.Queue.AcknowledgementCheckInterval) * time.Second,
 	)
@@ -134,28 +134,28 @@ func (bpq *BadgerPriorityQueue) monitorAckQueue() {
 	}
 }
 
-func (bpq *BadgerPriorityQueue) StartAckQueueMonitoring() {
+func (bpq *PriorityQueue) StartAckQueueMonitoring() {
 	bpq.ackQueueMonitoringChan = make(chan struct{})
 	go bpq.monitorAckQueue()
 }
 
-func (bpq *BadgerPriorityQueue) StopAckQueueMonitoring() {
+func (bpq *PriorityQueue) StopAckQueueMonitoring() {
 	close(bpq.ackQueueMonitoringChan)
 }
 
-func (bpq *BadgerPriorityQueue) getMessagesPrefix() []byte {
+func (bpq *PriorityQueue) getMessagesPrefix() []byte {
 	return []byte(fmt.Sprintf("messages:%s:", bpq.config.Name))
 }
 
-func (bpq *BadgerPriorityQueue) GetQueueKey(queueName string) []byte {
+func (bpq *PriorityQueue) GetQueueKey(queueName string) []byte {
 	return []byte(fmt.Sprintf("queues:%s:", queueName))
 }
 
-func (bpq *BadgerPriorityQueue) GetMessagesKey(id uint64) []byte {
+func (bpq *PriorityQueue) GetMessagesKey(id uint64) []byte {
 	return addPrefix(bpq.getMessagesPrefix(), uint64ToBytes(id))
 }
 
-func (bpq *BadgerPriorityQueue) Create(queueType, queueName string) error {
+func (bpq *PriorityQueue) Create(queueType, queueName string) error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -175,7 +175,7 @@ func (bpq *BadgerPriorityQueue) Create(queueType, queueName string) error {
 	return bpq.Init(queueType, queueName)
 }
 
-func (bpq *BadgerPriorityQueue) DeleteQueue() error {
+func (bpq *PriorityQueue) DeleteQueue() error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -215,7 +215,7 @@ func (bpq *BadgerPriorityQueue) DeleteQueue() error {
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) Load(queueName string, loadMessages bool) error {
+func (bpq *PriorityQueue) Load(queueName string, loadMessages bool) error {
 	bpq.mu.Lock()
 	defer bpq.mu.Unlock()
 
@@ -271,7 +271,7 @@ func (bpq *BadgerPriorityQueue) Load(queueName string, loadMessages bool) error 
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) Enqueue(
+func (bpq *PriorityQueue) Enqueue(
 	id uint64,
 	group string,
 	priority int64,
@@ -320,7 +320,7 @@ func (bpq *BadgerPriorityQueue) Enqueue(
 	return msg, nil
 }
 
-func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
+func (bpq *PriorityQueue) Dequeue(ack bool) (*Message, error) {
 	if bpq.pq.Len() == 0 {
 		return nil, ErrEmptyQueue
 	}
@@ -378,7 +378,7 @@ func (bpq *BadgerPriorityQueue) Dequeue(ack bool) (*Message, error) {
 	return msg, nil
 }
 
-func (bpq *BadgerPriorityQueue) Get(id uint64) (*Message, error) {
+func (bpq *PriorityQueue) Get(id uint64) (*Message, error) {
 	var msg *Message
 
 	err := bpq.db.View(func(txn *badger.Txn) error {
@@ -402,7 +402,7 @@ func (bpq *BadgerPriorityQueue) Get(id uint64) (*Message, error) {
 	return msg, nil
 }
 
-func (bpq *BadgerPriorityQueue) Delete(id uint64) error {
+func (bpq *PriorityQueue) Delete(id uint64) error {
 	group := "default"
 
 	err := bpq.db.Update(func(txn *badger.Txn) error {
@@ -449,7 +449,7 @@ func (bpq *BadgerPriorityQueue) Delete(id uint64) error {
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) error {
+func (bpq *PriorityQueue) UpdatePriority(id uint64, newPriority int64) error {
 	group := "default"
 
 	// Update BadgerDB
@@ -504,7 +504,7 @@ func (bpq *BadgerPriorityQueue) UpdatePriority(id uint64, newPriority int64) err
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
+func (bpq *PriorityQueue) Ack(id uint64) error {
 	queueItem := bpq.ackQueue.Get("default", id)
 
 	if queueItem == nil {
@@ -533,7 +533,7 @@ func (bpq *BadgerPriorityQueue) Ack(id uint64) error {
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) Nack(id uint64, priority int64, metadata map[string]string) error {
+func (bpq *PriorityQueue) Nack(id uint64, priority int64, metadata map[string]string) error {
 	item := bpq.ackQueue.Get("default", id)
 
 	if item == nil {
@@ -578,7 +578,7 @@ func (bpq *BadgerPriorityQueue) Nack(id uint64, priority int64, metadata map[str
 	return nil
 }
 
-func (bpq *BadgerPriorityQueue) updateMessage(
+func (bpq *PriorityQueue) updateMessage(
 	id uint64,
 	priority int64,
 	content string,
@@ -620,11 +620,11 @@ func (bpq *BadgerPriorityQueue) updateMessage(
 	})
 }
 
-func (bpq *BadgerPriorityQueue) Len() int {
+func (bpq *PriorityQueue) Len() int {
 	return int(bpq.pq.Len())
 }
 
-func (bpq *BadgerPriorityQueue) PersistSnapshot(sink raft.SnapshotSink) error {
+func (bpq *PriorityQueue) PersistSnapshot(sink raft.SnapshotSink) error {
 	err := bpq.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()

@@ -568,14 +568,14 @@ type testNode struct {
 	leader   string
 	messages map[uint64]*queue.Message
 	acks     map[uint64]*queue.Message
-	queues   map[string]*queue.DelayedQueue
+	queues   map[string]*queue.DelayedMemoryQueue
 }
 
 func newTestNode(leader string, isLeader bool) *testNode {
 	return &testNode{
 		messages: make(map[uint64]*queue.Message),
 		acks:     make(map[uint64]*queue.Message),
-		queues:   make(map[string]*queue.DelayedQueue),
+		queues:   make(map[string]*queue.DelayedMemoryQueue),
 		leader:   leader,
 		isLeader: isLeader,
 	}
@@ -656,7 +656,7 @@ func (n *testNode) PrometheusRegistry() prometheus.Registerer {
 }
 
 func (n *testNode) CreateQueue(queueType, queueName string) error {
-	n.queues[queueName] = queue.NewDelayedQueue(true)
+	n.queues[queueName] = queue.NewDelayedMemoryQueue(true)
 	return nil
 }
 

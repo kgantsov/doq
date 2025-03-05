@@ -7,12 +7,12 @@ import (
 
 type LinkedListNode struct {
 	group string
-	queue *PriorityQueue
+	queue *PriorityMemoryQueue
 	prev  *LinkedListNode
 	next  *LinkedListNode
 }
 
-func NewLinkedListNode(group string, queue *PriorityQueue) *LinkedListNode {
+func NewLinkedListNode(group string, queue *PriorityMemoryQueue) *LinkedListNode {
 	node := new(LinkedListNode)
 	node.group = group
 	node.queue = queue
@@ -20,7 +20,7 @@ func NewLinkedListNode(group string, queue *PriorityQueue) *LinkedListNode {
 	return node
 }
 
-func (n *LinkedListNode) Queue() *PriorityQueue {
+func (n *LinkedListNode) Queue() *PriorityMemoryQueue {
 	return n.queue
 }
 
@@ -63,8 +63,8 @@ func (l *LinkedList) Len() uint64 {
 	return l.total
 }
 
-// FairQueue is a fair queue that balances between different groups
-type FairQueue struct {
+// FairMemoryQueue is a fair queue that balances between different groups
+type FairMemoryQueue struct {
 	queues      map[string]*LinkedListNode
 	roundRobin  *LinkedList
 	currentNone *LinkedListNode
@@ -74,8 +74,8 @@ type FairQueue struct {
 }
 
 // FairQueue creates a new FairQueue
-func NewFairQueue() *FairQueue {
-	return &FairQueue{
+func NewFairMemoryQueue() *FairMemoryQueue {
+	return &FairMemoryQueue{
 		queues:      make(map[string]*LinkedListNode),
 		roundRobin:  &LinkedList{},
 		currentNone: nil,
@@ -83,14 +83,14 @@ func NewFairQueue() *FairQueue {
 }
 
 // Enqueue adds a message to the queue
-func (fq *FairQueue) Enqueue(group string, item *Item) {
+func (fq *FairMemoryQueue) Enqueue(group string, item *Item) {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
 	// Add the message to the respective goups's queue
 	if _, exists := fq.queues[group]; !exists {
 		// Add group to round robin if not exists
-		node := NewLinkedListNode(group, NewPriorityQueue(true))
+		node := NewLinkedListNode(group, NewPriorityMemoryQueue(true))
 		fq.queues[group] = node
 		fq.roundRobin.Append(node)
 	}
@@ -99,7 +99,7 @@ func (fq *FairQueue) Enqueue(group string, item *Item) {
 }
 
 // Dequeue removes and returns the next message in a fair way
-func (fq *FairQueue) Dequeue() *Item {
+func (fq *FairMemoryQueue) Dequeue() *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -134,7 +134,7 @@ func (fq *FairQueue) Dequeue() *Item {
 	return item
 }
 
-func (fq *FairQueue) Get(group string, id uint64) *Item {
+func (fq *FairMemoryQueue) Get(group string, id uint64) *Item {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
 
@@ -145,7 +145,7 @@ func (fq *FairQueue) Get(group string, id uint64) *Item {
 	return fq.queues[group].Queue().Get(id)
 }
 
-func (fq *FairQueue) Delete(group string, id uint64) *Item {
+func (fq *FairMemoryQueue) Delete(group string, id uint64) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -159,7 +159,7 @@ func (fq *FairQueue) Delete(group string, id uint64) *Item {
 	return item
 }
 
-func (fq *FairQueue) UpdatePriority(group string, id uint64, priority int64) {
+func (fq *FairMemoryQueue) UpdatePriority(group string, id uint64, priority int64) {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -170,7 +170,7 @@ func (fq *FairQueue) UpdatePriority(group string, id uint64, priority int64) {
 	fq.queues[group].Queue().UpdatePriority(id, priority)
 }
 
-func (fq *FairQueue) Len() uint64 {
+func (fq *FairMemoryQueue) Len() uint64 {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
 

@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestDelayedQueue tests the priority queue
-func TestDelayedQueue(t *testing.T) {
+// TestDelayedMemoryQueue tests the priority queue
+func TestDelayedMemoryQueue(t *testing.T) {
 	tests := []struct {
 		name     string
 		messages []Item
@@ -57,7 +57,7 @@ func TestDelayedQueue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pq := NewDelayedQueue(true)
+			pq := NewDelayedMemoryQueue(true)
 
 			for i, m := range tt.messages {
 				pq.Enqueue("test", &m)
@@ -78,9 +78,9 @@ func TestDelayedQueue(t *testing.T) {
 	}
 }
 
-func TestDelayedQueueDelayed(t *testing.T) {
+func TestDelayedMemoryQueueDelayed(t *testing.T) {
 
-	pq := NewDelayedQueue(true)
+	pq := NewDelayedMemoryQueue(true)
 
 	priority := time.Now().UTC().Add(1 * time.Second).Unix()
 	pq.Enqueue("test", &Item{ID: 1, Priority: priority, Group: "default"})
@@ -99,8 +99,8 @@ func TestDelayedQueueDelayed(t *testing.T) {
 	assert.Equal(t, priority, m1.Priority)
 }
 
-func BenchmarkDelayedQueueEnqueue(b *testing.B) {
-	pq := NewDelayedQueue(true)
+func BenchmarkDelayedMemoryQueueEnqueue(b *testing.B) {
+	pq := NewDelayedMemoryQueue(true)
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
@@ -108,8 +108,8 @@ func BenchmarkDelayedQueueEnqueue(b *testing.B) {
 	}
 }
 
-func BenchmarkDelayedQueueDequeue(b *testing.B) {
-	pq := NewDelayedQueue(true)
+func BenchmarkDelayedMemoryQueueDequeue(b *testing.B) {
+	pq := NewDelayedMemoryQueue(true)
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {

@@ -20,7 +20,7 @@ type QueueManager struct {
 	config            *config.Config
 	PrometheusMetrics *metrics.PrometheusMetrics
 
-	queues map[string]*BadgerPriorityQueue
+	queues map[string]*PriorityQueue
 	mu     sync.Mutex
 }
 
@@ -28,7 +28,7 @@ func NewQueueManager(db *badger.DB, cfg *config.Config, metrics *metrics.Prometh
 	return &QueueManager{
 		db:                db,
 		config:            cfg,
-		queues:            make(map[string]*BadgerPriorityQueue),
+		queues:            make(map[string]*PriorityQueue),
 		PrometheusMetrics: metrics,
 	}
 }
@@ -48,7 +48,7 @@ func (qm *QueueManager) LoadQueues() {
 
 			log.Debug().Msgf("Loading queue: %s", queueName)
 
-			q := NewBadgerPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
+			q := NewPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
 			err := q.Load(queueName, true)
 			if err != nil {
 				log.Error().Err(err).Str("queue", queueName).Msg("Failed to load queue")
@@ -78,7 +78,7 @@ func (qm *QueueManager) PersistSnapshot(sink raft.SnapshotSink) error {
 	return nil
 }
 
-func (qm *QueueManager) CreateQueue(queueType, queueName string) (*BadgerPriorityQueue, error) {
+func (qm *QueueManager) CreateQueue(queueType, queueName string) (*PriorityQueue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
 
@@ -87,7 +87,7 @@ func (qm *QueueManager) CreateQueue(queueType, queueName string) (*BadgerPriorit
 		return q, nil
 	}
 
-	q = NewBadgerPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
+	q = NewPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
 	err := q.Create(queueType, queueName)
 
 	if err != nil {
@@ -105,7 +105,7 @@ func (qm *QueueManager) DeleteQueue(queueName string) error {
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewBadgerPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
+		q = NewPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
 		q.Load(queueName, false)
 	}
 
@@ -119,13 +119,13 @@ func (qm *QueueManager) DeleteQueue(queueName string) error {
 	return nil
 }
 
-func (qm *QueueManager) GetQueue(queueName string) (*BadgerPriorityQueue, error) {
+func (qm *QueueManager) GetQueue(queueName string) (*PriorityQueue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewBadgerPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
+		q = NewPriorityQueue(qm.db, qm.config, qm.PrometheusMetrics)
 		err := q.Load(queueName, false)
 		if err != nil {
 			return nil, ErrQueueNotFound
