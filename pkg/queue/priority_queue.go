@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/metrics"
+	"github.com/kgantsov/doq/pkg/queue/memory"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/zerolog/log"
 )
@@ -30,14 +31,14 @@ type PriorityQueue struct {
 
 	stats *metrics.QueueStats
 
-	pq MemoryQueue
+	pq memory.MemoryQueue
 	db *badger.DB
 
 	mu sync.Mutex
 
 	ackQueueMonitoringChan chan struct{}
 
-	ackQueue MemoryQueue
+	ackQueue memory.MemoryQueue
 }
 
 func NewPriorityQueue(
@@ -47,7 +48,7 @@ func NewPriorityQueue(
 	bpq := &PriorityQueue{
 		db:                db,
 		cfg:               cfg,
-		ackQueue:          NewDelayedMemoryQueue(false),
+		ackQueue:          memory.NewDelayedMemoryQueue(false),
 		PrometheusMetrics: promMetrics,
 		stats:             metrics.NewQueueStats(cfg.Queue.QueueStats.WindowSide),
 	}
@@ -55,11 +56,11 @@ func NewPriorityQueue(
 	return bpq
 }
 func (bpq *PriorityQueue) Init(queueType, queueName string) error {
-	var queue MemoryQueue
+	var queue memory.MemoryQueue
 	if queueType == "fair" {
-		queue = NewFairMemoryQueue()
+		queue = memory.NewFairMemoryQueue()
 	} else {
-		queue = NewDelayedMemoryQueue(true)
+		queue = memory.NewDelayedMemoryQueue(true)
 	}
 	bpq.config = &QueueConfig{Name: queueName, Type: queueType}
 	bpq.pq = queue
@@ -119,7 +120,7 @@ func (bpq *PriorityQueue) monitorAckQueue() {
 					continue
 				}
 
-				queueItem := &Item{
+				queueItem := &memory.Item{
 					ID:       message.ID,
 					Priority: message.Priority,
 					Group:    message.Group,
@@ -251,7 +252,7 @@ func (bpq *PriorityQueue) Load(queueName string, loadMessages bool) error {
 						return err
 					}
 					bpq.pq.Enqueue(
-						msg.Group, &Item{ID: msg.ID, Priority: msg.Priority, Group: msg.Group},
+						msg.Group, &memory.Item{ID: msg.ID, Priority: msg.Priority, Group: msg.Group},
 					)
 					return nil
 				})
@@ -290,7 +291,7 @@ func (bpq *PriorityQueue) Enqueue(
 		Metadata: metadata,
 	}
 
-	queueItem := &Item{
+	queueItem := &memory.Item{
 		ID:       msg.ID,
 		Priority: msg.Priority,
 		Group:    msg.Group,
@@ -351,7 +352,7 @@ func (bpq *PriorityQueue) Dequeue(ack bool) (*Message, error) {
 			// so we can ack it later and add it to the ackQueue
 			bpq.ackQueue.Enqueue(
 				"default",
-				&Item{
+				&memory.Item{
 					ID: queueItem.ID,
 					Priority: time.Now().UTC().Add(
 						time.Duration(bpq.cfg.Queue.AcknowledgementTimeout) * time.Second,
@@ -550,7 +551,7 @@ func (bpq *PriorityQueue) Nack(id uint64, priority int64, metadata map[string]st
 		message.Priority = priority
 	}
 
-	queueItem := &Item{
+	queueItem := &memory.Item{
 		ID:       message.ID,
 		Priority: message.Priority,
 		Group:    message.Group,

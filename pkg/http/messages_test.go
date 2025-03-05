@@ -12,6 +12,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/queue"
+	"github.com/kgantsov/doq/pkg/queue/memory"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
@@ -568,14 +569,14 @@ type testNode struct {
 	leader   string
 	messages map[uint64]*queue.Message
 	acks     map[uint64]*queue.Message
-	queues   map[string]*queue.DelayedMemoryQueue
+	queues   map[string]*memory.DelayedMemoryQueue
 }
 
 func newTestNode(leader string, isLeader bool) *testNode {
 	return &testNode{
 		messages: make(map[uint64]*queue.Message),
 		acks:     make(map[uint64]*queue.Message),
-		queues:   make(map[string]*queue.DelayedMemoryQueue),
+		queues:   make(map[string]*memory.DelayedMemoryQueue),
 		leader:   leader,
 		isLeader: isLeader,
 	}
@@ -656,7 +657,7 @@ func (n *testNode) PrometheusRegistry() prometheus.Registerer {
 }
 
 func (n *testNode) CreateQueue(queueType, queueName string) error {
-	n.queues[queueName] = queue.NewDelayedMemoryQueue(true)
+	n.queues[queueName] = memory.NewDelayedMemoryQueue(true)
 	return nil
 }
 
@@ -683,7 +684,7 @@ func (n *testNode) Enqueue(
 		ID: n.nextID, Group: group, Priority: priority, Content: content, Metadata: metadata,
 	}
 	n.messages[message.ID] = message
-	q.Enqueue(group, &queue.Item{ID: message.ID, Priority: message.Priority})
+	q.Enqueue(group, &memory.Item{ID: message.ID, Priority: message.Priority})
 	return message, nil
 }
 
@@ -742,7 +743,7 @@ func (n *testNode) Nack(QueueName string, id uint64, priority int64, metadata ma
 	message.Metadata = metadata
 	n.messages[message.ID] = message
 
-	q.Enqueue(message.Group, &queue.Item{ID: message.ID, Priority: message.Priority})
+	q.Enqueue(message.Group, &memory.Item{ID: message.ID, Priority: message.Priority})
 
 	delete(n.acks, id)
 	return nil

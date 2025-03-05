@@ -1,4 +1,4 @@
-package queue
+package memory
 
 type MemoryQueue interface {
 	Enqueue(group string, item *Item)
