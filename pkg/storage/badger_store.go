@@ -3,7 +3,6 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
@@ -14,6 +13,10 @@ import (
 
 type BadgerStore struct {
 	db *badger.DB
+}
+
+func NewBadgerStore(db *badger.DB) *BadgerStore {
+	return &BadgerStore{db: db}
 }
 
 func (bpq *BadgerStore) getMessagesPrefix(queueName string) []byte {
@@ -118,19 +121,6 @@ func (s *BadgerStore) Dequeue(queueName string, id uint64, ack bool) (*entity.Me
 		if ack {
 			// in case of autoAck, we need to remove the message from the queue
 			return txn.Delete(s.GetMessagesKey(queueName, id))
-		} else {
-			// in case of manual ack, we need to keep the message in the queue
-			// so we can ack it later and add it to the ackQueue
-			// bpq.ackQueue.Enqueue(
-			// 	"default",
-			// 	&Item{
-			// 		ID: queueItem.ID,
-			// 		Priority: time.Now().UTC().Add(
-			// 			time.Duration(bpq.cfg.Queue.AcknowledgementTimeout) * time.Second,
-			// 		).Unix(),
-			// 		Group: msg.Group,
-			// 	},
-			// )
 		}
 
 		return nil
@@ -192,10 +182,6 @@ func (s *BadgerStore) Delete(queueName string, id uint64) (*entity.Message, erro
 			return err
 		}
 
-		// group = msg.Group
-		// bpq.pq.Delete(group, id)
-		// bpq.ackQueue.Delete(group, id)
-
 		err = txn.Delete(s.GetMessagesKey(queueName, msg.ID))
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
@@ -218,7 +204,6 @@ func (s *BadgerStore) Ack(queueName string, id uint64) error {
 		if err != nil {
 			return err
 		}
-		// s.ackQueue.Delete("default", id)
 
 		return nil
 	})
@@ -226,10 +211,6 @@ func (s *BadgerStore) Ack(queueName string, id uint64) error {
 		return err
 	}
 
-	return nil
-}
-
-func (s *BadgerStore) Nack(queueName string, id uint64, priority int64, metadata map[string]string) error {
 	return nil
 }
 
@@ -251,16 +232,6 @@ func (s *BadgerStore) UpdatePriority(queueName string, id uint64, priority int64
 			return err
 		}
 
-		// group = msg.Group
-		// queueItem := s.pq.Get(group, id)
-
-		// if queueItem == nil {
-		// 	queueItem = bpq.ackQueue.Get(group, id)
-		// 	if queueItem == nil {
-		// 		return ErrMessageNotFound
-		// 	}
-		// }
-
 		msg.UpdatePriority(priority)
 
 		data, err := msg.ToBytes()
@@ -272,8 +243,6 @@ func (s *BadgerStore) UpdatePriority(queueName string, id uint64, priority int64
 		if err != nil {
 			return err
 		}
-
-		// queueItem.UpdatePriority(priority)
 
 		return nil
 	})
@@ -327,14 +296,6 @@ func (s *BadgerStore) UpdateMessage(
 	})
 }
 
-func (s *BadgerStore) Backup(w io.Writer, since uint64) (uint64, error) {
-	return 0, nil
-}
-
-func (s *BadgerStore) Restore(r io.Reader, maxPendingWrites int) error {
-	return nil
-}
-
 func (s *BadgerStore) PersistSnapshot(queueType, queueName string, sink raft.SnapshotSink) error {
 	return s.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -384,4 +345,31 @@ func (s *BadgerStore) PersistSnapshot(queueType, queueName string, sink raft.Sna
 
 		return nil
 	})
+}
+
+func (s *BadgerStore) LoadQueue(queueName string) (*entity.QueueConfig, error) {
+	var qc *entity.QueueConfig
+
+	err := s.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(s.GetQueueKey(queueName))
+		if err != nil {
+			return err
+		}
+
+		err = item.Value(func(val []byte) error {
+			qc, err = entity.QueueConfigFromBytes(val)
+			return err
+		})
+
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return qc, err
+	}
+
+	return qc, nil
 }

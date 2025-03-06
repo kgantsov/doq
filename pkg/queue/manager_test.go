@@ -6,6 +6,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,7 +23,7 @@ func TestNewQueueManager(t *testing.T) {
 	defer db.Close()
 
 	queueManager := NewQueueManager(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{
 			Queue: config.QueueConfig{
 				AcknowledgementCheckInterval: 1,
@@ -89,7 +90,7 @@ func TestQueueManagerGetQueue(t *testing.T) {
 	defer db.Close()
 
 	queueManager := NewQueueManager(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{
 			Queue: config.QueueConfig{
 				AcknowledgementCheckInterval: 1,
@@ -145,67 +146,6 @@ func TestQueueManagerGetQueue(t *testing.T) {
 	assert.Equal(t, q2m1.Content, m.Content)
 }
 
-func TestQueueManagerLoadQueues(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "db*")
-	defer os.RemoveAll(tmpDir)
-
-	opts := badger.DefaultOptions(tmpDir)
-	db, err := badger.Open(opts)
-	if err != nil {
-		log.Fatal().Msg(err.Error())
-	}
-
-	queueManager := NewQueueManager(
-		db,
-		&config.Config{
-			Queue: config.QueueConfig{
-				AcknowledgementCheckInterval: 1,
-				QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
-			},
-		},
-		nil,
-	)
-
-	queue, err := queueManager.CreateQueue("delayed", "queue_1")
-	assert.Nil(t, err)
-
-	q1m1, err := queue.Enqueue(1, "default", 10, "queue 1 message 1", nil)
-	assert.Nil(t, err)
-	q1m2, err := queue.Enqueue(2, "default", 5, "queue 1 message 2", map[string]string{})
-	assert.Nil(t, err)
-	db.Close()
-
-	db, err = badger.Open(opts)
-	if err != nil {
-		log.Fatal().Msg(err.Error())
-	}
-
-	queueManager = NewQueueManager(
-		db,
-		&config.Config{
-			Queue: config.QueueConfig{
-				AcknowledgementCheckInterval: 1,
-				QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
-			},
-		},
-		nil,
-	)
-
-	queueManager.LoadQueues()
-
-	queue, err = queueManager.GetQueue("queue_1")
-
-	m, err := queue.Dequeue(true)
-	assert.Nil(t, err)
-	assert.Equal(t, q1m2.ID, m.ID)
-	assert.Equal(t, q1m2.Content, m.Content)
-
-	m, err = queue.Dequeue(true)
-	assert.Nil(t, err)
-	assert.Equal(t, q1m1.ID, m.ID)
-	assert.Equal(t, q1m1.Content, m.Content)
-}
-
 func TestQueueManagerGetQueues(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "db*")
 	defer os.RemoveAll(tmpDir)
@@ -218,7 +158,7 @@ func TestQueueManagerGetQueues(t *testing.T) {
 	defer db.Close()
 
 	queueManager := NewQueueManager(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{
 			Queue: config.QueueConfig{
 				AcknowledgementCheckInterval: 1,

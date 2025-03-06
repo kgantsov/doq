@@ -19,6 +19,7 @@ import (
 	"github.com/kgantsov/doq/pkg/logger"
 	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/queue"
+	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 )
 
@@ -90,7 +91,8 @@ func (n *Node) Initialize() {
 		prometheusMetrics = metrics.NewPrometheusMetrics(promRegistry, "doq", "queues")
 		promRegistry.Register(collectors.NewGoCollector())
 	}
-	queueManager := queue.NewQueueManager(n.db, n.cfg, prometheusMetrics)
+	store := storage.NewBadgerStore(n.db)
+	queueManager := queue.NewQueueManager(store, n.cfg, prometheusMetrics)
 
 	os.MkdirAll(n.raftDir, 0700)
 
@@ -111,6 +113,7 @@ func (n *Node) Initialize() {
 
 	go n.monitorLeadership()
 	go n.ListenToLeaderChanges()
+	go n.RunValueLogGC()
 
 }
 
@@ -295,4 +298,25 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 	}
 
 	return r, nil
+}
+
+func (n *Node) RunValueLogGC() {
+	if n.cfg.Storage.GCInterval == 0 {
+		log.Warn().Msg("Value GC is disabled due to GCInterval is 0")
+		return
+	}
+
+	ticker := time.NewTicker(time.Duration(n.cfg.Storage.GCInterval) * time.Second)
+	defer ticker.Stop()
+
+	log.Debug().Msg("Started running value GC")
+
+	for range ticker.C {
+		log.Debug().Msg("Running value GC")
+	again:
+		err := n.db.RunValueLogGC(n.cfg.Storage.GCDiscardRatio)
+		if err == nil {
+			goto again
+		}
+	}
 }

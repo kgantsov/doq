@@ -9,6 +9,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/queue"
+	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -64,7 +65,7 @@ func TestFSMPersistRestore(t *testing.T) {
 	}
 
 	queueManager := queue.NewQueueManager(
-		db,
+		storage.NewBadgerStore(db),
 		cfg,
 		nil,
 	)
@@ -115,7 +116,7 @@ func TestFSMPersistRestore(t *testing.T) {
 	defer db.Close()
 
 	queueManager = queue.NewQueueManager(
-		db,
+		storage.NewBadgerStore(db),
 		cfg,
 		nil,
 	)
@@ -166,7 +167,7 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 	}
 
 	queueManager := queue.NewQueueManager(
-		db,
+		storage.NewBadgerStore(db),
 		cfg,
 		nil,
 	)
@@ -234,7 +235,7 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 	defer db.Close()
 
 	queueManager = queue.NewQueueManager(
-		db,
+		storage.NewBadgerStore(db),
 		cfg,
 		nil,
 	)

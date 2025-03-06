@@ -8,6 +8,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/errors"
+	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,7 +56,7 @@ func TestQueue(t *testing.T) {
 			}
 
 			pq := NewQueue(
-				db,
+				storage.NewBadgerStore(db),
 				&config.Config{Queue: config.QueueConfig{
 					AcknowledgementCheckInterval: 1,
 					QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -96,7 +97,7 @@ func TestQueueEmptyQueue(t *testing.T) {
 	defer db.Close()
 
 	pq := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -122,7 +123,7 @@ func TestQueueLoad(t *testing.T) {
 	defer db.Close()
 
 	pq := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -140,37 +141,17 @@ func TestQueueLoad(t *testing.T) {
 	pq.Enqueue(4, "default", 1, "test 4", map[string]string{"retry": "0"})
 
 	pq1 := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 		}},
 		nil,
 	)
-	err = pq1.Load("test_queue", true)
+	err = pq1.Load("test_queue")
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed", pq1.config.Type)
 	assert.Equal(t, "test_queue", pq1.config.Name)
-
-	m, err := pq1.Dequeue(true)
-	assert.Nil(t, err)
-	assert.Equal(t, int64(1), m.Priority)
-	assert.Equal(t, "test 4", m.Content)
-
-	m, err = pq1.Dequeue(true)
-	assert.Nil(t, err)
-	assert.Equal(t, int64(5), m.Priority)
-	assert.Equal(t, "test 2", m.Content)
-
-	m, err = pq1.Dequeue(true)
-	assert.Nil(t, err)
-	assert.Equal(t, int64(8), m.Priority)
-	assert.Equal(t, "test 3", m.Content)
-
-	m, err = pq1.Dequeue(true)
-	assert.Nil(t, err)
-	assert.Equal(t, int64(10), m.Priority)
-	assert.Equal(t, "test 1", m.Content)
 }
 
 func TestQueueDeleteQueue(t *testing.T) {
@@ -185,7 +166,7 @@ func TestQueueDeleteQueue(t *testing.T) {
 	defer db.Close()
 
 	pq := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -218,7 +199,7 @@ func TestQueueDelete(t *testing.T) {
 	defer db.Close()
 
 	pq := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -254,7 +235,7 @@ func TestQueueChangePriority(t *testing.T) {
 	}
 
 	pq := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -362,7 +343,7 @@ func TestQueueDelayedMessage(t *testing.T) {
 	}
 
 	pq := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -403,7 +384,7 @@ func TestQueueAck(t *testing.T) {
 	}
 
 	pq := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -477,7 +458,7 @@ func TestQueueNack(t *testing.T) {
 	}
 
 	pq := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -575,7 +556,7 @@ func BenchmarkQueueEnqueue(b *testing.B) {
 	}
 
 	pq := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -599,7 +580,7 @@ func BenchmarkQueueDequeue(b *testing.B) {
 	}
 
 	pq := NewQueue(
-		db,
+		storage.NewBadgerStore(db),
 		&config.Config{Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},

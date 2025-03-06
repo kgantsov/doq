@@ -3,19 +3,16 @@ package queue
 import (
 	"sort"
 	"sync"
-	"time"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/metrics"
-
-	"github.com/rs/zerolog/log"
+	"github.com/kgantsov/doq/pkg/storage"
 )
 
 type QueueManager struct {
-	db                *badger.DB
+	store             storage.Store
 	config            *config.Config
 	PrometheusMetrics *metrics.PrometheusMetrics
 
@@ -23,43 +20,12 @@ type QueueManager struct {
 	mu     sync.Mutex
 }
 
-func NewQueueManager(db *badger.DB, cfg *config.Config, metrics *metrics.PrometheusMetrics) *QueueManager {
+func NewQueueManager(store storage.Store, cfg *config.Config, metrics *metrics.PrometheusMetrics) *QueueManager {
 	return &QueueManager{
-		db:                db,
+		store:             store,
 		config:            cfg,
 		queues:            make(map[string]*Queue),
 		PrometheusMetrics: metrics,
-	}
-}
-
-func (qm *QueueManager) LoadQueues() {
-	prefix := []byte("queues:")
-	err := qm.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 10
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			key := item.Key()
-			queueName := string(key[len(prefix) : len(key)-1])
-
-			log.Debug().Msgf("Loading queue: %s", queueName)
-
-			q := NewQueue(qm.db, qm.config, qm.PrometheusMetrics)
-			err := q.Load(queueName, true)
-			if err != nil {
-				log.Error().Err(err).Str("queue", queueName).Msg("Failed to load queue")
-			}
-			qm.queues[queueName] = q
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to load queues")
 	}
 }
 
@@ -86,7 +52,7 @@ func (qm *QueueManager) CreateQueue(queueType, queueName string) (*Queue, error)
 		return q, nil
 	}
 
-	q = NewQueue(qm.db, qm.config, qm.PrometheusMetrics)
+	q = NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
 	err := q.Create(queueType, queueName)
 
 	if err != nil {
@@ -104,8 +70,8 @@ func (qm *QueueManager) DeleteQueue(queueName string) error {
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewQueue(qm.db, qm.config, qm.PrometheusMetrics)
-		q.Load(queueName, false)
+		q = NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
+		q.Load(queueName)
 	}
 
 	err := q.DeleteQueue()
@@ -124,8 +90,8 @@ func (qm *QueueManager) GetQueue(queueName string) (*Queue, error) {
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewQueue(qm.db, qm.config, qm.PrometheusMetrics)
-		err := q.Load(queueName, false)
+		q = NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
+		err := q.Load(queueName)
 		if err != nil {
 			return nil, errors.ErrQueueNotFound
 		}
@@ -148,21 +114,4 @@ func (qm *QueueManager) GetQueues() []*QueueInfo {
 	})
 
 	return queues
-}
-
-func (qm *QueueManager) RunValueLogGC() {
-
-	ticker := time.NewTicker(time.Duration(qm.config.Storage.GCInterval) * time.Second)
-	defer ticker.Stop()
-
-	log.Debug().Msg("Started running value GC")
-
-	for range ticker.C {
-		log.Debug().Msg("Running value GC")
-	again:
-		err := qm.db.RunValueLogGC(qm.config.Storage.GCDiscardRatio)
-		if err == nil {
-			goto again
-		}
-	}
 }
