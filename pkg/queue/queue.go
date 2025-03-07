@@ -54,66 +54,66 @@ func NewQueue(
 
 	return bpq
 }
-func (bpq *Queue) Init(queueType, queueName string) error {
+func (q *Queue) Init(queueType, queueName string) error {
 	var queue memory.MemoryQueue
 	if queueType == "fair" {
 		queue = memory.NewFairMemoryQueue()
 	} else {
 		queue = memory.NewDelayedMemoryQueue(true)
 	}
-	bpq.config = &entity.QueueConfig{Name: queueName, Type: queueType}
-	bpq.queue = queue
+	q.config = &entity.QueueConfig{Name: queueName, Type: queueType}
+	q.queue = queue
 
-	bpq.StartAckQueueMonitoring()
+	q.StartAckQueueMonitoring()
 
-	go bpq.stats.Start()
+	go q.stats.Start()
 
 	return nil
 }
 
-func (bpq *Queue) GetStats() *QueueInfo {
+func (q *Queue) GetStats() *QueueInfo {
 	return &QueueInfo{
-		Name:    bpq.config.Name,
-		Type:    bpq.config.Type,
-		Stats:   bpq.stats.GetRPS(),
-		Ready:   int64(bpq.queue.Len()),
-		Unacked: int64(bpq.ackQueue.Len()),
-		Total:   int64(bpq.queue.Len() + bpq.ackQueue.Len()),
+		Name:    q.config.Name,
+		Type:    q.config.Type,
+		Stats:   q.stats.GetRPS(),
+		Ready:   int64(q.queue.Len()),
+		Unacked: int64(q.ackQueue.Len()),
+		Total:   int64(q.queue.Len() + q.ackQueue.Len()),
 	}
 }
 
-func (bpq *Queue) updatePrometheusQueueSizes() {
-	if bpq.cfg.Prometheus.Enabled {
-		readyMessages := float64(bpq.queue.Len())
-		unackedMessages := float64(bpq.ackQueue.Len())
+func (q *Queue) updatePrometheusQueueSizes() {
+	if q.cfg.Prometheus.Enabled {
+		readyMessages := float64(q.queue.Len())
+		unackedMessages := float64(q.ackQueue.Len())
 
-		bpq.PrometheusMetrics.Messages.With(
-			prometheus.Labels{"queue_name": bpq.config.Name},
+		q.PrometheusMetrics.Messages.With(
+			prometheus.Labels{"queue_name": q.config.Name},
 		).Set(readyMessages + unackedMessages)
-		bpq.PrometheusMetrics.UnackedMessages.With(
-			prometheus.Labels{"queue_name": bpq.config.Name},
+		q.PrometheusMetrics.UnackedMessages.With(
+			prometheus.Labels{"queue_name": q.config.Name},
 		).Set(unackedMessages)
-		bpq.PrometheusMetrics.ReadyMessages.With(
-			prometheus.Labels{"queue_name": bpq.config.Name},
+		q.PrometheusMetrics.ReadyMessages.With(
+			prometheus.Labels{"queue_name": q.config.Name},
 		).Set(readyMessages)
 	}
 }
 
-func (bpq *Queue) monitorAckQueue() {
+func (q *Queue) monitorAckQueue() {
 	ticker := time.NewTicker(
-		time.Duration(bpq.cfg.Queue.AcknowledgementCheckInterval) * time.Second,
+		time.Duration(q.cfg.Queue.AcknowledgementCheckInterval) * time.Second,
 	)
 
 	for {
 		select {
 		case <-ticker.C:
 			for {
-				item := bpq.ackQueue.Dequeue()
+				item := q.ackQueue.Dequeue()
 				if item == nil {
 					break
 				}
 
-				message, err := bpq.Get(item.ID)
+				message, err := q.Get(item.ID)
 				if err != nil {
 					log.Error().Err(err).Msgf("Failed to get message by ID: %d", item.ID)
 					continue
@@ -125,87 +125,87 @@ func (bpq *Queue) monitorAckQueue() {
 					Group:    message.Group,
 				}
 
-				bpq.queue.Enqueue(message.Group, queueItem)
+				q.queue.Enqueue(message.Group, queueItem)
 				log.Debug().Msgf("Re-enqueued message: %d", message.ID)
 			}
-		case <-bpq.ackQueueMonitoringChan:
+		case <-q.ackQueueMonitoringChan:
 			return
 		}
 	}
 }
 
-func (bpq *Queue) StartAckQueueMonitoring() {
-	bpq.ackQueueMonitoringChan = make(chan struct{})
-	go bpq.monitorAckQueue()
+func (q *Queue) StartAckQueueMonitoring() {
+	q.ackQueueMonitoringChan = make(chan struct{})
+	go q.monitorAckQueue()
 }
 
-func (bpq *Queue) StopAckQueueMonitoring() {
-	close(bpq.ackQueueMonitoringChan)
+func (q *Queue) StopAckQueueMonitoring() {
+	close(q.ackQueueMonitoringChan)
 }
 
-func (bpq *Queue) Create(queueType, queueName string) error {
-	bpq.mu.Lock()
-	defer bpq.mu.Unlock()
+func (q *Queue) Create(queueType, queueName string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	bpq.config = &entity.QueueConfig{Name: queueName, Type: queueType}
+	q.config = &entity.QueueConfig{Name: queueName, Type: queueType}
 
-	err := bpq.store.CreateQueue(queueType, queueName)
+	err := q.store.CreateQueue(queueType, queueName)
 	if err != nil {
 		return err
 	}
 
-	return bpq.Init(queueType, queueName)
+	return q.Init(queueType, queueName)
 }
 
-func (bpq *Queue) DeleteQueue() error {
-	bpq.mu.Lock()
-	defer bpq.mu.Unlock()
+func (q *Queue) DeleteQueue() error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	if bpq.config == nil {
+	if q.config == nil {
 		return errors.ErrQueueNotFound
 	}
 
-	err := bpq.store.DeleteQueue(bpq.config.Name)
+	err := q.store.DeleteQueue(q.config.Name)
 	if err != nil {
 		return err
 	}
 
-	bpq.StopAckQueueMonitoring()
+	q.StopAckQueueMonitoring()
 
-	bpq.stats.Stop()
+	q.stats.Stop()
 
-	bpq.updatePrometheusQueueSizes()
+	q.updatePrometheusQueueSizes()
 
 	return nil
 }
 
-func (bpq *Queue) Load(queueName string) error {
-	bpq.mu.Lock()
-	defer bpq.mu.Unlock()
+func (q *Queue) Load(queueName string) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 
-	qc, err := bpq.store.LoadQueue(queueName)
+	qc, err := q.store.LoadQueue(queueName)
 	if err != nil {
 		return err
 	}
 
-	err = bpq.Init(qc.Type, qc.Name)
+	err = q.Init(qc.Type, qc.Name)
 	if err != nil {
 		return err
 	}
 
-	bpq.updatePrometheusQueueSizes()
+	q.updatePrometheusQueueSizes()
 
 	return nil
 }
 
-func (bpq *Queue) Enqueue(
+func (q *Queue) Enqueue(
 	id uint64,
 	group string,
 	priority int64,
 	content string,
 	metadata map[string]string,
 ) (*entity.Message, error) {
-	if bpq.config.Type != "fair" {
+	if q.config.Type != "fair" {
 		group = "default"
 	}
 
@@ -215,99 +215,99 @@ func (bpq *Queue) Enqueue(
 		Priority: priority,
 	}
 
-	msg, err := bpq.store.Enqueue(
-		bpq.config.Name, queueItem.ID, queueItem.Group, queueItem.Priority, content, metadata,
+	msg, err := q.store.Enqueue(
+		q.config.Name, queueItem.ID, queueItem.Group, queueItem.Priority, content, metadata,
 	)
 	if err != nil {
 		return msg, err
 	}
 
-	bpq.queue.Enqueue(msg.Group, queueItem)
+	q.queue.Enqueue(msg.Group, queueItem)
 
-	bpq.stats.IncrementEnqueue()
+	q.stats.IncrementEnqueue()
 
-	if bpq.cfg.Prometheus.Enabled {
-		bpq.PrometheusMetrics.EnqueueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+	if q.cfg.Prometheus.Enabled {
+		q.PrometheusMetrics.EnqueueTotal.With(prometheus.Labels{"queue_name": q.config.Name}).Inc()
 
-		bpq.updatePrometheusQueueSizes()
+		q.updatePrometheusQueueSizes()
 	}
 
 	return msg, nil
 }
 
-func (bpq *Queue) Dequeue(ack bool) (*entity.Message, error) {
-	if bpq.queue.Len() == 0 {
+func (q *Queue) Dequeue(ack bool) (*entity.Message, error) {
+	if q.queue.Len() == 0 {
 		return nil, errors.ErrEmptyQueue
 	}
 
-	queueItem := bpq.queue.Dequeue()
+	queueItem := q.queue.Dequeue()
 	if queueItem == nil {
 		return nil, errors.ErrEmptyQueue
 	}
 
-	msg, err := bpq.store.Dequeue(bpq.config.Name, queueItem.ID, ack)
+	msg, err := q.store.Dequeue(q.config.Name, queueItem.ID, ack)
 
 	if err != nil {
 		return nil, err
 	}
 
 	if !ack {
-		bpq.ackQueue.Enqueue(
+		q.ackQueue.Enqueue(
 			"default",
 			&memory.Item{
 				ID: queueItem.ID,
 				Priority: time.Now().UTC().Add(
-					time.Duration(bpq.cfg.Queue.AcknowledgementTimeout) * time.Second,
+					time.Duration(q.cfg.Queue.AcknowledgementTimeout) * time.Second,
 				).Unix(),
 				Group: msg.Group,
 			},
 		)
 	}
 
-	bpq.stats.IncrementDequeue()
-	if bpq.cfg.Prometheus.Enabled {
-		bpq.PrometheusMetrics.DequeueTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+	q.stats.IncrementDequeue()
+	if q.cfg.Prometheus.Enabled {
+		q.PrometheusMetrics.DequeueTotal.With(prometheus.Labels{"queue_name": q.config.Name}).Inc()
 
-		bpq.updatePrometheusQueueSizes()
+		q.updatePrometheusQueueSizes()
 	}
 
 	return msg, nil
 }
 
-func (bpq *Queue) Get(id uint64) (*entity.Message, error) {
-	return bpq.store.Get(bpq.config.Name, id)
+func (q *Queue) Get(id uint64) (*entity.Message, error) {
+	return q.store.Get(q.config.Name, id)
 }
 
-func (bpq *Queue) Delete(id uint64) error {
-	msg, err := bpq.store.Delete(bpq.config.Name, id)
+func (q *Queue) Delete(id uint64) error {
+	msg, err := q.store.Delete(q.config.Name, id)
 	if err != nil {
 		return err
 	}
 
 	group := msg.Group
-	bpq.queue.Delete(group, id)
-	bpq.ackQueue.Delete(group, id)
+	q.queue.Delete(group, id)
+	q.ackQueue.Delete(group, id)
 
 	return nil
 }
 
-func (bpq *Queue) UpdatePriority(id uint64, newPriority int64) error {
-	msg, err := bpq.store.Get(bpq.config.Name, id)
+func (q *Queue) UpdatePriority(id uint64, newPriority int64) error {
+	msg, err := q.store.Get(q.config.Name, id)
 	if err != nil {
 		return err
 	}
 
 	group := msg.Group
-	queueItem := bpq.queue.Get(group, id)
+	queueItem := q.queue.Get(group, id)
 
 	if queueItem == nil {
-		queueItem = bpq.ackQueue.Get(group, id)
+		queueItem = q.ackQueue.Get(group, id)
 		if queueItem == nil {
 			return errors.ErrMessageNotFound
 		}
 	}
 
-	msg, err = bpq.store.UpdatePriority(bpq.config.Name, id, newPriority)
+	msg, err = q.store.UpdatePriority(q.config.Name, id, newPriority)
 	if err != nil {
 		return err
 	}
@@ -315,41 +315,41 @@ func (bpq *Queue) UpdatePriority(id uint64, newPriority int64) error {
 	queueItem.UpdatePriority(newPriority)
 
 	// Update in-memory heap
-	bpq.queue.UpdatePriority(group, id, newPriority)
+	q.queue.UpdatePriority(group, id, newPriority)
 	return nil
 }
 
-func (bpq *Queue) Ack(id uint64) error {
-	queueItem := bpq.ackQueue.Get("default", id)
+func (q *Queue) Ack(id uint64) error {
+	queueItem := q.ackQueue.Get("default", id)
 
 	if queueItem == nil {
 		return errors.ErrMessageNotFound
 	}
 
-	err := bpq.store.Ack(bpq.config.Name, queueItem.ID)
+	err := q.store.Ack(q.config.Name, queueItem.ID)
 	if err != nil {
 		return err
 	}
 
-	bpq.ackQueue.Delete("default", queueItem.ID)
+	q.ackQueue.Delete("default", queueItem.ID)
 
-	bpq.stats.IncrementAck()
-	if bpq.cfg.Prometheus.Enabled {
-		bpq.PrometheusMetrics.AckTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+	q.stats.IncrementAck()
+	if q.cfg.Prometheus.Enabled {
+		q.PrometheusMetrics.AckTotal.With(prometheus.Labels{"queue_name": q.config.Name}).Inc()
 
-		bpq.updatePrometheusQueueSizes()
+		q.updatePrometheusQueueSizes()
 	}
 	return nil
 }
 
-func (bpq *Queue) Nack(id uint64, priority int64, metadata map[string]string) error {
-	item := bpq.ackQueue.Get("default", id)
+func (q *Queue) Nack(id uint64, priority int64, metadata map[string]string) error {
+	item := q.ackQueue.Get("default", id)
 
 	if item == nil {
 		return errors.ErrMessageNotFound
 	}
 
-	message, err := bpq.Get(item.ID)
+	message, err := q.Get(item.ID)
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to get message by ID: %d", item.ID)
 		return err
@@ -365,11 +365,11 @@ func (bpq *Queue) Nack(id uint64, priority int64, metadata map[string]string) er
 		Group:    message.Group,
 	}
 
-	bpq.queue.Enqueue(message.Group, queueItem)
-	bpq.ackQueue.Delete("default", item.ID)
+	q.queue.Enqueue(message.Group, queueItem)
+	q.ackQueue.Delete("default", item.ID)
 
 	if metadata != nil {
-		err = bpq.store.UpdateMessage(bpq.config.Name, item.ID, priority, "", metadata)
+		err = q.store.UpdateMessage(q.config.Name, item.ID, priority, "", metadata)
 
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to update message: %d", item.ID)
@@ -377,20 +377,20 @@ func (bpq *Queue) Nack(id uint64, priority int64, metadata map[string]string) er
 		}
 	}
 
-	bpq.stats.IncrementNack()
-	if bpq.cfg.Prometheus.Enabled {
-		bpq.PrometheusMetrics.NackTotal.With(prometheus.Labels{"queue_name": bpq.config.Name}).Inc()
+	q.stats.IncrementNack()
+	if q.cfg.Prometheus.Enabled {
+		q.PrometheusMetrics.NackTotal.With(prometheus.Labels{"queue_name": q.config.Name}).Inc()
 
-		bpq.updatePrometheusQueueSizes()
+		q.updatePrometheusQueueSizes()
 	}
 
 	return nil
 }
 
-func (bpq *Queue) Len() int {
-	return int(bpq.queue.Len())
+func (q *Queue) Len() int {
+	return int(q.queue.Len())
 }
 
-func (bpq *Queue) PersistSnapshot(sink raft.SnapshotSink) error {
-	return bpq.store.PersistSnapshot(bpq.config.Type, bpq.config.Name, sink)
+func (q *Queue) PersistSnapshot(sink raft.SnapshotSink) error {
+	return q.store.PersistSnapshot(q.config.Type, q.config.Name, sink)
 }
