@@ -14,11 +14,11 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
-	badgerstore "github.com/kgantsov/doq/pkg/badger-store"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/logger"
 	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/queue"
+	raftstore "github.com/kgantsov/doq/pkg/raft/store"
 	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 )
@@ -236,9 +236,9 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 	var logStore raft.LogStore
 	var stableStore raft.StableStore
 
-	badgerDB, err := badgerstore.New(
+	badgerDB, err := raftstore.New(
 		n.db,
-		badgerstore.Options{},
+		raftstore.Options{},
 	)
 	if err != nil {
 		log.Warn().Msgf("failed to create store: %s", err)

@@ -1,4 +1,4 @@
-package badgerstore
+package raftstore
 
 import (
 	"errors"
@@ -23,26 +23,10 @@ var (
 	ErrKeyNotFound = errors.New("not found")
 )
 
-type Store interface {
-	Close() error
-	FirstIndex() (uint64, error)
-	LastIndex() (uint64, error)
-	GetLog(idx uint64, log *raft.Log) error
-	StoreLog(log *raft.Log) error
-	StoreLogs(logs []*raft.Log) error
-	DeleteRange(min, max uint64) error
-	Set(k, v []byte) error
-	Get(k []byte) ([]byte, error)
-	SetUint64(key []byte, val uint64) error
-	GetUint64(key []byte) (uint64, error)
-	RunValueLogGC(discardRatio float64) error
-	Size() (lsm, vlog int64)
-}
-
-// BadgerStore provides access to Badger for Raft to store and retrieve
+// BadgerRaftStore provides access to Badger for Raft to store and retrieve
 // log entries. It also provides key/value storage, and can be used as
 // a LogStore and StableStore.
-type BadgerStore struct {
+type BadgerRaftStore struct {
 	// db is the underlying handle to the db.
 	db *badger.DB
 
@@ -66,8 +50,8 @@ type Options struct {
 	MsgpackUseNewTimeFormat bool
 }
 
-// NewBadgerStore takes a file path and returns a connected Raft backend.
-func NewBadgerStore(path string) (*BadgerStore, error) {
+// NewBadgerRaftStore takes a file path and returns a connected Raft backend.
+func NewBadgerRaftStore(path string) (*BadgerRaftStore, error) {
 	db, err := badger.Open(badger.DefaultOptions(path))
 	if err != nil {
 		return nil, err
@@ -76,34 +60,25 @@ func NewBadgerStore(path string) (*BadgerStore, error) {
 	return New(db, Options{})
 }
 
-func addPrefix(prefix []byte, key []byte) []byte {
-	return append(prefix, key...)
-}
-
 // New uses the supplied options to open the Badger and prepare it for use as a raft backend.
-func New(db *badger.DB, options Options) (*BadgerStore, error) {
+func New(db *badger.DB, options Options) (*BadgerRaftStore, error) {
 	// Try to connect
 
 	// Create the new store
-	store := &BadgerStore{
+	store := &BadgerRaftStore{
 		db:                      db,
 		msgpackUseNewTimeFormat: options.MsgpackUseNewTimeFormat,
 	}
 	return store, nil
 }
 
-// initialize is used to set up all of the buckets.
-func (b *BadgerStore) initialize() error {
-	return nil
-}
-
 // Close is used to gracefully close the DB connection.
-func (b *BadgerStore) Close() error {
+func (b *BadgerRaftStore) Close() error {
 	return b.db.Close()
 }
 
 // FirstIndex returns the first known index from the Raft log.
-func (b *BadgerStore) FirstIndex() (uint64, error) {
+func (b *BadgerRaftStore) FirstIndex() (uint64, error) {
 	txn := b.db.NewTransaction(false)
 	defer txn.Discard()
 
@@ -124,18 +99,8 @@ func (b *BadgerStore) FirstIndex() (uint64, error) {
 	return 0, nil
 }
 
-// Copy the prefix into a new slice that is one larger than
-// the prefix and add an `0xFF` byte to it so
-func End(prefix []byte) []byte {
-	end := make([]byte, len(prefix)+1)
-	copy(end, prefix)
-
-	end[len(end)-1] = 0xFF
-	return end
-}
-
 // LastIndex returns the last known index from the Raft log.
-func (b *BadgerStore) LastIndex() (uint64, error) {
+func (b *BadgerRaftStore) LastIndex() (uint64, error) {
 	txn := b.db.NewTransaction(false)
 	defer txn.Discard()
 
@@ -161,7 +126,7 @@ func (b *BadgerStore) LastIndex() (uint64, error) {
 }
 
 // GetLog is used to retrieve a log from badger at a given index.
-func (b *BadgerStore) GetLog(idx uint64, raftLog *raft.Log) error {
+func (b *BadgerRaftStore) GetLog(idx uint64, raftLog *raft.Log) error {
 	txn := b.db.NewTransaction(false)
 	defer txn.Discard()
 
@@ -179,12 +144,12 @@ func (b *BadgerStore) GetLog(idx uint64, raftLog *raft.Log) error {
 }
 
 // StoreLog is used to store a single raft log
-func (b *BadgerStore) StoreLog(log *raft.Log) error {
+func (b *BadgerRaftStore) StoreLog(log *raft.Log) error {
 	return b.StoreLogs([]*raft.Log{log})
 }
 
 // StoreLogs is used to store a set of raft logs
-func (b *BadgerStore) StoreLogs(logs []*raft.Log) error {
+func (b *BadgerRaftStore) StoreLogs(logs []*raft.Log) error {
 	log.Debug().Msgf("Storing logs: %+v", logs)
 
 	txn := b.db.NewTransaction(true)
@@ -206,7 +171,7 @@ func (b *BadgerStore) StoreLogs(logs []*raft.Log) error {
 }
 
 // DeleteRange is used to delete logs within a given range inclusively.
-func (b *BadgerStore) DeleteRange(min, max uint64) error {
+func (b *BadgerRaftStore) DeleteRange(min, max uint64) error {
 	batchSize := 100 // Adjust the batch size as needed
 
 	opts := badger.DefaultIteratorOptions
@@ -264,7 +229,7 @@ func (b *BadgerStore) DeleteRange(min, max uint64) error {
 }
 
 // Set is used to set a key/value set outside of the raft log
-func (b *BadgerStore) Set(k, v []byte) error {
+func (b *BadgerRaftStore) Set(k, v []byte) error {
 	txn := b.db.NewTransaction(true)
 	defer txn.Discard()
 
@@ -276,7 +241,7 @@ func (b *BadgerStore) Set(k, v []byte) error {
 }
 
 // Get is used to retrieve a value from the k/v store by key
-func (b *BadgerStore) Get(k []byte) ([]byte, error) {
+func (b *BadgerRaftStore) Get(k []byte) ([]byte, error) {
 	txn := b.db.NewTransaction(false)
 	defer txn.Discard()
 
@@ -294,12 +259,12 @@ func (b *BadgerStore) Get(k []byte) ([]byte, error) {
 }
 
 // SetUint64 is like Set, but handles uint64 values
-func (b *BadgerStore) SetUint64(key []byte, val uint64) error {
+func (b *BadgerRaftStore) SetUint64(key []byte, val uint64) error {
 	return b.Set(key, uint64ToBytes(val))
 }
 
 // GetUint64 is like Get, but handles uint64 values
-func (b *BadgerStore) GetUint64(key []byte) (uint64, error) {
+func (b *BadgerRaftStore) GetUint64(key []byte) (uint64, error) {
 	val, err := b.Get(key)
 	if err != nil {
 		return 0, err
@@ -307,10 +272,10 @@ func (b *BadgerStore) GetUint64(key []byte) (uint64, error) {
 	return bytesToUint64(val), nil
 }
 
-func (b *BadgerStore) RunValueLogGC(discardRatio float64) error {
+func (b *BadgerRaftStore) RunValueLogGC(discardRatio float64) error {
 	return b.db.RunValueLogGC(discardRatio)
 }
 
-func (b *BadgerStore) Size() (lsm, vlog int64) {
+func (b *BadgerRaftStore) Size() (lsm, vlog int64) {
 	return b.db.Size()
 }

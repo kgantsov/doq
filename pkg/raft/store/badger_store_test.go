@@ -1,4 +1,4 @@
-package badgerstore
+package raftstore
 
 import (
 	"os"
@@ -9,14 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testBadgerStore(t testing.TB) *BadgerStore {
+func testBadgerStore(t testing.TB) *BadgerRaftStore {
 	dirname, err := os.MkdirTemp("", "store")
 	require.NoError(t, err)
 
 	os.Remove(dirname)
 
 	// Successfully creates and returns a store
-	store, err := NewBadgerStore(dirname)
+	store, err := NewBadgerRaftStore(dirname)
 	require.NoError(t, err)
 
 	return store
@@ -30,7 +30,7 @@ func testRaftLog(idx uint64, data string) *raft.Log {
 }
 
 func TestBadgerStore_Implements(t *testing.T) {
-	var store interface{} = &BadgerStore{}
+	var store interface{} = &BadgerRaftStore{}
 	_, ok := store.(raft.StableStore)
 	assert.True(t, ok)
 

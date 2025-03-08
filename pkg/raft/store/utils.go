@@ -1,4 +1,4 @@
-package badgerstore
+package raftstore
 
 import (
 	"bytes"
@@ -38,4 +38,18 @@ func uint64ToBytes(u uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, u)
 	return buf
+}
+
+func addPrefix(prefix []byte, key []byte) []byte {
+	return append(prefix, key...)
+}
+
+// Copy the prefix into a new slice that is one larger than
+// the prefix and add an `0xFF` byte to it so
+func End(prefix []byte) []byte {
+	end := make([]byte, len(prefix)+1)
+	copy(end, prefix)
+
+	end[len(end)-1] = 0xFF
+	return end
 }
