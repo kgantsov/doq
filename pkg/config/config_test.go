@@ -48,3 +48,32 @@ func TestInitCobraCommand__DefaultValues(t *testing.T) {
 	err := rootCmd.Execute()
 	assert.Nil(t, err)
 }
+
+func TestBadgerOptions(t *testing.T) {
+	config := &Config{
+		Storage: StorageConfig{
+			DataDir:                 "data",
+			Compression:             "zstd",
+			ZSTDCompressionLevel:    3,
+			BaseTableSize:           2000000,
+			IndexCacheSize:          5000000,
+			NumCompactors:           2,
+			NumLevelZeroTables:      2,
+			NumLevelZeroTablesStall: 4,
+			NumMemtables:            4,
+			ValueLogFileSize:        2000000,
+		},
+	}
+
+	opts := config.BadgerOptions()
+
+	assert.Equal(t, "data/store", opts.Dir)
+	assert.Equal(t, 3, opts.ZSTDCompressionLevel)
+	assert.Equal(t, int64(2000000), opts.BaseTableSize)
+	assert.Equal(t, int64(5000000), opts.IndexCacheSize)
+	assert.Equal(t, 2, opts.NumCompactors)
+	assert.Equal(t, 2, opts.NumLevelZeroTables)
+	assert.Equal(t, 4, opts.NumLevelZeroTablesStall)
+	assert.Equal(t, 4, opts.NumMemtables)
+	assert.Equal(t, int64(2000000), opts.ValueLogFileSize)
+}
