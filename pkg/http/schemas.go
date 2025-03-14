@@ -9,11 +9,13 @@ type JoinInput struct {
 	}
 }
 
+type JoinOutputBody struct {
+	ID   string `json:"id" example:"node-0" doc:"ID of a node"`
+	Addr string `json:"addr" example:"localhost:12001" doc:"IP address and a port of a service"`
+}
+
 type JoinOutput struct {
-	Body struct {
-		ID   string `json:"id" example:"node-0" doc:"ID of a node"`
-		Addr string `json:"addr" example:"localhost:12001" doc:"IP address and a port of a service"`
-	}
+	Body JoinOutputBody
 }
 
 type BackupInput struct {
@@ -28,11 +30,13 @@ type RestoreInput struct {
 	}]
 }
 
+type RestoreOutputBody struct {
+	Status string `json:"status" example:"SUCCEDED" doc:"Status of the restore operation"`
+}
+
 type RestoreOutput struct {
 	Status int
-	Body   struct {
-		Status string `json:"status" example:"SUCCEDED" doc:"Status of the restore operation"`
-	}
+	Body   RestoreOutputBody
 }
 
 type CreateQueueInputBody struct {
