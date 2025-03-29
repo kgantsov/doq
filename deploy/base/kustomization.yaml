@@ -1,0 +1,9 @@
+resources:
+  - role.yaml
+  - service-account.yaml
+  - role-binding.yaml
+  - statefulset.yaml
+  - internal-service.yaml
+  - service.yaml
+
+namespace: default

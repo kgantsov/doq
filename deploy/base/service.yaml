@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: default
+  name: doq
+  labels:
+    app: doq
+spec:
+  clusterIP: None
+  selector:
+    app: doq
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP

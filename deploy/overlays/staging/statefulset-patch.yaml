@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: doq
+spec:
+  serviceName: doq-prod-internal
+  template:
+    spec:
+      containers:
+        - name: doq
+          image: "my-app:prod-tag"  # Prod-specific tag
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        resources:
+          requests:
+            storage: 10Gi  # Prod-specific storage

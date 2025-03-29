@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: doq
+  namespace: default
+spec:
+  serviceName: doq-internal
+  replicas: 3
+  selector:
+    matchLabels:
+      app: doq
+  template:
+    metadata:
+      labels:
+        app: doq
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
+    spec:
+      serviceAccountName: doq
+      containers:
+        - name: doq
+          image: "kgantsov/doq:latest"
+          command:
+            - "/app"
+            - "--cluster.service_name"
+            - "doq"
+            - "--http.port"
+            - "8000"
+            - "--raft.address"
+            - "9000"
+            - "--prometheus.enabled"
+            - "true"
+            - "--storage.data_dir"
+            - "/usr/local/doq/data"
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: data
+              mountPath: /usr/local/doq/data
+
+  volumeClaimTemplates:
+  - kind: PersistentVolumeClaim
+    metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+      volumeMode: Filesystem
