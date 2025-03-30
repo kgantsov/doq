@@ -38,17 +38,17 @@ go build -o doq
 Run the first node
 
 ```bash
-./doq --storage.data_dir data --cluster.node_id node-1 --http.port 8001 --raft.address localhost:9001 --grpc.address localhost:10001
+./doq --storage.data_dir data --cluster.node_id node-0 --http.port 8000 --raft.address localhost:9000 --grpc.address localhost:10000
 ```
 
 Run other nodes
 
 ```bash
-./doq --storage.data_dir data --cluster.node_id node-2 --http.port 8002 --raft.address localhost:9002 --grpc.address localhost:10002 --cluster.join_addr localhost:8001
-./doq --storage.data_dir data --cluster.node_id node-3 --http.port 8003 --raft.address localhost:9003 --grpc.address localhost:10003 --cluster.join_addr localhost:8001
+./doq --storage.data_dir data --cluster.node_id node-1 --http.port 8001 --raft.address localhost:9001 --grpc.address localhost:10001 --cluster.join_addr localhost:8000
+./doq --storage.data_dir data --cluster.node_id node-2 --http.port 8002 --raft.address localhost:9002 --grpc.address localhost:10002 --cluster.join_addr localhost:8000
 ```
 
-You can find swagger docs by opening http://localhost:8001/docs
+You can find swagger docs by opening http://localhost:8000/docs
 
 
 ## Deploying doq to a kubernetes ckuster
@@ -76,7 +76,7 @@ To create a delayed queue named `user_indexing_queue` run:
 
 ```bash
 curl --request POST \
-  --url http://localhost:8001/API/v1/queues \
+  --url http://localhost:8000/API/v1/queues \
   --header 'Accept: application/json, application/problem+json' \
   --header 'Content-Type: application/json' \
   --data '{"name": "user_indexing_queue", "type": "delayed"}'
@@ -86,7 +86,7 @@ To delete a queue that we created in a previous step run
 
 ```bash
 curl --request DELETE \
-  --url http://localhost:8001/API/v1/queues/user_indexing_queue \
+  --url http://localhost:8000/API/v1/queues/user_indexing_queue \
   --header 'Accept: application/json, application/problem+json'
 ```
 
@@ -97,7 +97,7 @@ To enqueue a message to a queue named `user_indexing_queue` run:
 
 ```bash
 curl --request POST \
-  --url http://localhost:8001/API/v1/queues/user_indexing_queue/messages \
+  --url http://localhost:8000/API/v1/queues/user_indexing_queue/messages \
   --header 'Accept: application/json, application/problem+json' \
   --header 'Content-Type: application/json' \
   --data '{"content": "{\"user_id\": 1}", "group": "default", "priority": 60}'
@@ -107,7 +107,7 @@ To dequeue a message from a queue and acknowledge it automatically run
 
 ```bash
 curl --request GET \
-  --url 'http://localhost:8001/API/v1/queues/user_indexing_queue/messages?ack=true' \
+  --url 'http://localhost:8000/API/v1/queues/user_indexing_queue/messages?ack=true' \
   --header 'Accept: application/json, application/problem+json'
 ```
 
@@ -115,7 +115,7 @@ In case a message was not acked on dequeuing a manual acknowledgmenet needs to b
 
 ```python
 curl --request POST \
-  --url http://localhost:8001/API/v1/queues/user_indexing_queue/messages/123/ack \
+  --url http://localhost:8000/API/v1/queues/user_indexing_queue/messages/123/ack \
   --header 'Accept: application/json, application/problem+json' \
   --header 'Content-Type: application/json'
 ```
@@ -125,7 +125,7 @@ If a message was not acked after a some timeout it will go back to a queue.
 To change a priority of the message with ID `123` to `12` call:
 ```python
 curl --request PUT \
-  --url http://localhost:8001/API/v1/queues/user_indexing_queue/messages/123/priority \
+  --url http://localhost:8000/API/v1/queues/user_indexing_queue/messages/123/priority \
   --header 'Accept: application/json, application/problem+json' \
   --header 'Content-Type: application/json' \
   --data '{"priority": 12}'
@@ -277,7 +277,7 @@ To create a backup, send an HTTP POST request to the `/db/backup` endpoint.
 
 ```bash
 curl -v --raw --request POST \
-  --url http://localhost:8001/db/backup \
+  --url http://localhost:8000/db/backup \
   --header 'Accept: application/problem+json' \
   --header 'Content-Type: application/json' \
   --data '{"since": 0}' -o backup-0.bak
@@ -294,7 +294,7 @@ the `/db/restore` endpoint with the backup file.
 
 ```bash
 curl --request POST \
-  --url http://localhost:8001/db/restore \
+  --url http://localhost:8000/db/restore \
   --header 'Accept: application/json, application/problem+json' \
   --header 'Content-Type: multipart/form-data' \
   --form 'file=@backup-0.bak'

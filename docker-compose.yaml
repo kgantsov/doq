@@ -1,6 +1,6 @@
 services:
-  node-1:
-    container_name: node-1
+  node-0:
+    container_name: node-0
     build:
       context: .
       dockerfile: Dockerfile-dev
@@ -17,13 +17,13 @@ services:
       "--storage.data_dir",
       "/usr/local/doq/data",
       "--cluster.node_id",
-      "node-1",
+      "node-0",
       "--http.port",
       "8000",
       "--raft.address",
-      "node-1:9000",
+      "node-0:9000",
       "--grpc.address",
-      "node-1:10000"
+      "node-0:10000"
     ]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/readyz"]
@@ -31,8 +31,8 @@ services:
       timeout: 10s
       retries: 5
 
-  node-2:
-    container_name: node-2
+  node-1:
+    container_name: node-1
     build:
       context: .
       dockerfile: Dockerfile-dev
@@ -49,15 +49,15 @@ services:
       "--storage.data_dir",
       "/usr/local/doq/data",
       "--cluster.node_id",
-      "node-2",
+      "node-1",
       "--http.port",
       "8000",
       "--raft.address",
-      "node-2:9000",
+      "node-1:9000",
       "--cluster.join_addr",
-      "node-1:8000",
+      "node-0:8000",
       "--grpc.address",
-      "node-2:10000"
+      "node-1:10000"
     ]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/readyz"]
@@ -65,11 +65,11 @@ services:
       timeout: 10s
       retries: 5
     depends_on:
-      node-1:
+      node-0:
         condition: service_healthy
 
-  node-3:
-    container_name: node-3
+  node-2:
+    container_name: node-2
     build:
       context: .
       dockerfile: Dockerfile-dev
@@ -86,15 +86,15 @@ services:
       "--storage.data_dir",
       "/usr/local/doq/data",
       "--cluster.node_id",
-      "node-3",
+      "node-2",
       "--http.port",
       "8000",
       "--raft.address",
-      "node-3:9000",
+      "node-2:9000",
       "--cluster.join_addr",
-      "node-1:8000",
+      "node-0:8000",
       "--grpc.address",
-      "node-3:10000"
+      "node-2:10000"
     ]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/readyz"]
@@ -102,7 +102,7 @@ services:
       timeout: 10s
       retries: 5
     depends_on:
-      node-1:
+      node-0:
         condition: service_healthy
 
   # python:

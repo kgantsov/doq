@@ -5,7 +5,7 @@ const queue_name = "autmations";
 const queue_type = "delayed";
 
 export function setup() {
-  const url = `http://localhost:8001/API/v1/queues`;
+  const url = `http://localhost:8000/API/v1/queues`;
   let payload = JSON.stringify(
     {"name": queue_name, "type": queue_type}
   );
@@ -23,7 +23,7 @@ export function setup() {
 
 export function teardown(data) {
 
-  const url = `http://localhost:8001/API/v1/queues/${queue_name}`;
+  const url = `http://localhost:8000/API/v1/queues/${queue_name}`;
 
   let params = {
     headers: {
@@ -36,7 +36,7 @@ export function teardown(data) {
 }
 
 export default function () {
-  const url = `http://localhost:8001/API/v1/queues/${queue_name}/messages`;
+  const url = `http://localhost:8000/API/v1/queues/${queue_name}/messages`;
   let payload = JSON.stringify(
     {"content": "{\"user_id\": 10}", "priority": 10, "group": "default"}
   );
