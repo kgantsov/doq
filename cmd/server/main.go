@@ -60,6 +60,9 @@ func Run(cmd *cobra.Command, args []string) {
 
 	if config.Cluster.ServiceName != "" {
 		namespace := "default"
+		if config.Cluster.Namespace != "" {
+			namespace = config.Cluster.Namespace
+		}
 		serviceDiscovery := cluster.NewServiceDiscoverySRV(namespace, config.Cluster.ServiceName)
 		cl = cluster.NewCluster(serviceDiscovery, namespace, config.Cluster.ServiceName, config.Http.Port)
 

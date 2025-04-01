@@ -85,6 +85,7 @@ type QueueConfig struct {
 }
 
 type ClusterConfig struct {
+	Namespace   string `mapstructure:"namespace"`
 	NodeID      string `mapstructure:"node_id"`
 	ServiceName string `mapstructure:"service_name"`
 	JoinAddr    string `mapstructure:"join_addr"`
@@ -160,6 +161,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	rootCmd.Flags().Int("storage.num_level_zero_tables_stall", 0, "Number of level zero tables to stall compaction")
 	rootCmd.Flags().Int("storage.num_memtables", 0, "Number of memtables")
 	rootCmd.Flags().Int64("storage.value_log_file_size", 0, "Value log file size in bytes")
+	rootCmd.Flags().String("cluster.namespace", "default", "Kubernetes namespace for the service discovery")
 	rootCmd.Flags().String("cluster.node_id", "node-1", "Node ID. If not set, same as Raft bind address")
 	rootCmd.Flags().String("cluster.service_name", "", "Name of the service in Kubernetes")
 	rootCmd.Flags().String("cluster.join_addr", "", "Set join address, if any")
@@ -189,6 +191,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	viper.BindPFlag("storage.num_level_zero_tables_stall", rootCmd.Flags().Lookup("storage.num_level_zero_tables_stall"))
 	viper.BindPFlag("storage.num_memtables", rootCmd.Flags().Lookup("storage.num_memtables"))
 	viper.BindPFlag("storage.value_log_file_size", rootCmd.Flags().Lookup("storage.value_log_file_size"))
+	viper.BindPFlag("cluster.namespace", rootCmd.Flags().Lookup("cluster.namespace"))
 	viper.BindPFlag("cluster.node_id", rootCmd.Flags().Lookup("cluster.node_id"))
 	viper.BindPFlag("cluster.service_name", rootCmd.Flags().Lookup("cluster.service_name"))
 	viper.BindPFlag("cluster.join_addr", rootCmd.Flags().Lookup("cluster.join_addr"))
