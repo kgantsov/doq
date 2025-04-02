@@ -51,19 +51,23 @@ Run other nodes
 You can find swagger docs by opening http://localhost:8000/docs
 
 
-## Deploying doq to a kubernetes ckuster
+## Deploying doq to a Kubernetes cluster
 
-Deployments is implemented though the infrastructure as a code tool called [pulumi](https://www.pulumi.com/) and the deployment code is located under a `deploy` folder.
+Deployment is managed using [Kustomize](https://kustomize.io/), a tool integrated into `kubectl` that simplifies the customization of Kubernetes configurations. The deployment manifests are located in the `overlays` directory within the `deploy` folder.
 
-To deploy doq to your kubernetes cluster you need to run `pulumi up` inside the `deploy` folder and follow the interactive instructions provided by pulumi.
+To deploy `doq` to your Kubernetes cluster, navigate to the appropriate overlay directory (e.g., `overlays/dev`) and apply the configuration using `kubectl`:
 
 ```bash
-cd deploy
-pulumi up
+kubectl apply -k overlays/dev
 ```
-It will take a few minutes for pulumi to create all the necessary kubernetes resources.
 
-A statefulset with 3 pods by default will be created as well as two different services. The first service `doq-internal` is a headless and allows nodes to find eachother and form a cluster automatically. As the name suggests `doq-internal` service should not be used by `doq` clients, instead the second `doq` service clients should connect to. The biggest difference between the two is that `doq-internal` service will contain all the pods regardless if they are in the leader or in the follower state. On the other hand `doq` will only point to a leader pod. In case the leader dies the election process will kick in by one of the followers and when the follower is promoted to a leader the `doq` service will be updated and will point to this new leader pod.
+This will create all the necessary Kubernetes resources, including a StatefulSet with 3 pods by default and two services:
+
+1. **`doq-internal` Service**: A headless service that allows nodes to discover each other and form a cluster automatically. This service is for internal use and should not be accessed by `doq` clients.
+
+2. **`doq` Service**: This service is intended for client connections. Unlike `doq-internal`, it only points to the leader pod. If the leader fails, a new leader is elected, and the `doq` service is updated to point to the new leader pod.
+
+The deployment process will take a few minutes to complete, during which the cluster will initialize and become ready for use.
 
 
 ## Creating and removing queues
