@@ -9,11 +9,7 @@ const Navbar = () => {
           <RouterLink to="/">DOQ</RouterLink>
         </Heading>
       </Box>
-      <Flex marginLeft="auto">
-        <Button as={RouterLink} to="/other" colorScheme="teal" variant="solid">
-          Other Page
-        </Button>
-      </Flex>
+      <Flex marginLeft="auto"></Flex>
     </Flex>
   );
 };
