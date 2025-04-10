@@ -1,39 +1,32 @@
 import {
-  FormControl,
-  FormLabel,
+  Field,
   Button,
   Input,
   Textarea,
   Stack,
-  useToast,
   Card,
-  CardBody,
   NumberInput,
-  NumberInputField,
   Progress,
   Box,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { EnqueueMessage } from "../api/messages";
 import { useMutation } from "@tanstack/react-query";
+import { toaster } from "./ui/toaster";
 
 const EnqueueMessageForm = ({ queueName }: { queueName: string }) => {
   const [content, setContent] = useState("");
   const [group, setGroup] = useState("default");
   const [priority, setPriority] = useState(100);
 
-  const toast = useToast();
-
   const mutation = useMutation({
     mutationFn: EnqueueMessage,
     onSuccess: (message) => {
-      toast({
+      toaster.create({
         title: "Message enqueued.",
         description: `The message with ID ${message.id} has been enqueued successfully.`,
-        status: "success",
+        type: "success",
         duration: 9000,
-        isClosable: true,
-        position: "bottom-right",
       });
     },
   });
@@ -44,17 +37,28 @@ const EnqueueMessageForm = ({ queueName }: { queueName: string }) => {
   const handleGroupChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setGroup(e.target.value);
 
-  const handlePriorityChange = (
-    _valueAsString: string,
-    valueAsNumber: number
-  ): void => {
+  const handlePriorityChange = ({
+    value,
+    valueAsNumber,
+  }: {
+    value: string;
+    valueAsNumber: number;
+  }): void => {
+    console.log("valueAsString", value);
+    console.log("valueAsNumber", valueAsNumber);
     setPriority(valueAsNumber);
   };
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
 
-    // const message = await EnqueueMessage(queueName, group, priority, content);
+    console.log("=====>", {
+      queueName: queueName,
+      group: group,
+      priority: priority,
+      content: content,
+    });
+
     mutation.mutate({
       queueName: queueName,
       group: group,
@@ -66,45 +70,49 @@ const EnqueueMessageForm = ({ queueName }: { queueName: string }) => {
   const isError = content === "";
 
   return (
-    <Card>
-      <CardBody>
+    <Card.Root>
+      <Card.Body>
         <form onSubmit={handleSubmit}>
-          <FormControl isInvalid={isError}>
-            <FormLabel>Group</FormLabel>
+          <Field.Root invalid={isError}>
+            <Field.Label>Group</Field.Label>
             <Input onChange={handleGroupChange} value={group}></Input>
-          </FormControl>
-          <FormControl isInvalid={isError}>
-            <FormLabel>Priority</FormLabel>
-            <NumberInput
-              defaultValue={100}
+          </Field.Root>
+          <Field.Root invalid={isError}>
+            <Field.Label>Priority</Field.Label>
+            <NumberInput.Root
+              defaultValue={"100"}
               min={0}
-              onChange={handlePriorityChange}
-              value={priority}
+              onValueChange={handlePriorityChange}
+              value={priority.toString()}
             >
-              <NumberInputField />
-            </NumberInput>
-          </FormControl>
-          <FormControl isInvalid={isError}>
-            <FormLabel>Message content</FormLabel>
+              <NumberInput.Input />
+            </NumberInput.Root>
+          </Field.Root>
+          <Field.Root invalid={isError}>
+            <Field.Label>Message content</Field.Label>
             <Textarea onChange={handleContentChange} value={content}></Textarea>
-          </FormControl>
+          </Field.Root>
 
           <Box mt={4}>
-            <Progress
+            <Progress.Root
               size="xs"
-              isIndeterminate
               opacity={mutation.isPending ? 1 : 0}
-            />
+              value={null}
+            >
+              <Progress.Track>
+                <Progress.Range />
+              </Progress.Track>
+            </Progress.Root>
           </Box>
 
-          <Stack spacing={5} pt={4} direction="row" align="center">
-            <Button colorScheme="teal" type="submit" disabled={isError}>
+          <Stack gap={5} pt={4} direction="row" align="center">
+            <Button colorPalette="teal" type="submit" disabled={isError}>
               Enqueue
             </Button>
           </Stack>
         </form>
-      </CardBody>
-    </Card>
+      </Card.Body>
+    </Card.Root>
   );
 };
 

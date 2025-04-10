@@ -1,39 +1,24 @@
 import {
   Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-  AlertDialog,
-  AlertDialogBody,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogContent,
-  AlertDialogOverlay,
   Badge,
   Box,
   Text,
   Stat,
-  StatLabel,
-  StatNumber,
   SimpleGrid,
   Center,
   Spinner,
   Flex,
   Spacer,
   Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
   Button,
-  useDisclosure,
-  useToast,
+  Span,
+  Dialog,
 } from "@chakra-ui/react";
-import { AccordionIcon } from "@chakra-ui/icons";
 import { useNavigate } from "react-router-dom";
+import { toaster } from "./ui/toaster";
 
-import { useRef } from "react";
-import { ChevronDownIcon } from "@chakra-ui/icons";
-import { Card, CardBody } from "@chakra-ui/react";
+import { useState } from "react";
+import { Card } from "@chakra-ui/react";
 import { getQueue, deleteQueue } from "../api/queues";
 import EnqueueMessageForm from "./EnqueueMessageForm";
 import DequeueMessageForm from "./DequeueMessageForm";
@@ -41,25 +26,22 @@ import DequeueMessageForm from "./DequeueMessageForm";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const QueueDetails = ({ queueName }: { queueName: string }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const cancelRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
-  const toast = useToast();
+
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: deleteQueue,
     onSuccess: () => {
-      onClose();
+      setIsOpen(true);
       navigate(`/`);
       queryClient.invalidateQueries({ queryKey: ["queues"] });
-      toast({
+      toaster.create({
         title: "Qeueu deleted.",
         description: `The queue '${queueName}' has been deleted successfully.`,
-        status: "success",
+        type: "success",
         duration: 9000,
-        isClosable: true,
-        position: "bottom-right",
       });
     },
   });
@@ -74,10 +56,10 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
     return (
       <Center h="90vh" color="white">
         <Spinner
-          thickness="4px"
-          speed="0.65s"
-          emptyColor="gray.200"
-          color="blue.500"
+          borderWidth="4px"
+          animationDuration="0.65s"
+          color="teal.500"
+          colorPalette="teal"
           size="xl"
         />
       </Center>
@@ -88,135 +70,143 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
     return <></>;
   }
 
+  const accordionContent = [
+    {
+      value: "dequeue",
+      title: "Dequeue messages",
+      content: <DequeueMessageForm queueName={queueName} />,
+    },
+    {
+      value: "enqueue",
+      title: "Enqueue messages",
+      content: <EnqueueMessageForm queueName={queueName} />,
+    },
+  ];
+
   return (
     <>
       <Box minWidth="120px">
         <Flex>
           <Text fontSize="2xl" mb={4}>
             {queue.name} &nbsp;
-            <Badge colorScheme={queue.type === "delayed" ? "teal" : "cyan"}>
+            <Badge colorPalette={queue.type === "delayed" ? "teal" : "cyan"}>
               {queue.type}
             </Badge>
           </Text>
           <Spacer />
-          <Menu>
-            <MenuButton as={Button} rightIcon={<ChevronDownIcon />}>
-              Actions
-            </MenuButton>
-            <MenuList>
-              <MenuItem onClick={onOpen}>Delete Queue</MenuItem>
-            </MenuList>
-          </Menu>
+          <Menu.Root
+            onSelect={(item) => {
+              if (item.value === "delete-queue") {
+                setIsOpen(true);
+              }
+            }}
+          >
+            <Menu.Trigger asChild>
+              <Button variant="outline" size="sm">
+                Actions
+              </Button>
+            </Menu.Trigger>
+            <Menu.Positioner>
+              <Menu.Content>
+                <Menu.Item value="delete-queue">Delete Queue</Menu.Item>
+              </Menu.Content>
+            </Menu.Positioner>
+          </Menu.Root>
         </Flex>
 
-        <SimpleGrid columns={[2, null, 3]} spacing="40px">
-          <Card>
-            <CardBody>
-              <Stat>
-                <StatLabel>Ready</StatLabel>
-                <StatNumber>{queue.ready}</StatNumber>
-              </Stat>
-            </CardBody>
-          </Card>
+        <SimpleGrid columns={[2, null, 3]} gap="40px">
+          <Card.Root>
+            <Card.Body>
+              <Stat.Root>
+                <Stat.Label>Ready</Stat.Label>
+                <Stat.ValueText>{queue.ready}</Stat.ValueText>
+              </Stat.Root>
+            </Card.Body>
+          </Card.Root>
 
-          <Card>
-            <CardBody>
-              <Stat>
-                <StatLabel>Unacked</StatLabel>
-                <StatNumber>{queue.unacked}</StatNumber>
-              </Stat>
-            </CardBody>
-          </Card>
+          <Card.Root>
+            <Card.Body>
+              <Stat.Root>
+                <Stat.Label>Unacked</Stat.Label>
+                <Stat.ValueText>{queue.unacked}</Stat.ValueText>
+              </Stat.Root>
+            </Card.Body>
+          </Card.Root>
 
-          <Card>
-            <CardBody>
-              <Stat>
-                <StatLabel>Total</StatLabel>
-                <StatNumber>{queue.total}</StatNumber>
-              </Stat>
-            </CardBody>
-          </Card>
+          <Card.Root>
+            <Card.Body>
+              <Stat.Root>
+                <Stat.Label>Total</Stat.Label>
+                <Stat.ValueText>{queue.total}</Stat.ValueText>
+              </Stat.Root>
+            </Card.Body>
+          </Card.Root>
 
-          <Card>
-            <CardBody>
-              <Stat>
-                <StatLabel>Enqueue Rate</StatLabel>
-                <StatNumber>{queue.enqueue_rps.toFixed(1)}/s</StatNumber>
-              </Stat>
-            </CardBody>
-          </Card>
+          <Card.Root>
+            <Card.Body>
+              <Stat.Root>
+                <Stat.Label>Enqueue Rate</Stat.Label>
+                <Stat.ValueText>
+                  {queue.enqueue_rps.toFixed(1)}/s
+                </Stat.ValueText>
+              </Stat.Root>
+            </Card.Body>
+          </Card.Root>
 
-          <Card>
-            <CardBody>
-              <Stat>
-                <StatLabel>Dequeue Rate</StatLabel>
-                <StatNumber>{queue.dequeue_rps.toFixed(1)}/s</StatNumber>
-              </Stat>
-            </CardBody>
-          </Card>
+          <Card.Root>
+            <Card.Body>
+              <Stat.Root>
+                <Stat.Label>Dequeue Rate</Stat.Label>
+                <Stat.ValueText>
+                  {queue.dequeue_rps.toFixed(1)}/s
+                </Stat.ValueText>
+              </Stat.Root>
+            </Card.Body>
+          </Card.Root>
 
-          <Card>
-            <CardBody>
-              <Stat>
-                <StatLabel>Acknowledge Rate</StatLabel>
-                <StatNumber>{queue.ack_rps.toFixed(1)}/s</StatNumber>
-              </Stat>
-            </CardBody>
-          </Card>
+          <Card.Root>
+            <Card.Body>
+              <Stat.Root>
+                <Stat.Label>Acknowledge Rate</Stat.Label>
+                <Stat.ValueText>{queue.ack_rps.toFixed(1)}/s</Stat.ValueText>
+              </Stat.Root>
+            </Card.Body>
+          </Card.Root>
         </SimpleGrid>
-        <Accordion allowMultiple mt={4}>
-          <AccordionItem>
-            <h2>
-              <AccordionButton>
-                <Box as="span" flex="1" textAlign="left">
-                  Dequeue messages
-                </Box>
-                <AccordionIcon />
-              </AccordionButton>
-            </h2>
-            <AccordionPanel pb={4}>
-              <Box pt={4}>
-                <DequeueMessageForm queueName={queueName} />
-              </Box>
-            </AccordionPanel>
-          </AccordionItem>
 
-          <AccordionItem>
-            <h2>
-              <AccordionButton>
-                <Box as="span" flex="1" textAlign="left">
-                  Enqueue messages
-                </Box>
-                <AccordionIcon />
-              </AccordionButton>
-            </h2>
-            <AccordionPanel pb={4}>
-              <Box pt={4}>
-                <EnqueueMessageForm queueName={queueName} />
-              </Box>
-            </AccordionPanel>
-          </AccordionItem>
-        </Accordion>
+        <Accordion.Root collapsible>
+          {accordionContent.map((item, index) => (
+            <Accordion.Item key={index} value={item.value}>
+              <Accordion.ItemTrigger>
+                <Span flex="1">{item.title}</Span>
+                <Accordion.ItemIndicator />
+              </Accordion.ItemTrigger>
+              <Accordion.ItemContent>
+                <Accordion.ItemBody>{item.content}</Accordion.ItemBody>
+              </Accordion.ItemContent>
+            </Accordion.Item>
+          ))}
+        </Accordion.Root>
       </Box>
-      <AlertDialog
-        isOpen={isOpen}
-        leastDestructiveRef={cancelRef}
-        onClose={onClose}
-      >
-        <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+
+      <Dialog.Root open={isOpen}>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content>
+            <Dialog.Header fontSize="lg" fontWeight="bold">
               Delete Queue
-            </AlertDialogHeader>
+            </Dialog.Header>
 
-            <AlertDialogBody>
+            <Dialog.Body>
               Are you sure? You can't undo this action afterwards.
-            </AlertDialogBody>
+            </Dialog.Body>
 
-            <AlertDialogFooter>
-              <Button onClick={onClose}>Cancel</Button>
+            <Dialog.Footer>
+              <Button variant="outline" onClick={() => setIsOpen(false)}>
+                Cancel
+              </Button>
               <Button
-                colorScheme="red"
+                colorPalette="red"
                 onClick={async () => {
                   mutation.mutate({ name: queueName });
                 }}
@@ -224,10 +214,10 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
               >
                 Delete
               </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Dialog.Root>
     </>
   );
 };

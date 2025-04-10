@@ -1,24 +1,17 @@
 import {
-  Link,
   Center,
   Spinner,
   Flex,
   Spacer,
   Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
   Button,
   Box,
   Heading,
-  useDisclosure,
   Input,
   InputGroup,
-  InputLeftElement,
-  InputRightElement,
   CloseButton,
 } from "@chakra-ui/react";
-import { ChevronDownIcon, SearchIcon } from "@chakra-ui/icons";
+import { Search } from "lucide-react";
 import { Badge } from "@chakra-ui/react";
 import { Link as RouterLink } from "react-router-dom";
 import { Queue } from "../types/queues";
@@ -35,11 +28,7 @@ const columns = [
   columnHelper.accessor("name", {
     cell: (info) => {
       const name = info.getValue();
-      return (
-        <Link as={RouterLink} to={`/queues/${name}`}>
-          {name}
-        </Link>
-      );
+      return <RouterLink to={`/queues/${name}`}>{name}</RouterLink>;
     },
     header: "Name",
   }),
@@ -47,7 +36,9 @@ const columns = [
     cell: (info) => {
       const type = info.getValue();
       return (
-        <Badge colorScheme={type === "delayed" ? "teal" : "cyan"}>{type}</Badge>
+        <Badge colorPalette={type === "delayed" ? "teal" : "cyan"}>
+          {type}
+        </Badge>
       );
     },
     header: "Type",
@@ -97,7 +88,7 @@ const columns = [
 ];
 
 const QueueList = () => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   const { isPending, data } = useQuery({
@@ -108,12 +99,12 @@ const QueueList = () => {
 
   if (isPending) {
     return (
-      <Center h="90vh" color="white">
+      <Center h="90vh" color="white" colorPalette="teal">
         <Spinner
-          thickness="4px"
-          speed="0.65s"
-          emptyColor="gray.200"
-          color="blue.500"
+          borderWidth="4px"
+          animationDuration="0.65s"
+          color="teal.500"
+          colorPalette="teal"
           size="xl"
         />
       </Center>
@@ -123,25 +114,46 @@ const QueueList = () => {
   const queues: Queue[] =
     data?.queues?.filter((queue: Queue) => queue.name.includes(query)) || [];
 
+  console.log("======> isOpen", isOpen);
   return (
     <>
       <Box p={5}>
         <Flex>
           <Heading mb={5}>Queues</Heading>
           <Spacer />
-          <Menu>
-            <MenuButton as={Button} rightIcon={<ChevronDownIcon />}>
-              Actions
-            </MenuButton>
-            <MenuList>
-              <MenuItem onClick={onOpen}>Create Queue</MenuItem>
-            </MenuList>
-          </Menu>
+          <Menu.Root
+            onSelect={(item) => {
+              if (item.value === "create-queue") {
+                setIsOpen(true);
+              }
+            }}
+          >
+            <Menu.Trigger asChild>
+              <Button variant="outline" size="sm">
+                Actions
+              </Button>
+            </Menu.Trigger>
+            <Menu.Positioner>
+              <Menu.Content>
+                <Menu.Item value="create-queue">Create Queue</Menu.Item>
+              </Menu.Content>
+            </Menu.Positioner>
+          </Menu.Root>
         </Flex>
-        <InputGroup width={"500px"} mr={4} mb={4}>
-          <InputLeftElement pointerEvents="none">
-            <SearchIcon color="gray.300" />
-          </InputLeftElement>
+        <InputGroup
+          width={"500px"}
+          mr={4}
+          mb={4}
+          startElement={<Search pointerEvents="none" />}
+          endElement={
+            <CloseButton
+              h="1.75rem"
+              color="gray.300"
+              size="sm"
+              onClick={() => setQuery("")}
+            ></CloseButton>
+          }
+        >
           <Input
             type="query"
             placeholder="Search"
@@ -150,18 +162,15 @@ const QueueList = () => {
               setQuery(e.target.value)
             }
           />
-          <InputRightElement width="4.5rem">
-            <CloseButton
-              h="1.75rem"
-              color="gray.300"
-              size="sm"
-              onClick={() => setQuery("")}
-            ></CloseButton>
-          </InputRightElement>
         </InputGroup>
         <DataTable columns={columns} data={queues} />
       </Box>
-      <CreateQueueModal isOpen={isOpen} onClose={onClose} />
+      <CreateQueueModal
+        isOpen={isOpen}
+        onClose={() => {
+          setIsOpen(false);
+        }}
+      />
     </>
   );
 };

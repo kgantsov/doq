@@ -1,6 +1,6 @@
 import * as React from "react";
-import { Table, Thead, Tbody, Tr, Th, Td, chakra } from "@chakra-ui/react";
-import { TriangleDownIcon, TriangleUpIcon } from "@chakra-ui/icons";
+import { Table, Flex, Badge } from "@chakra-ui/react";
+import { ArrowUp01, ArrowDown01, ArrowUpAZ, ArrowDownAZ } from "lucide-react";
 import {
   useReactTable,
   flexRender,
@@ -32,54 +32,75 @@ export function DataTable<Data extends object>({
   });
 
   return (
-    <Table>
-      <Thead>
+    <Table.Root>
+      <Table.Header>
         {table.getHeaderGroups().map((headerGroup) => (
-          <Tr key={headerGroup.id}>
+          <Table.Row key={headerGroup.id}>
             {headerGroup.headers.map((header) => {
               // see https://tanstack.com/table/v8/docs/api/core/column-def#meta to type this correctly
               const meta: any = header.column.columnDef.meta;
               return (
-                <Th
+                <Table.ColumnHeader
                   key={header.id}
                   onClick={header.column.getToggleSortingHandler()}
-                  isNumeric={meta?.isNumeric}
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-
-                  <chakra.span pl="4">
+                  <Flex>
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                    &nbsp;
                     {header.column.getIsSorted() ? (
                       header.column.getIsSorted() === "desc" ? (
-                        <TriangleDownIcon aria-label="sorted descending" />
+                        <Badge>
+                          {meta?.isNumeric ? (
+                            <ArrowUp01
+                              size={14}
+                              aria-label="sorted descending"
+                            />
+                          ) : (
+                            <ArrowUpAZ
+                              size={14}
+                              aria-label="sorted descending"
+                            />
+                          )}
+                        </Badge>
                       ) : (
-                        <TriangleUpIcon aria-label="sorted ascending" />
+                        <Badge>
+                          {meta?.isNumeric ? (
+                            <ArrowDown01
+                              size={14}
+                              aria-label="sorted ascending"
+                            />
+                          ) : (
+                            <ArrowDownAZ
+                              size={14}
+                              aria-label="sorted ascending"
+                            />
+                          )}
+                        </Badge>
                       )
                     ) : null}
-                  </chakra.span>
-                </Th>
+                  </Flex>
+                </Table.ColumnHeader>
               );
             })}
-          </Tr>
+          </Table.Row>
         ))}
-      </Thead>
-      <Tbody>
+      </Table.Header>
+      <Table.Body>
         {table.getRowModel().rows.map((row) => (
-          <Tr key={row.id}>
+          <Table.Row key={row.id}>
             {row.getVisibleCells().map((cell) => {
-              // see https://tanstack.com/table/v8/docs/api/core/column-def#meta to type this correctly
-              const meta: any = cell.column.columnDef.meta;
               return (
-                <Td key={cell.id} isNumeric={meta?.isNumeric}>
+                <Table.Cell key={cell.id}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </Td>
+                </Table.Cell>
               );
             })}
-          </Tr>
+          </Table.Row>
         ))}
-      </Tbody>
-    </Table>
+      </Table.Body>
+    </Table.Root>
   );
 }

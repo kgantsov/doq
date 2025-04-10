@@ -1,16 +1,12 @@
 import {
-  FormControl,
-  FormLabel,
+  Field,
   Button,
   Switch,
   Text,
   Stack,
   Card,
-  CardHeader,
-  CardBody,
   Box,
   Heading,
-  StackDivider,
   Progress,
 } from "@chakra-ui/react";
 import { useState } from "react";
@@ -36,8 +32,7 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
     },
   });
 
-  const handleAckChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setAck(e.target.checked);
+  const handleAckChange = (checked: boolean) => setAck(checked);
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
@@ -50,43 +45,53 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
 
   return (
     <>
-      <Card>
-        <CardBody>
+      <Card.Root>
+        <Card.Body>
           <form onSubmit={handleSubmit}>
-            <FormControl>
-              <FormLabel>Ack</FormLabel>
-              <Switch
+            <Field.Root>
+              <Field.Label>Ack</Field.Label>
+              <Switch.Root
                 size="lg"
-                onChange={handleAckChange}
-                isChecked={ack}
-              ></Switch>
-            </FormControl>
+                onCheckedChange={(v) => handleAckChange(v.checked)}
+                checked={ack}
+              >
+                <Switch.HiddenInput />
+                <Switch.Control>
+                  <Switch.Thumb />
+                </Switch.Control>
+                <Switch.Label />
+              </Switch.Root>
+            </Field.Root>
             <Box mt={4}>
-              <Progress
+              <Progress.Root
                 size="xs"
-                isIndeterminate
                 opacity={mutation.isPending ? 1 : 0}
-              />
+                value={null}
+              >
+                <Progress.Track>
+                  <Progress.Range />
+                </Progress.Track>
+              </Progress.Root>
             </Box>
-            <Stack spacing={5} pt={4} direction="row" align="center">
-              <Button colorScheme="teal" type="submit">
+            <Stack gap={5} pt={4} direction="row" align="center">
+              <Button colorPalette="teal" type="submit">
                 Dequeue
               </Button>
             </Stack>
           </form>
-        </CardBody>
-      </Card>
+        </Card.Body>
+      </Card.Root>
       {mutation.isError
         ? () => <Text>Failed to dequeue message</Text>
         : dequeuedMessage?.content && (
-            <Card mt={4} background="#e0f4ff">
-              <CardHeader>
+            <Card.Root mt={4} background="#e0f4ff">
+              <Card.Header>
                 <Heading size="sm" textTransform="uppercase">
                   Message #{dequeuedMessage.id}
                 </Heading>
-              </CardHeader>
-              <CardBody>
-                <Stack divider={<StackDivider />} spacing="4">
+              </Card.Header>
+              <Card.Body>
+                <Stack gap="4">
                   <Box>
                     <Heading size="xs" textTransform="uppercase">
                       Group
@@ -120,8 +125,8 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
                     </Text>
                   </Box>
                 </Stack>
-              </CardBody>
-            </Card>
+              </Card.Body>
+            </Card.Root>
           )}
     </>
   );
