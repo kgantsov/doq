@@ -14,20 +14,24 @@ import {
   Span,
   Dialog,
 } from "@chakra-ui/react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toaster } from "./ui/toaster";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useState } from "react";
 import { Card } from "@chakra-ui/react";
+
 import { getQueue, deleteQueue } from "../api/queues";
+import { QueueStatsBuffer, QueueStats } from "../stats";
 import EnqueueMessageForm from "./EnqueueMessageForm";
 import DequeueMessageForm from "./DequeueMessageForm";
-
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import SparkLine from "./SparkLine";
 
 const QueueDetails = ({ queueName }: { queueName: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const statsBuffer = useRef(new QueueStatsBuffer(600));
 
   const queryClient = useQueryClient();
 
@@ -46,11 +50,31 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
     },
   });
 
-  const { isPending, data: queue } = useQuery({
+  const {
+    isPending,
+    dataUpdatedAt,
+    data: queue,
+  } = useQuery({
     queryKey: ["queue"],
     queryFn: () => getQueue(queueName),
     refetchInterval: 1000,
   });
+
+  useEffect(() => {
+    if (queue) {
+      statsBuffer.current.append({
+        name: queue.name,
+        type: queue.type,
+        enqueue_rps: queue.enqueue_rps,
+        dequeue_rps: queue.dequeue_rps,
+        ack_rps: queue.ack_rps,
+        nack_rps: queue.nack_rps,
+        ready: queue.ready,
+        unacked: queue.unacked,
+        total: queue.total,
+      } as QueueStats);
+    }
+  }, [dataUpdatedAt]);
 
   if (isPending) {
     return (
@@ -69,6 +93,8 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
   if (!queue) {
     return <></>;
   }
+
+  const chartData = statsBuffer.current.getPoints();
 
   const accordionContent = [
     {
@@ -122,6 +148,13 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
                 <Stat.ValueText>{queue.ready}</Stat.ValueText>
               </Stat.Root>
             </Card.Body>
+            <SparkLine
+              data={chartData?.map((item) => {
+                return {
+                  value: item.ready,
+                };
+              })}
+            />
           </Card.Root>
 
           <Card.Root>
@@ -131,6 +164,13 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
                 <Stat.ValueText>{queue.unacked}</Stat.ValueText>
               </Stat.Root>
             </Card.Body>
+            <SparkLine
+              data={chartData?.map((item) => {
+                return {
+                  value: item.unacked,
+                };
+              })}
+            />
           </Card.Root>
 
           <Card.Root>
@@ -140,6 +180,13 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
                 <Stat.ValueText>{queue.total}</Stat.ValueText>
               </Stat.Root>
             </Card.Body>
+            <SparkLine
+              data={chartData?.map((item) => {
+                return {
+                  value: item.total,
+                };
+              })}
+            />
           </Card.Root>
 
           <Card.Root>
@@ -151,6 +198,13 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
                 </Stat.ValueText>
               </Stat.Root>
             </Card.Body>
+            <SparkLine
+              data={chartData?.map((item) => {
+                return {
+                  value: item.enqueue_rps,
+                };
+              })}
+            />
           </Card.Root>
 
           <Card.Root>
@@ -162,6 +216,13 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
                 </Stat.ValueText>
               </Stat.Root>
             </Card.Body>
+            <SparkLine
+              data={chartData?.map((item) => {
+                return {
+                  value: item.dequeue_rps,
+                };
+              })}
+            />
           </Card.Root>
 
           <Card.Root>
@@ -171,6 +232,13 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
                 <Stat.ValueText>{queue.ack_rps.toFixed(1)}/s</Stat.ValueText>
               </Stat.Root>
             </Card.Body>
+            <SparkLine
+              data={chartData?.map((item) => {
+                return {
+                  value: item.ack_rps,
+                };
+              })}
+            />
           </Card.Root>
         </SimpleGrid>
 

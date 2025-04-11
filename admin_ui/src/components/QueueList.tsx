@@ -114,7 +114,6 @@ const QueueList = () => {
   const queues: Queue[] =
     data?.queues?.filter((queue: Queue) => queue.name.includes(query)) || [];
 
-  console.log("======> isOpen", isOpen);
   return (
     <>
       <Box p={5}>

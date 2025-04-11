@@ -38,26 +38,16 @@ const EnqueueMessageForm = ({ queueName }: { queueName: string }) => {
     setGroup(e.target.value);
 
   const handlePriorityChange = ({
-    value,
     valueAsNumber,
   }: {
     value: string;
     valueAsNumber: number;
   }): void => {
-    console.log("valueAsString", value);
-    console.log("valueAsNumber", valueAsNumber);
     setPriority(valueAsNumber);
   };
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
-
-    console.log("=====>", {
-      queueName: queueName,
-      group: group,
-      priority: priority,
-      content: content,
-    });
 
     mutation.mutate({
       queueName: queueName,
