@@ -76,6 +76,15 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
     }
   }, [dataUpdatedAt]);
 
+  // Clean up buffer on unmount or remount
+  useEffect(() => {
+    statsBuffer.current.clear();
+
+    return () => {
+      statsBuffer.current.clear();
+    };
+  }, []);
+
   if (isPending) {
     return (
       <Center h="90vh" color="white">
