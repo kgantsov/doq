@@ -357,3 +357,79 @@ sequenceDiagram
     Follower 1->>Follower 2: Request vote
     Follower 1->>Leader: Request vote
 ```
+
+## Benchmarking
+
+You can benchmark DOQ using the provided k6 load testing script located in the testing/load/ directory.
+
+
+### Prerequisites:
+
+- Install [k6](https://k6.io/open-source/) if you haven't already.
+
+### Running the Benchmark
+
+From the project root, run:
+
+```bash
+k6 run -u 100 -d 10s testing/load/queue.js
+```
+
+- -u 100 specifies 100 virtual users.
+
+- -d 10s specifies a test duration of 10 seconds.
+
+- queue.js contains the load script targeting the DOQ server.
+
+Feel free to adjust the number of users (-u) and duration (-d) to simulate different loads.
+
+### Notes
+
+- Make sure your DOQ server is running and accessible before starting the benchmark.
+
+- Monitor CPU, memory, and disk I/O usage on the server to understand system bottlenecks during load testing.
+
+
+### Example Output
+```bash
+$ k6 run -u 100 -d 10s testing/load/queue.js
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+     execution: local
+        script: queue.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 40s max duration (incl. graceful stop):
+              * default: 100 looping VUs for 10s (gracefulStop: 30s)
+
+
+     ✓ enqueued
+     ✓ dequeued
+
+     checks.........................: 100.00% 258996 out of 258996
+     data_received..................: 197 MB  20 MB/s
+     data_sent......................: 65 MB   6.5 MB/s
+     http_req_blocked...............: avg=6.67µs   min=0s       med=1µs    max=31.09ms  p(90)=2µs     p(95)=3µs    
+     http_req_connecting............: avg=671ns    min=0s       med=0s     max=2.89ms   p(90)=0s      p(95)=0s     
+     http_req_duration..............: avg=3.56ms   min=62µs     med=3.18ms max=120.02ms p(90)=5.4ms   p(95)=7.76ms 
+       { expected_response:true }...: avg=3.56ms   min=62µs     med=3.18ms max=120.02ms p(90)=5.4ms   p(95)=7.76ms 
+     http_req_failed................: 0.00%   0 out of 258998
+     http_req_receiving.............: avg=278.05µs min=5µs      med=9µs    max=98.98ms  p(90)=34µs    p(95)=110µs  
+     http_req_sending...............: avg=70.44µs  min=1µs      med=3µs    max=53.18ms  p(90)=11µs    p(95)=45µs   
+     http_req_tls_handshaking.......: avg=0s       min=0s       med=0s     max=0s       p(90)=0s      p(95)=0s     
+     http_req_waiting...............: avg=3.21ms   min=49µs     med=3.14ms max=67.3ms   p(90)=5.04ms  p(95)=6.65ms 
+     http_reqs......................: 258998  25830.306144/s
+     iteration_duration.............: avg=7.7ms    min=215.87µs med=6.7ms  max=127.23ms p(90)=12.47ms p(95)=18.75ms
+     iterations.....................: 129498  12915.05334/s
+     vus............................: 100     min=100              max=100
+     vus_max........................: 100     min=100              max=100
+
+
+running (10.0s), 000/100 VUs, 129498 complete and 0 interrupted iterations
+default ✓ [======================================] 100 VUs  10s
+```
