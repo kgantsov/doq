@@ -84,7 +84,7 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
       {mutation.isError
         ? () => <Text>Failed to dequeue message</Text>
         : dequeuedMessage?.content && (
-            <Card.Root mt={4} background="#e0f4ff">
+            <Card.Root mt={4}>
               <Card.Header>
                 <Heading size="sm" textTransform="uppercase">
                   Message #{dequeuedMessage.id}
