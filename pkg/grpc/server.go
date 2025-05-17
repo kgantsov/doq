@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sync"
 	"time"
 
 	"github.com/kgantsov/doq/pkg/http"
@@ -18,28 +17,13 @@ type QueueServer struct {
 	node  http.Node
 	proxy *GRPCProxy
 	port  int
-
-	queueConsumers map[string]map[uint64]chan struct{}
-	mu             sync.RWMutex
-	timerPool      sync.Pool
 }
 
 func NewQueueServer(node http.Node, port int) *QueueServer {
 	return &QueueServer{
-		node:           node,
-		port:           port,
-		queueConsumers: make(map[string]map[uint64]chan struct{}),
-		proxy:          NewGRPCProxy(nil, port),
-		timerPool: sync.Pool{
-			New: func() interface{} {
-				// Create a new timer, but immediately stop it so it can be reused.
-				t := time.NewTimer(0)
-				if !t.Stop() {
-					<-t.C // drain the channel if it was already fired
-				}
-				return t
-			},
-		},
+		node:  node,
+		port:  port,
+		proxy: NewGRPCProxy(nil, port),
 	}
 }
 
@@ -48,21 +32,6 @@ func NewGRPCServer(node http.Node, port int) (*grpc.Server, error) {
 	pb.RegisterDOQServer(grpcServer, NewQueueServer(node, port))
 
 	return grpcServer, nil
-}
-
-// Function to get a timer from the pool
-func (s *QueueServer) getTimer(duration time.Duration) *time.Timer {
-	timer := s.timerPool.Get().(*time.Timer)
-	timer.Reset(duration) // Reset it to the desired duration
-	return timer
-}
-
-// Function to put a timer back in the pool
-func (s *QueueServer) putTimer(timer *time.Timer) {
-	if !timer.Stop() {
-		<-timer.C // Drain the channel if it fired
-	}
-	s.timerPool.Put(timer)
 }
 
 // CreateQueue creates a new queue
@@ -121,8 +90,6 @@ func (s *QueueServer) Enqueue(
 		return &pb.EnqueueResponse{Success: false}, fmt.Errorf("failed to enqueue a message")
 	}
 
-	s.broadcastMessage(req.QueueName, struct{}{})
-
 	return &pb.EnqueueResponse{
 		Success:  true,
 		Id:       message.ID,
@@ -155,8 +122,6 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 		if err != nil {
 			return fmt.Errorf("failed to enqueue a message")
 		}
-
-		s.broadcastMessage(req.QueueName, struct{}{})
 
 		err = stream.Send(&pb.EnqueueResponse{
 			Success:  true,
@@ -196,113 +161,61 @@ func (s *QueueServer) Dequeue(
 	}, nil
 }
 
-// registerConsumer registers a consumer for a queue
-func (s *QueueServer) registerConsumer(queueName string, id uint64, consumerChan chan struct{}) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, ok := s.queueConsumers[queueName]; !ok {
-		s.queueConsumers[queueName] = make(map[uint64]chan struct{})
-	}
-
-	s.queueConsumers[queueName][id] = consumerChan
-}
-
-// unregisterConsumer unregisters a consumer for a queue
-func (s *QueueServer) unregisterConsumer(queueName string, id uint64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if _, ok := s.queueConsumers[queueName]; ok {
-		delete(s.queueConsumers[queueName], id)
-	}
-}
-
 // DequeueStream implements server-side streaming for dequeuing messages
-func (s *QueueServer) DequeueStream(
-	req *pb.DequeueRequest,
-	stream pb.DOQ_DequeueStreamServer,
-) error {
+func (s *QueueServer) DequeueStream(stream pb.DOQ_DequeueStreamServer) error {
 	if !s.node.IsLeader() {
-		return s.proxy.DequeueStream(req, stream, s.node.Leader())
+		return s.proxy.DequeueStream(stream, s.node.Leader())
 	}
 
-	consumerChan := make(chan struct{})
-	consumerID := s.node.GenerateID()
-	s.registerConsumer(req.QueueName, consumerID, consumerChan)
-	defer s.unregisterConsumer(req.QueueName, consumerID)
+	var queueName string
+	var ack bool
 
-	ticker := time.NewTicker(1 * time.Second)
+	req, err := stream.Recv()
+	if err != nil {
+		log.Warn().Msg("Client closed the stream or encountered an error")
+		return err
+	}
 
-	// Stream messages to the consumer
+	// Capture initial params
+	if req.QueueName != "" {
+		queueName = req.QueueName
+		ack = req.Ack
+	}
+
 	for {
 		select {
 		case <-stream.Context().Done():
-			log.Debug().Msgf("Dequeue stream for consumer %d closed", consumerID)
+			log.Info().Msgf("Dequeue stream for consumer closed")
 			return nil
-		case <-consumerChan:
-			message, err := s.node.Dequeue(req.QueueName, req.Ack)
+		default:
+			message, err := s.node.Dequeue(queueName, ack)
 			if err != nil {
+				log.Info().Err(err).Msg("Failed to dequeue message")
+
+				time.Sleep(1 * time.Second)
 				continue
 			}
 
-			err = stream.Send(
-				&pb.DequeueResponse{
-					Success:  true,
-					Id:       message.ID,
-					Group:    message.Group,
-					Priority: message.Priority,
-					Content:  message.Content,
-					Metadata: message.Metadata,
-				},
-			)
+			log.Info().Msgf("Dequeued message %d from queue %s", message.ID, queueName)
 
+			err = stream.Send(&pb.DequeueResponse{
+				Success:  true,
+				Id:       message.ID,
+				Group:    message.Group,
+				Priority: message.Priority,
+				Content:  message.Content,
+				Metadata: message.Metadata,
+			})
 			if err != nil {
+				log.Warn().Msgf("Failed to send dequeue response for consumer")
 				return err
 			}
-		case <-ticker.C:
-			for {
-				message, err := s.node.Dequeue(req.QueueName, req.Ack)
-				if err != nil {
-					break
-				}
 
-				err = stream.Send(
-					&pb.DequeueResponse{
-						Success:  true,
-						Id:       message.ID,
-						Group:    message.Group,
-						Priority: message.Priority,
-						Content:  message.Content,
-						Metadata: message.Metadata,
-					},
-				)
-
-				if err != nil {
-					log.Debug().Msgf("Failed to send dequeue response for consumer %d", consumerID)
-					return err
-				}
-			}
-		}
-	}
-}
-
-// broadcastMessage broadcasts a message to all consumers of a queue
-func (s *QueueServer) broadcastMessage(queueName string, message struct{}) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	if consumers, ok := s.queueConsumers[queueName]; ok {
-		for consumerID, consumerChan := range consumers {
-			log.Debug().Msgf("Broadcasting a message to a consumer %d", consumerID)
-
-			timer := s.getTimer(1 * time.Second)
-			select {
-			case consumerChan <- message:
-				log.Debug().Msgf("Message broadcasted to a consumer %d", consumerID)
-				s.putTimer(timer)
-			case <-timer.C:
-				log.Debug().Msgf("Failed to broadcast a message to a consumer %d", consumerID)
+			// receive the signal from the consumer that it is ready for the next message
+			req, err = stream.Recv()
+			if err != nil {
+				log.Warn().Msg("Client closed the stream or encountered an error")
+				return err
 			}
 		}
 	}

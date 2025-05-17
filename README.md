@@ -143,6 +143,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"time"
@@ -153,11 +154,22 @@ import (
 	"google.golang.org/grpc"
 )
 
+var address = ""
+var numberOfMessages = 100
+var sleepMillis = 200
+var queueName = ""
+
 func main() {
+	flag.StringVar(&address, "address", "localhost:10000", "gRPC server address")
+	flag.IntVar(&numberOfMessages, "number", 100, "Number of messages to send")
+	flag.IntVar(&sleepMillis, "sleep", 200, "Sleep time in milliseconds")
+	flag.StringVar(&queueName, "queue", "test-queue", "Queue name")
+	flag.Parse()
+
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
 	// Connect to the gRPC server (leader node)
-	conn, err := grpc.Dial("localhost:10000", grpc.WithInsecure())
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
 		log.Fatal().Msgf("Failed to connect: %v", err)
 	}
@@ -166,8 +178,8 @@ func main() {
 	client := pb.NewDOQClient(conn)
 
 	client.CreateQueue(context.Background(), &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "delayed",
+		Name: queueName,
+		Type: "fair",
 	})
 
 	// Create a stream for sending messages
@@ -177,11 +189,12 @@ func main() {
 	}
 
 	// Produce messages in a loop
-	for i := 0; i < 1000000; {
+	for i := 0; i < numberOfMessages; {
+		started := time.Now()
 		msg := &pb.EnqueueRequest{
-			QueueName: "test-queue",
+			QueueName: queueName,
 			Content:   fmt.Sprintf("Message content %d", i),
-			Group:     "default",
+			Group:     fmt.Sprintf("group_%d", 1),
 			Priority:  10,
 		}
 
@@ -195,10 +208,17 @@ func main() {
 		if err != nil {
 			log.Fatal().Msgf("Failed to receive acknowledgment: %v", err)
 		}
-		log.Info().Msgf("Sent a message %d %s Success=%v", ack.Id, ack.Content, ack.Success)
+		log.Info().
+			Uint64("id", ack.Id).
+			Str("group", ack.Group).
+			Str("took", time.Since(started).String()).
+			Msgf(
+				"Sent a message: %s",
+				ack.Content,
+			)
 
 		i++
-		// time.Sleep(200 * time.Millisecond) // Simulate delay between messages
+		time.Sleep(time.Duration(sleepMillis) * time.Millisecond) // Simulate delay between messages
 	}
 
 	// Close the stream
@@ -206,6 +226,7 @@ func main() {
 		log.Fatal().Msgf("Failed to close stream: %v", err)
 	}
 }
+
 ```
 
 Consuming messages
@@ -214,6 +235,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"time"
 
@@ -223,11 +245,21 @@ import (
 	"google.golang.org/grpc"
 )
 
+var address = ""
+var queueName = ""
+var immediateAck = false
+
 func main() {
+	flag.StringVar(&address, "address", "localhost:10000", "gRPC server address")
+	flag.StringVar(&queueName, "queue", "test-queue", "Queue name")
+	flag.BoolVar(&immediateAck, "ack", false, "Immediate ack")
+	flag.Parse()
+
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
+
 	// Connect to the gRPC server (leader node)
-	conn, err := grpc.Dial("localhost:10000", grpc.WithInsecure())
+	conn, err := grpc.Dial(address, grpc.WithInsecure())
 	if err != nil {
 		log.Fatal().Msgf("Failed to connect: %v", err)
 	}
@@ -236,10 +268,17 @@ func main() {
 	client := pb.NewDOQClient(conn)
 
 	// Open a stream to receive messages from the queue
-	stream, err := client.DequeueStream(context.Background(), &pb.DequeueRequest{
-		QueueName: "test-queue",
-		Ack:       false,
+	stream, err := client.DequeueStream(context.Background())
+	if err != nil {
+		log.Fatal().Msgf("Failed to open stream: %v", err)
+	}
+
+	// Send a request to subscribe to the queue and start receiving messages
+	err = stream.Send(&pb.DequeueRequest{
+		QueueName: queueName,
+		Ack:       immediateAck,
 	})
+
 	if err != nil {
 		log.Fatal().Msgf("Failed to open stream: %v", err)
 	}
@@ -248,20 +287,39 @@ func main() {
 	for {
 		msg, err := stream.Recv()
 		if err != nil {
-			log.Fatal().Msgf("Failed to receive message: %v", err)
+			log.Debug().Msgf("Failed to receive message: %v", err)
+			time.Sleep(1 * time.Second)
+			continue
 		}
 
-		// Process the message
-		log.Info().Msgf("Received message: ID=%d, Content=%s", msg.Id, msg.Content)
+		processTime := time.Now()
 
-		client.Ack(context.Background(), &pb.AckRequest{
-			QueueName: "test-queue",
-			Id:        msg.Id,
-		})
-		// time.Sleep(500 * time.Millisecond) // Simulate message processing time
+		// Process the message
+		log.Info().
+			Uint64("id", msg.Id).
+			Str("group", msg.Group).
+			Msgf("Received message: %s", msg.Content)
+
+		time.Sleep(10 * time.Second)
+
+		if !immediateAck {
+			client.Ack(context.Background(), &pb.AckRequest{
+				QueueName: queueName,
+				Id:        msg.Id,
+			})
+		}
+
+		elapsed := time.Since(processTime)
+		log.Info().
+			Uint64("id", msg.Id).
+			Str("group", msg.Group).
+			Str("took", elapsed.String()).
+			Msgf("Acknowledged message: %s", msg.Content)
+
+		// Signal to the server that we are ready for the next message
+		stream.Send(&pb.DequeueRequest{})
 	}
 }
-
 ```
 
 ## Backups and restores
