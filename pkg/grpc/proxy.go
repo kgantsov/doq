@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/rs/zerolog/log"
@@ -172,18 +173,26 @@ func (p *GRPCProxy) EnqueueStream(inStream pb.DOQ_EnqueueStreamServer, host stri
 	}
 }
 
-func (p *GRPCProxy) DequeueStream(req *pb.DequeueRequest, outStream pb.DOQ_DequeueStreamServer, host string) error {
+func (p *GRPCProxy) DequeueStream(outStream pb.DOQ_DequeueStreamServer, host string) error {
 	log.Debug().Msgf("PROXY DequeueStream to the leader node: %s", host)
 
 	if p.leader != host {
 		p.initClient(host)
 	}
 
-	// Open a stream to receive messages from the queue
-	inStream, err := p.client.DequeueStream(outStream.Context(), &pb.DequeueRequest{
-		QueueName: req.QueueName,
-		Ack:       false,
-	})
+	inStream, err := p.client.DequeueStream(outStream.Context())
+	if err != nil {
+		log.Error().Msgf("Failed to open stream: %v", err)
+		return err
+	}
+
+	msg, err := outStream.Recv()
+	if err != nil {
+		log.Error().Msgf("Failed to receive message: %v", err)
+		return err
+	}
+
+	err = inStream.Send(msg)
 	if err != nil {
 		log.Error().Msgf("Failed to open stream: %v", err)
 		return err
@@ -200,11 +209,19 @@ func (p *GRPCProxy) DequeueStream(req *pb.DequeueRequest, outStream pb.DOQ_Deque
 		default:
 			msg, err := inStream.Recv()
 			if err != nil {
-				log.Error().Msgf("Failed to receive message: %v", err)
-				return err
+				log.Warn().Msgf("Failed to receive message: %v", err)
+				time.Sleep(50 * time.Millisecond)
+				continue
 			}
 
 			if err := outStream.Send(msg); err != nil {
+				log.Error().Msgf("Failed to send message: %v", err)
+				return err
+			}
+
+			err = inStream.Send(&pb.DequeueRequest{})
+
+			if err != nil {
 				log.Error().Msgf("Failed to send message: %v", err)
 				return err
 			}

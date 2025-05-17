@@ -687,12 +687,14 @@ func TestEnqueuetDequeueStream(t *testing.T) {
 	assert.Nil(t, err)
 
 	// Open a dequeueStream to receive messages from the queue
-	dequeueStream, err := client.DequeueStream(
-		ctx, &pb.DequeueRequest{QueueName: "test-queue", Ack: true},
-	)
-	if err != nil {
-		t.Fatalf("Failed to open stream: %v", err)
-	}
+	dequeueStream, err := client.DequeueStream(ctx)
+	assert.Nil(t, err, "Failed to open stream")
+
+	err = dequeueStream.Send(&pb.DequeueRequest{
+		QueueName: "test-queue",
+		Ack:       true,
+	})
+	assert.Nil(t, err, "Failed to send DequeueRequest")
 
 	// Consume messages from the stream
 	for i := 1; i <= 3; i++ {
@@ -702,5 +704,7 @@ func TestEnqueuetDequeueStream(t *testing.T) {
 		}
 
 		assert.Equal(t, fmt.Sprintf("test-message-%d", i), msg.Content)
+
+		dequeueStream.Send(&pb.DequeueRequest{})
 	}
 }

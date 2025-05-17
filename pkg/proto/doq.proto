@@ -12,7 +12,7 @@ service DOQ {
     rpc EnqueueStream(stream EnqueueRequest) returns (stream EnqueueResponse) {}
 
     rpc Dequeue(DequeueRequest) returns (DequeueResponse) {}
-    rpc DequeueStream(DequeueRequest) returns (stream DequeueResponse) {}
+    rpc DequeueStream(stream DequeueRequest) returns (stream DequeueResponse) {}
 
     rpc Get(GetRequest) returns (GetResponse) {}
     rpc Delete(DeleteRequest) returns (DeleteResponse) {}
