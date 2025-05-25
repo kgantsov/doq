@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -599,4 +600,57 @@ func BenchmarkQueueDequeue(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		pq.Dequeue(true)
 	}
+}
+
+func TestFairDequeue(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	pq := NewQueue(
+		storage.NewBadgerStore(db),
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
+		nil,
+	)
+	pq.Create("fair", "test_queue")
+
+	customerMessages := map[string]int{
+		"customer-1": 100,
+		"customer-2": 50,
+		"customer-4": 30,
+		"customer-5": 10,
+	}
+
+	sent := 1
+	for customer, count := range customerMessages {
+		for i := 0; i < count; i++ {
+			m, err := pq.Enqueue(uint64(sent), customer, 1, fmt.Sprintf("content %d", i), nil)
+			assert.Nil(t, err)
+			assert.NotNil(t, m)
+
+			sent++
+		}
+	}
+
+	for i := 0; i < 10; i++ {
+		msg, err := pq.Dequeue(false)
+		assert.Nil(t, err)
+		assert.NotNil(t, msg)
+
+	}
+
+	// fmt.Printf("Dequeued message: %s %+v\n", msg.Group, pq.unackedByGroup.Items())
+
+	// assert.Equal(t, "", pq.unackedByGroup.Items())
+
+	// pq.Ack(msg.ID)
+
 }

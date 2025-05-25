@@ -118,7 +118,7 @@ func (n *testNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) 
 		return nil, errors.ErrEmptyQueue
 	}
 
-	item := q.Dequeue()
+	item := q.Dequeue(false)
 
 	message := n.messages[item.ID]
 

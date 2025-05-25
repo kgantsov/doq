@@ -3,6 +3,7 @@ package weightedavl
 import (
 	"math/rand"
 	"sync"
+	"time"
 )
 
 type node struct {
@@ -198,10 +199,21 @@ func max(a, b int) int {
 type WeightedAVL struct {
 	root *node
 	mu   sync.RWMutex
+
+	rng *rand.Rand
 }
 
 func NewWeightedAVL() *WeightedAVL {
-	return &WeightedAVL{mu: sync.RWMutex{}}
+	return &WeightedAVL{
+		mu:  sync.RWMutex{},
+		rng: rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
+}
+
+func (tree *WeightedAVL) SetRNG(rng *rand.Rand) {
+	tree.mu.Lock()
+	defer tree.mu.Unlock()
+	tree.rng = rng
 }
 
 func (tree *WeightedAVL) Update(key string, weight int) {
@@ -232,7 +244,7 @@ func (tree *WeightedAVL) Sample() string {
 		return ""
 	}
 
-	r := rand.Intn(tree.root.sum)
+	r := tree.rng.Intn(tree.root.sum)
 	return sample(tree.root, r)
 }
 
@@ -255,4 +267,21 @@ func (tree *WeightedAVL) Sum() int {
 		return 0
 	}
 	return tree.root.sum
+}
+
+func (tree *WeightedAVL) Items() map[string]int {
+	tree.mu.RLock()
+	defer tree.mu.RUnlock()
+
+	items := make(map[string]int)
+	var traverse func(n *node)
+	traverse = func(n *node) {
+		if n != nil {
+			traverse(n.left)
+			items[n.key] = n.weight
+			traverse(n.right)
+		}
+	}
+	traverse(tree.root)
+	return items
 }

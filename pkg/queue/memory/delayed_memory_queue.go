@@ -24,7 +24,7 @@ func (pq *DelayedMemoryQueue) Enqueue(group string, item *Item) {
 	heap.Push(pq.queue, item)
 }
 
-func (pq *DelayedMemoryQueue) Dequeue() *Item {
+func (pq *DelayedMemoryQueue) Dequeue(ack bool) *Item {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
@@ -69,4 +69,9 @@ func (pq *DelayedMemoryQueue) Len() uint64 {
 	defer pq.mu.RUnlock()
 
 	return uint64(pq.queue.Len())
+}
+
+func (pq *DelayedMemoryQueue) UpdateWeights(group string, id uint64) error {
+
+	return nil
 }

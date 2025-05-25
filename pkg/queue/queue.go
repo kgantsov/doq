@@ -54,10 +54,12 @@ func NewQueue(
 
 	return bpq
 }
+
 func (q *Queue) Init(queueType, queueName string) error {
 	var queue memory.MemoryQueue
 	if queueType == "fair" {
 		queue = memory.NewFairMemoryQueue()
+		// queue = memory.NewFairAckMemoryQueue()
 	} else {
 		queue = memory.NewDelayedMemoryQueue(true)
 	}
@@ -108,7 +110,7 @@ func (q *Queue) monitorAckQueue() {
 		select {
 		case <-ticker.C:
 			for {
-				item := q.ackQueue.Dequeue()
+				item := q.ackQueue.Dequeue(false)
 				if item == nil {
 					break
 				}
@@ -240,7 +242,7 @@ func (q *Queue) Dequeue(ack bool) (*entity.Message, error) {
 		return nil, errors.ErrEmptyQueue
 	}
 
-	queueItem := q.queue.Dequeue()
+	queueItem := q.queue.Dequeue(ack)
 	if queueItem == nil {
 		return nil, errors.ErrEmptyQueue
 	}
@@ -262,6 +264,10 @@ func (q *Queue) Dequeue(ack bool) (*entity.Message, error) {
 				Group: msg.Group,
 			},
 		)
+	}
+
+	if q.config.Type == "fair" && ack {
+		q.queue.UpdateWeights(msg.Group, msg.ID)
 	}
 
 	q.stats.IncrementDequeue()
@@ -326,6 +332,16 @@ func (q *Queue) Ack(id uint64) error {
 		return errors.ErrMessageNotFound
 	}
 
+	if q.config.Type == "fair" {
+		msg, err := q.Get(queueItem.ID)
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to get message by ID: %d", queueItem.ID)
+			return err
+		}
+
+		q.queue.UpdateWeights(msg.Group, msg.ID)
+	}
+
 	err := q.store.Ack(q.config.Name, queueItem.ID)
 	if err != nil {
 		return err
@@ -367,6 +383,10 @@ func (q *Queue) Nack(id uint64, priority int64, metadata map[string]string) erro
 
 	q.queue.Enqueue(message.Group, queueItem)
 	q.ackQueue.Delete("default", item.ID)
+
+	if q.config.Type == "fair" {
+		q.queue.UpdateWeights(message.Group, message.ID)
+	}
 
 	if metadata != nil {
 		err = q.store.UpdateMessage(q.config.Name, item.ID, priority, "", metadata)
