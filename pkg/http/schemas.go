@@ -39,9 +39,15 @@ type RestoreOutput struct {
 	Body   RestoreOutputBody
 }
 
+type QueueSettings struct {
+	Strategy   string `json:"strategy,omitempty" enum:"round_robin,weighted" example:"round_robin" doc:"Strategy for message distribution among consumers"`
+	MaxUnacked int    `json:"max_unacked,omitempty" minimum:"1" example:"7" doc:"Maximum expected unacknowledged messages in the queue"`
+}
+
 type CreateQueueInputBody struct {
-	Name string `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
-	Type string `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+	Name     string        `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	Type     string        `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+	Settings QueueSettings `json:"settings" doc:"Configuration of the queue"`
 }
 
 type CreateQueueInput struct {
@@ -49,9 +55,10 @@ type CreateQueueInput struct {
 }
 
 type CreateQueueOutputBody struct {
-	Status string `json:"status" example:"CREATED" doc:"Status of the create operation"`
-	Name   string `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
-	Type   string `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+	Status   string        `json:"status" example:"CREATED" doc:"Status of the create operation"`
+	Name     string        `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	Type     string        `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+	Settings QueueSettings `json:"settings" doc:"Configuration of the queue"`
 }
 
 type CreateQueueOutput struct {
@@ -208,15 +215,16 @@ type QueueInfoInput struct {
 }
 
 type QueueInfoOutputBody struct {
-	Name       string  `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
-	Type       string  `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
-	EnqueueRPS float64 `json:"enqueue_rps" doc:"Rate of enqueued messages per second"`
-	DequeueRPS float64 `json:"dequeue_rps" doc:"Rate of dequeued messages per second"`
-	AckRPS     float64 `json:"ack_rps" doc:"Rate of acknowledged messages per second"`
-	NackRPS    float64 `json:"nack_rps" doc:"Rate of unacknowledged messages per second"`
-	Ready      int64   `json:"ready" doc:"Number of ready messages"`
-	Unacked    int64   `json:"unacked" doc:"Number of unacknowledged messages"`
-	Total      int64   `json:"total" doc:"Total number of messages"`
+	Name       string        `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	Type       string        `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+	Settings   QueueSettings `json:"settings" doc:"Configuration of the queue"`
+	EnqueueRPS float64       `json:"enqueue_rps" doc:"Rate of enqueued messages per second"`
+	DequeueRPS float64       `json:"dequeue_rps" doc:"Rate of dequeued messages per second"`
+	AckRPS     float64       `json:"ack_rps" doc:"Rate of acknowledged messages per second"`
+	NackRPS    float64       `json:"nack_rps" doc:"Rate of unacknowledged messages per second"`
+	Ready      int64         `json:"ready" doc:"Number of ready messages"`
+	Unacked    int64         `json:"unacked" doc:"Number of unacknowledged messages"`
+	Total      int64         `json:"total" doc:"Total number of messages"`
 }
 
 type QueueInfoOutput struct {

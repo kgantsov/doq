@@ -6,6 +6,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -33,10 +34,10 @@ func TestNewQueueManager(t *testing.T) {
 		nil,
 	)
 
-	queue1, err := queueManager.CreateQueue("delayed", "queue_1")
+	queue1, err := queueManager.CreateQueue("delayed", "queue_1", entity.QueueSettings{})
 	assert.Nil(t, err)
 
-	queue1, err = queueManager.CreateQueue("delayed", "queue_1")
+	queue1, err = queueManager.CreateQueue("delayed", "queue_1", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	q1m1, err := queue1.Enqueue(1, "default", 10, "queue 1 message 1", nil)
@@ -44,7 +45,7 @@ func TestNewQueueManager(t *testing.T) {
 	q1m2, err := queue1.Enqueue(2, "default", 5, "queue 1 message 2", nil)
 	assert.Nil(t, err)
 
-	queue2, err := queueManager.CreateQueue("delayed", "queue_2")
+	queue2, err := queueManager.CreateQueue("delayed", "queue_2", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	_, err = queue2.Enqueue(1, "default", 20, "queue 2 message 1", nil)
@@ -100,10 +101,10 @@ func TestQueueManagerGetQueue(t *testing.T) {
 		nil,
 	)
 
-	queue1, err := queueManager.CreateQueue("delayed", "queue_1")
+	queue1, err := queueManager.CreateQueue("delayed", "queue_1", entity.QueueSettings{})
 	assert.Nil(t, err)
 
-	queue2, err := queueManager.CreateQueue("delayed", "queue_2")
+	queue2, err := queueManager.CreateQueue("delayed", "queue_2", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	queue1, err = queueManager.GetQueue("queue_1")
@@ -168,10 +169,10 @@ func TestQueueManagerGetQueues(t *testing.T) {
 		nil,
 	)
 
-	_, err = queueManager.CreateQueue("delayed", "queue_1")
+	_, err = queueManager.CreateQueue("delayed", "queue_1", entity.QueueSettings{})
 	assert.Nil(t, err)
 
-	_, err = queueManager.CreateQueue("delayed", "queue_2")
+	_, err = queueManager.CreateQueue("delayed", "queue_2", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	queues := queueManager.GetQueues()

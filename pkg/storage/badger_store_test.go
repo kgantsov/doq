@@ -21,7 +21,7 @@ func TestBadgerStore(t *testing.T) {
 
 	queueName := "test-queue"
 
-	err = store.CreateQueue("delayed", queueName)
+	err = store.CreateQueue("delayed", queueName, entity.QueueSettings{})
 	assert.NoError(t, err)
 
 	message, err := store.Enqueue(queueName, 534654, "default", 555, "test-message", map[string]string{})
@@ -77,7 +77,7 @@ func TestBadgerStoreDeleteMessage(t *testing.T) {
 
 	queueName := "test-queue"
 
-	err = store.CreateQueue("delayed", queueName)
+	err = store.CreateQueue("delayed", queueName, entity.QueueSettings{})
 	assert.NoError(t, err)
 
 	message, err := store.Enqueue(queueName, 534654, "default", 555, "test-message", map[string]string{})
@@ -150,7 +150,7 @@ func TestBadgerStorePersistSnapshot(t *testing.T) {
 
 	queueName := "test-queue"
 
-	err = store.CreateQueue("delayed", queueName)
+	err = store.CreateQueue("delayed", queueName, entity.QueueSettings{})
 	assert.NoError(t, err)
 
 	message, err := store.Enqueue(queueName, 534654, "default", 555, "test-message", map[string]string{})

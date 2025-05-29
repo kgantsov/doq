@@ -8,6 +8,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
@@ -64,7 +65,7 @@ func TestQueue(t *testing.T) {
 				}},
 				nil,
 			)
-			pq.Create("delayed", "test_queue")
+			pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 			for i, m := range tt.messages {
 				pq.Enqueue(uint64(i+1), "default", m.Priority, m.Content, m.Metadata)
@@ -105,7 +106,7 @@ func TestQueueEmptyQueue(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue_stored")
+	pq.Create("delayed", "test_queue_stored", entity.QueueSettings{})
 
 	m, err := pq.Dequeue(true)
 	assert.EqualError(t, err, errors.ErrEmptyQueue.Error())
@@ -131,7 +132,7 @@ func TestQueueLoad(t *testing.T) {
 		}},
 		nil,
 	)
-	err = pq.Create("delayed", "test_queue")
+	err = pq.Create("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
@@ -174,7 +175,7 @@ func TestQueueDeleteQueue(t *testing.T) {
 		}},
 		nil,
 	)
-	err = pq.Create("delayed", "test_queue")
+	err = pq.Create("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
@@ -207,7 +208,7 @@ func TestQueueDelete(t *testing.T) {
 		}},
 		nil,
 	)
-	err = pq.Create("delayed", "test_queue")
+	err = pq.Create("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
@@ -243,7 +244,7 @@ func TestQueueChangePriority(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue")
+	pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "1"})
 	assert.Nil(t, err)
@@ -351,7 +352,7 @@ func TestQueueDelayedMessage(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue_1")
+	pq.Create("delayed", "test_queue_1", entity.QueueSettings{})
 
 	priority := time.Now().UTC().Add(1 * time.Second).Unix()
 	m1, err := pq.Enqueue(1, "default", priority, "delayed message 1", map[string]string{})
@@ -392,7 +393,7 @@ func TestQueueAck(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue")
+	pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
@@ -466,7 +467,7 @@ func TestQueueNack(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue")
+	pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
@@ -564,7 +565,7 @@ func BenchmarkQueueEnqueue(b *testing.B) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue")
+	pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
@@ -588,7 +589,7 @@ func BenchmarkQueueDequeue(b *testing.B) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue")
+	pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
@@ -620,7 +621,7 @@ func TestFairDequeue(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("fair", "test_queue")
+	pq.Create("fair", "test_queue", entity.QueueSettings{})
 
 	customerMessages := map[string]int{
 		"customer-1": 100,

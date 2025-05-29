@@ -6,6 +6,7 @@ import (
 
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/storage"
@@ -43,7 +44,7 @@ func (qm *QueueManager) PersistSnapshot(sink raft.SnapshotSink) error {
 	return nil
 }
 
-func (qm *QueueManager) CreateQueue(queueType, queueName string) (*Queue, error) {
+func (qm *QueueManager) CreateQueue(queueType, queueName string, settings entity.QueueSettings) (*Queue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()
 
@@ -53,7 +54,7 @@ func (qm *QueueManager) CreateQueue(queueType, queueName string) (*Queue, error)
 	}
 
 	q = NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
-	err := q.Create(queueType, queueName)
+	err := q.Create(queueType, queueName, settings)
 
 	if err != nil {
 		return nil, err

@@ -2,7 +2,6 @@ package memory
 
 import (
 	"container/heap"
-	"math"
 	"sync"
 
 	avl "github.com/kgantsov/doq/pkg/weighted_avl"
@@ -10,22 +9,29 @@ import (
 )
 
 type FairAckMemoryQueue struct {
+	maxUnacked int
+
 	weights        *avl.WeightedAVL
 	unackedByGroup map[string]int
 	queues         map[string]*PriorityMemoryQueue
 	mu             sync.Mutex
 }
 
-func CalculateWeight(consumers int, unacked int) int {
-	n := (1 - float64(unacked)/float64(consumers)) * 10
-	return int(math.Max(1, n))
+// CalculateWeight calculates the weight for a group based on the number of unacked items.
+func CalculateWeight(maxUnacked int, unacked int) int {
+	if unacked > maxUnacked {
+		return 0
+	}
+	n := (1 - float64(unacked)/float64(maxUnacked)) * 10
+	return int(n)
 }
 
-func NewFairAckMemoryQueue() *FairAckMemoryQueue {
+func NewFairAckMemoryQueue(maxUnacked int) *FairAckMemoryQueue {
 	return &FairAckMemoryQueue{
 		weights:        avl.NewWeightedAVL(),
 		queues:         make(map[string]*PriorityMemoryQueue),
 		unackedByGroup: make(map[string]int),
+		maxUnacked:     maxUnacked,
 	}
 }
 
@@ -35,7 +41,7 @@ func (q *FairAckMemoryQueue) Enqueue(group string, item *Item) {
 
 	if _, ok := q.queues[group]; !ok {
 		q.queues[group] = NewPriorityMemoryQueue(true)
-		q.weights.Update(group, CalculateWeight(10, 0))
+		q.weights.Update(group, CalculateWeight(q.maxUnacked, 0))
 	}
 
 	heap.Push(q.queues[group], item)
@@ -57,8 +63,8 @@ func (q *FairAckMemoryQueue) Dequeue(ack bool) *Item {
 		return nil
 	}
 
-	log.Info().Msgf(
-		"-----> Dequeue %+v ::: %+v ====> %s %d",
+	log.Debug().Msgf(
+		"Dequeue %+v ::: %+v ====> %s %d",
 		q.unackedByGroup,
 		q.weights.Items(),
 		selectedGroup,
@@ -93,7 +99,9 @@ func (q *FairAckMemoryQueue) Dequeue(ack bool) *Item {
 
 	if !ack {
 		q.unackedByGroup[selectedGroup]++
-		q.weights.Update(selectedGroup, CalculateWeight(10, q.unackedByGroup[selectedGroup]))
+		q.weights.Update(
+			selectedGroup, CalculateWeight(q.maxUnacked, q.unackedByGroup[selectedGroup]),
+		)
 	}
 
 	return item
@@ -163,7 +171,7 @@ func (q *FairAckMemoryQueue) UpdateWeights(group string, id uint64) error {
 	}
 
 	q.unackedByGroup[group]--
-	q.weights.Update(group, CalculateWeight(10, q.unackedByGroup[group]))
+	q.weights.Update(group, CalculateWeight(q.maxUnacked, q.unackedByGroup[group]))
 
 	return nil
 }

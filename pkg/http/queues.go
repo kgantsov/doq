@@ -5,11 +5,13 @@ import (
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/kgantsov/doq/pkg/entity"
 )
 
 func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*CreateQueueOutput, error) {
 	queueName := input.Body.Name
 	queueType := input.Body.Type
+	queueSettings := input.Body.Settings
 
 	if !h.node.IsLeader() {
 		respBody, err := h.proxy.CreateQueue(ctx, h.node.Leader(), &input.Body)
@@ -24,7 +26,10 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 		return res, nil
 	}
 
-	err := h.node.CreateQueue(queueType, queueName)
+	err := h.node.CreateQueue(queueType, queueName, entity.QueueSettings{
+		Strategy:   queueSettings.Strategy,
+		MaxUnacked: queueSettings.MaxUnacked,
+	})
 
 	if err != nil {
 		return nil, huma.Error409Conflict("Failed to enqueue a message", err)
@@ -113,8 +118,12 @@ func (h *Handler) QueueInfo(ctx context.Context, input *QueueInfoInput) (*QueueI
 	res := &QueueInfoOutput{
 		Status: http.StatusOK,
 		Body: QueueInfoOutputBody{
-			Name:       queueName,
-			Type:       queueInfo.Type,
+			Name: queueName,
+			Type: queueInfo.Type,
+			Settings: QueueSettings{
+				Strategy:   queueInfo.Settings.Strategy,
+				MaxUnacked: queueInfo.Settings.MaxUnacked,
+			},
 			EnqueueRPS: queueInfo.Stats.EnqueueRPS,
 			DequeueRPS: queueInfo.Stats.DequeueRPS,
 			AckRPS:     queueInfo.Stats.AckRPS,
