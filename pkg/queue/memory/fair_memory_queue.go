@@ -99,7 +99,7 @@ func (fq *FairMemoryQueue) Enqueue(group string, item *Item) {
 }
 
 // Dequeue removes and returns the next message in a fair way
-func (fq *FairMemoryQueue) Dequeue() *Item {
+func (fq *FairMemoryQueue) Dequeue(ack bool) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -175,4 +175,8 @@ func (fq *FairMemoryQueue) Len() uint64 {
 	defer fq.mu.RUnlock()
 
 	return fq.totalMessages
+}
+
+func (fq *FairMemoryQueue) UpdateWeights(group string, id uint64) error {
+	return nil
 }

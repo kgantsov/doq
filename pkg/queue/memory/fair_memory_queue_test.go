@@ -131,7 +131,7 @@ func TestFairMemoryQueueSingleCustomer(t *testing.T) {
 					message := fq.Get(expectedMessage.group, expectedMessage.item.ID)
 					assert.Equal(t, expectedMessage.item.ID, message.ID)
 
-					assert.Equal(t, expectedMessage.item.ID, fq.Dequeue().ID)
+					assert.Equal(t, expectedMessage.item.ID, fq.Dequeue(true).ID)
 					assert.Nil(t, fq.Get(expectedMessage.group, expectedMessage.item.ID))
 				}
 			}
@@ -148,8 +148,8 @@ func TestFairMemoryQueueDelete(t *testing.T) {
 
 	fq.Delete("customer1", 1)
 
-	assert.Equal(t, uint64(4), fq.Dequeue().ID)
-	assert.Equal(t, uint64(5), fq.Dequeue().ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
 }
 
 func TestFairMemoryQueueUpdatePriority(t *testing.T) {
@@ -161,9 +161,9 @@ func TestFairMemoryQueueUpdatePriority(t *testing.T) {
 
 	fq.UpdatePriority("customer1", 1, 20)
 
-	assert.Equal(t, uint64(4), fq.Dequeue().ID)
-	assert.Equal(t, uint64(5), fq.Dequeue().ID)
-	assert.Equal(t, uint64(1), fq.Dequeue().ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
 }
 
 func TestFairMemoryQueue(t *testing.T) {
@@ -180,16 +180,16 @@ func TestFairMemoryQueue(t *testing.T) {
 	fq.Enqueue("customer4", &Item{ID: 9, Priority: 10})
 	fq.Enqueue("customer5", &Item{ID: 10, Priority: 10})
 
-	assert.Equal(t, uint64(1), fq.Dequeue().ID)
-	assert.Equal(t, uint64(5), fq.Dequeue().ID)
-	assert.Equal(t, uint64(7), fq.Dequeue().ID)
-	assert.Equal(t, uint64(9), fq.Dequeue().ID)
-	assert.Equal(t, uint64(10), fq.Dequeue().ID)
-	assert.Equal(t, uint64(2), fq.Dequeue().ID)
-	assert.Equal(t, uint64(6), fq.Dequeue().ID)
-	assert.Equal(t, uint64(8), fq.Dequeue().ID)
-	assert.Equal(t, uint64(3), fq.Dequeue().ID)
-	assert.Equal(t, uint64(4), fq.Dequeue().ID)
+	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(7), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(9), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(10), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(2), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(6), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(8), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(3), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
 }
 
 func TestFairMemoryQueue1(t *testing.T) {
@@ -199,10 +199,10 @@ func TestFairMemoryQueue1(t *testing.T) {
 	fq.Enqueue("customer1", &Item{ID: 2, Priority: 10})
 	fq.Enqueue("customer2", &Item{ID: 3, Priority: 10})
 
-	assert.Equal(t, uint64(1), fq.Dequeue().ID)
-	assert.Equal(t, uint64(3), fq.Dequeue().ID)
-	assert.Equal(t, uint64(2), fq.Dequeue().ID)
-	assert.Nil(t, fq.Dequeue())
+	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(3), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(2), fq.Dequeue(true).ID)
+	assert.Nil(t, fq.Dequeue(true))
 }
 
 func BenchmarkFairMemoryQueueEnqueue(b *testing.B) {
@@ -225,6 +225,6 @@ func BenchmarkFairMemoryQueueDequeue(b *testing.B) {
 	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing
 
 	for i := 0; i < b.N; i++ {
-		fq.Dequeue()
+		fq.Dequeue(true)
 	}
 }

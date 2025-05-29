@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,8 +28,9 @@ func TestCreateDeleteQueue(t *testing.T) {
 	}
 
 	resp := api.Post("/API/v1/queues", map[string]any{
-		"name": "my-queue",
-		"type": "delayed",
+		"name":     "my-queue",
+		"type":     "delayed",
+		"settings": map[string]any{},
 	})
 
 	createQueueOutput := &CreateQueueOutputBody{}
@@ -82,11 +84,12 @@ func TestCreateQueueProxy(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "my-queue")
+	h.node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
 
 	resp := api.Post("/API/v1/queues", map[string]any{
-		"name": "user_indexing_queue",
-		"type": "delayed",
+		"name":     "user_indexing_queue",
+		"type":     "delayed",
+		"settings": map[string]any{},
 	})
 
 	output := &CreateQueueOutputBody{}
@@ -129,7 +132,7 @@ func TestDeleteQueueProxy(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "my-queue")
+	h.node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
 
 	resp := api.Delete("/API/v1/queues/user_indexing_queue")
 
@@ -149,7 +152,7 @@ func TestGetQueues(t *testing.T) {
 	}
 	h.RegisterRoutes(api)
 
-	h.node.CreateQueue("delayed", "test-queue-1")
+	h.node.CreateQueue("delayed", "test-queue-1", entity.QueueSettings{})
 	// h.node.CreateQueue("delayed", "test-queue-2")
 	// h.node.CreateQueue("delayed", "test-queue-66")
 
@@ -186,8 +189,8 @@ func TestGetQueue(t *testing.T) {
 	}
 	h.RegisterRoutes(api)
 
-	h.node.CreateQueue("delayed", "test-queue-1")
-	h.node.CreateQueue("delayed", "test-queue-2")
+	h.node.CreateQueue("delayed", "test-queue-1", entity.QueueSettings{})
+	h.node.CreateQueue("delayed", "test-queue-2", entity.QueueSettings{})
 
 	type ErrorOutput struct {
 		Title  string `json:"title"`

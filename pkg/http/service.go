@@ -40,7 +40,7 @@ type Node interface {
 	Leader() string
 	IsLeader() bool
 	GenerateID() uint64
-	CreateQueue(queueType, queueName string) error
+	CreateQueue(queueType, queueName string, settings entity.QueueSettings) error
 	DeleteQueue(queueName string) error
 	GetQueues() []*queue.QueueInfo
 	GetQueueInfo(queueName string) (*queue.QueueInfo, error)

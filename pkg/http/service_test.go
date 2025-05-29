@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +23,7 @@ func TestNew(t *testing.T) {
 
 	node := newTestNode("", true)
 	service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
-	node.CreateQueue("delayed", "my-queue")
+	node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.router)

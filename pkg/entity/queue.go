@@ -2,9 +2,15 @@ package entity
 
 import "encoding/json"
 
+type QueueSettings struct {
+	Strategy   string `json:"strategy,omitempty"`
+	MaxUnacked int    `json:"max_unacked,omitempty"`
+}
+
 type QueueConfig struct {
-	Name string
-	Type string
+	Name     string
+	Type     string
+	Settings QueueSettings
 }
 
 func (qc *QueueConfig) ToBytes() ([]byte, error) {

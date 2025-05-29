@@ -8,6 +8,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -56,7 +57,7 @@ func TestNodeSingleNode(t *testing.T) {
 	queues := n.GetQueues()
 	assert.Equal(t, 0, len(queues))
 
-	err = n.CreateQueue("delayed", "test_queue")
+	err = n.CreateQueue("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	queues = n.GetQueues()
@@ -222,7 +223,7 @@ func TestNodeSingleNodeAck(t *testing.T) {
 
 	// Simple way to ensure there is a leader.
 	time.Sleep(3 * time.Second)
-	err = n.CreateQueue("delayed", "test_queue")
+	err = n.CreateQueue("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	assert.True(t, n.IsLeader())
@@ -279,7 +280,7 @@ func TestNodeSingleNodeNack(t *testing.T) {
 
 	// Simple way to ensure there is a leader.
 	time.Sleep(3 * time.Second)
-	err = n.CreateQueue("delayed", "test_queue")
+	err = n.CreateQueue("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	assert.True(t, n.IsLeader())
@@ -342,7 +343,7 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 
 	// Simple way to ensure there is a leader.
 	time.Sleep(3 * time.Second)
-	err = n.CreateQueue("delayed", "test_queue")
+	err = n.CreateQueue("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	assert.True(t, n.IsLeader())
@@ -437,7 +438,7 @@ func TestBackupRestore(t *testing.T) {
 	queues := n.GetQueues()
 	assert.Equal(t, 0, len(queues))
 
-	err = n.CreateQueue("delayed", "test_queue")
+	err = n.CreateQueue("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	queues = n.GetQueues()
