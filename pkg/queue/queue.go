@@ -288,10 +288,6 @@ func (q *Queue) Dequeue(ack bool) (*entity.Message, error) {
 		)
 	}
 
-	if q.config.Type == "fair" && ack {
-		q.queue.UpdateWeights(msg.Group, msg.ID)
-	}
-
 	q.stats.IncrementDequeue()
 	if q.cfg.Prometheus.Enabled {
 		q.PrometheusMetrics.DequeueTotal.With(prometheus.Labels{"queue_name": q.config.Name}).Inc()
@@ -405,10 +401,6 @@ func (q *Queue) Nack(id uint64, priority int64, metadata map[string]string) erro
 
 	q.queue.Enqueue(message.Group, queueItem)
 	q.ackQueue.Delete("default", item.ID)
-
-	if q.config.Type == "fair" {
-		q.queue.UpdateWeights(message.Group, message.ID)
-	}
 
 	if metadata != nil {
 		err = q.store.UpdateMessage(q.config.Name, item.ID, priority, "", metadata)

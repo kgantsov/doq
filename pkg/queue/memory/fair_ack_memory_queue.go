@@ -17,13 +17,19 @@ type FairAckMemoryQueue struct {
 	mu             sync.Mutex
 }
 
-// CalculateWeight calculates the weight for a group based on the number of unacked items.
-func CalculateWeight(maxUnacked int, unacked int) int {
+// CalculateWeight calculates the weight for a group based on unacked items and queue size.
+func CalculateWeight(maxUnacked int, unacked int, queueSize int) int {
+	if queueSize == 0 || maxUnacked == 0 {
+		return 0
+	}
 	if unacked > maxUnacked {
 		return 0
 	}
-	n := (1 - float64(unacked)/float64(maxUnacked)) * 10
-	return int(n)
+	unackedFactor := 1 - float64(unacked)/float64(maxUnacked)
+	queueSizeFactor := float64(1)
+	// queueSizeFactor := float64(queueSize) / float64(queueSize+unacked) // Optional: normalizes queue size impact
+	weight := unackedFactor * queueSizeFactor * 10
+	return int(weight)
 }
 
 func NewFairAckMemoryQueue(maxUnacked int) *FairAckMemoryQueue {
@@ -41,10 +47,14 @@ func (q *FairAckMemoryQueue) Enqueue(group string, item *Item) {
 
 	if _, ok := q.queues[group]; !ok {
 		q.queues[group] = NewPriorityMemoryQueue(true)
-		q.weights.Update(group, CalculateWeight(q.maxUnacked, 0))
 	}
 
 	heap.Push(q.queues[group], item)
+
+	q.weights.Update(
+		group,
+		CalculateWeight(q.maxUnacked, q.unackedByGroup[group], q.queues[group].Len()),
+	)
 }
 
 func (q *FairAckMemoryQueue) Dequeue(ack bool) *Item {
@@ -63,7 +73,7 @@ func (q *FairAckMemoryQueue) Dequeue(ack bool) *Item {
 		return nil
 	}
 
-	log.Debug().Msgf(
+	log.Info().Msgf(
 		"Dequeue %+v ::: %+v ====> %s %d",
 		q.unackedByGroup,
 		q.weights.Items(),
@@ -71,38 +81,22 @@ func (q *FairAckMemoryQueue) Dequeue(ack bool) *Item {
 		q.weights.Sum(),
 	)
 
-	if _, ok := q.queues[selectedGroup]; !ok {
-		log.Info().Msgf("No queue for group %s", selectedGroup)
-		if _, ok := q.unackedByGroup[selectedGroup]; ok {
-			delete(q.unackedByGroup, selectedGroup)
-			q.weights.Remove(selectedGroup)
-
-			selectedGroup = q.weights.Sample()
-			if selectedGroup == "" {
-				log.Info().Msgf("No group selected")
-				return nil
-			}
-		}
-		return nil
-	}
-
 	item := heap.Pop(q.queues[selectedGroup]).(*Item)
 	if item == nil {
 		log.Info().Msgf("No item in queue for group %s", selectedGroup)
 		return nil
 	}
 
-	if q.queues[selectedGroup].Len() == 0 {
-		delete(q.queues, selectedGroup)
-		q.weights.Remove(selectedGroup)
-	}
-
 	if !ack {
 		q.unackedByGroup[selectedGroup]++
-		q.weights.Update(
-			selectedGroup, CalculateWeight(q.maxUnacked, q.unackedByGroup[selectedGroup]),
-		)
 	}
+
+	q.weights.Update(
+		selectedGroup,
+		CalculateWeight(
+			q.maxUnacked, q.unackedByGroup[selectedGroup], q.queues[selectedGroup].Len(),
+		),
+	)
 
 	return item
 }
@@ -171,7 +165,19 @@ func (q *FairAckMemoryQueue) UpdateWeights(group string, id uint64) error {
 	}
 
 	q.unackedByGroup[group]--
-	q.weights.Update(group, CalculateWeight(q.maxUnacked, q.unackedByGroup[group]))
+
+	q.weights.Update(
+		group,
+		CalculateWeight(
+			q.maxUnacked, q.unackedByGroup[group], q.queues[group].Len(),
+		),
+	)
+
+	if q.unackedByGroup[group] <= 0 {
+		delete(q.unackedByGroup, group)
+		delete(q.queues, group)
+		q.weights.Remove(group)
+	}
 
 	return nil
 }
