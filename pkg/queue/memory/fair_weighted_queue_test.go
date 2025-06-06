@@ -73,8 +73,8 @@ func TestCalculateWeight(t *testing.T) {
 	}
 }
 
-func TestFairAckMemoryQueueBasic(t *testing.T) {
-	queue := NewFairAckMemoryQueue(8)
+func TestFairWeightedQueueBasic(t *testing.T) {
+	queue := NewFairWeightedQueue(8)
 
 	// Test empty queue
 	assert.Equal(t, uint64(0), queue.Len())
@@ -90,8 +90,8 @@ func TestFairAckMemoryQueueBasic(t *testing.T) {
 	assert.Equal(t, uint64(0), queue.Len())
 }
 
-func TestFairAckMemoryQueueTTTT(t *testing.T) {
-	queue := NewFairAckMemoryQueue(8)
+func TestFairWeightedQueueTTTT(t *testing.T) {
+	queue := NewFairWeightedQueue(8)
 	customerMessages := map[string]int{
 		"customer-1": 10,
 		"customer-2": 5,
@@ -125,8 +125,8 @@ func TestFairAckMemoryQueueTTTT(t *testing.T) {
 	assert.Equal(t, uint64(2), queue.Len())
 }
 
-func TestFairAckMemoryQueueMultipleGroups(t *testing.T) {
-	queue := NewFairAckMemoryQueue(9)
+func TestFairWeightedQueueMultipleGroups(t *testing.T) {
+	queue := NewFairWeightedQueue(9)
 
 	// Enqueue items for multiple groups
 	queue.Enqueue("group1", &Item{ID: 1, Priority: 10})
@@ -158,8 +158,8 @@ func TestFairAckMemoryQueueMultipleGroups(t *testing.T) {
 	assert.Equal(t, uint64(0), queue.Len())
 }
 
-func TestFairAckMemoryQueueUnackedHandling(t *testing.T) {
-	queue := NewFairAckMemoryQueue(8)
+func TestFairWeightedQueueUnackedHandling(t *testing.T) {
+	queue := NewFairWeightedQueue(8)
 
 	// Enqueue items for two groups
 	queue.Enqueue("group1", &Item{ID: 1, Priority: 10})
@@ -200,8 +200,8 @@ func TestFairAckMemoryQueueUnackedHandling(t *testing.T) {
 	assert.True(t, items[4])
 }
 
-func TestFairAckMemoryQueuePriority(t *testing.T) {
-	queue := NewFairAckMemoryQueue(8)
+func TestFairWeightedQueuePriority(t *testing.T) {
+	queue := NewFairWeightedQueue(8)
 
 	// Enqueue items with different priorities within the same group
 	queue.Enqueue("group1", &Item{ID: 1, Priority: 30})
@@ -223,8 +223,8 @@ func TestFairAckMemoryQueuePriority(t *testing.T) {
 	assert.Equal(t, uint64(1), item3.ID) // Priority 30
 }
 
-func TestFairAckMemoryQueueGetAndDelete(t *testing.T) {
-	queue := NewFairAckMemoryQueue(8)
+func TestFairWeightedQueueGetAndDelete(t *testing.T) {
+	queue := NewFairWeightedQueue(8)
 
 	// Enqueue items
 	queue.Enqueue("group1", &Item{ID: 1, Priority: 10})
@@ -255,8 +255,8 @@ func TestFairAckMemoryQueueGetAndDelete(t *testing.T) {
 	assert.Nil(t, deletedItem)
 }
 
-func TestFairAckMemoryQueueUpdatePriority(t *testing.T) {
-	queue := NewFairAckMemoryQueue(8)
+func TestFairWeightedQueueUpdatePriority(t *testing.T) {
+	queue := NewFairWeightedQueue(8)
 
 	// Enqueue items
 	queue.Enqueue("group1", &Item{ID: 1, Priority: 10})
@@ -277,8 +277,8 @@ func TestFairAckMemoryQueueUpdatePriority(t *testing.T) {
 	assert.Equal(t, uint64(1), item2.ID) // Updated priority 30
 }
 
-func TestFairAckMemoryQueueMaxUnacked(t *testing.T) {
-	queue := NewFairAckMemoryQueue(2) // Set max unacked to 2
+func TestFairWeightedQueueMaxUnacked(t *testing.T) {
+	queue := NewFairWeightedQueue(2) // Set max unacked to 2
 
 	// Enqueue items for a single group
 	queue.Enqueue("group1", &Item{ID: 1, Priority: 10})

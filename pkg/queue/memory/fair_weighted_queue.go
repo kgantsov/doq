@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type FairAckMemoryQueue struct {
+type FairWeightedQueue struct {
 	maxUnacked int
 
 	weights        *avl.WeightedAVL
@@ -32,8 +32,8 @@ func CalculateWeight(maxUnacked int, unacked int, queueSize int) int {
 	return int(weight)
 }
 
-func NewFairAckMemoryQueue(maxUnacked int) *FairAckMemoryQueue {
-	return &FairAckMemoryQueue{
+func NewFairWeightedQueue(maxUnacked int) *FairWeightedQueue {
+	return &FairWeightedQueue{
 		weights:        avl.NewWeightedAVL(),
 		queues:         make(map[string]*PriorityMemoryQueue),
 		unackedByGroup: make(map[string]int),
@@ -41,7 +41,7 @@ func NewFairAckMemoryQueue(maxUnacked int) *FairAckMemoryQueue {
 	}
 }
 
-func (q *FairAckMemoryQueue) Enqueue(group string, item *Item) {
+func (q *FairWeightedQueue) Enqueue(group string, item *Item) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -57,7 +57,7 @@ func (q *FairAckMemoryQueue) Enqueue(group string, item *Item) {
 	)
 }
 
-func (q *FairAckMemoryQueue) Dequeue(ack bool) *Item {
+func (q *FairWeightedQueue) Dequeue(ack bool) *Item {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -101,7 +101,7 @@ func (q *FairAckMemoryQueue) Dequeue(ack bool) *Item {
 	return item
 }
 
-func (q *FairAckMemoryQueue) Get(group string, id uint64) *Item {
+func (q *FairWeightedQueue) Get(group string, id uint64) *Item {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -112,7 +112,7 @@ func (q *FairAckMemoryQueue) Get(group string, id uint64) *Item {
 	return q.queues[group].Get(id)
 }
 
-func (q *FairAckMemoryQueue) Delete(group string, id uint64) *Item {
+func (q *FairWeightedQueue) Delete(group string, id uint64) *Item {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -134,7 +134,7 @@ func (q *FairAckMemoryQueue) Delete(group string, id uint64) *Item {
 	return item
 }
 
-func (q *FairAckMemoryQueue) UpdatePriority(group string, id uint64, priority int64) {
+func (q *FairWeightedQueue) UpdatePriority(group string, id uint64, priority int64) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -145,7 +145,7 @@ func (q *FairAckMemoryQueue) UpdatePriority(group string, id uint64, priority in
 	q.queues[group].UpdatePriority(id, priority)
 }
 
-func (q *FairAckMemoryQueue) Len() uint64 {
+func (q *FairWeightedQueue) Len() uint64 {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -156,7 +156,7 @@ func (q *FairAckMemoryQueue) Len() uint64 {
 	return total
 }
 
-func (q *FairAckMemoryQueue) UpdateWeights(group string, id uint64) error {
+func (q *FairWeightedQueue) UpdateWeights(group string, id uint64) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

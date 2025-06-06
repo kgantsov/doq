@@ -63,8 +63,8 @@ func (l *LinkedList) Len() uint64 {
 	return l.total
 }
 
-// FairMemoryQueue is a fair queue that balances between different groups
-type FairMemoryQueue struct {
+// FairRoundRobinQueue is a fair queue that balances between different groups
+type FairRoundRobinQueue struct {
 	queues      map[string]*LinkedListNode
 	roundRobin  *LinkedList
 	currentNone *LinkedListNode
@@ -74,8 +74,8 @@ type FairMemoryQueue struct {
 }
 
 // FairQueue creates a new FairQueue
-func NewFairMemoryQueue() *FairMemoryQueue {
-	return &FairMemoryQueue{
+func NewFairRoundRobinQueue() *FairRoundRobinQueue {
+	return &FairRoundRobinQueue{
 		queues:      make(map[string]*LinkedListNode),
 		roundRobin:  &LinkedList{},
 		currentNone: nil,
@@ -83,7 +83,7 @@ func NewFairMemoryQueue() *FairMemoryQueue {
 }
 
 // Enqueue adds a message to the queue
-func (fq *FairMemoryQueue) Enqueue(group string, item *Item) {
+func (fq *FairRoundRobinQueue) Enqueue(group string, item *Item) {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -99,7 +99,7 @@ func (fq *FairMemoryQueue) Enqueue(group string, item *Item) {
 }
 
 // Dequeue removes and returns the next message in a fair way
-func (fq *FairMemoryQueue) Dequeue(ack bool) *Item {
+func (fq *FairRoundRobinQueue) Dequeue(ack bool) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -134,7 +134,7 @@ func (fq *FairMemoryQueue) Dequeue(ack bool) *Item {
 	return item
 }
 
-func (fq *FairMemoryQueue) Get(group string, id uint64) *Item {
+func (fq *FairRoundRobinQueue) Get(group string, id uint64) *Item {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
 
@@ -145,7 +145,7 @@ func (fq *FairMemoryQueue) Get(group string, id uint64) *Item {
 	return fq.queues[group].Queue().Get(id)
 }
 
-func (fq *FairMemoryQueue) Delete(group string, id uint64) *Item {
+func (fq *FairRoundRobinQueue) Delete(group string, id uint64) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -159,7 +159,7 @@ func (fq *FairMemoryQueue) Delete(group string, id uint64) *Item {
 	return item
 }
 
-func (fq *FairMemoryQueue) UpdatePriority(group string, id uint64, priority int64) {
+func (fq *FairRoundRobinQueue) UpdatePriority(group string, id uint64, priority int64) {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -170,13 +170,13 @@ func (fq *FairMemoryQueue) UpdatePriority(group string, id uint64, priority int6
 	fq.queues[group].Queue().UpdatePriority(id, priority)
 }
 
-func (fq *FairMemoryQueue) Len() uint64 {
+func (fq *FairRoundRobinQueue) Len() uint64 {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
 
 	return fq.totalMessages
 }
 
-func (fq *FairMemoryQueue) UpdateWeights(group string, id uint64) error {
+func (fq *FairRoundRobinQueue) UpdateWeights(group string, id uint64) error {
 	return nil
 }

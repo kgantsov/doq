@@ -49,7 +49,7 @@ func NewQueue(
 	bpq := &Queue{
 		store:             store,
 		cfg:               cfg,
-		ackQueue:          memory.NewDelayedMemoryQueue(false),
+		ackQueue:          memory.NewDelayedQueue(false),
 		PrometheusMetrics: promMetrics,
 		stats:             metrics.NewQueueStats(cfg.Queue.QueueStats.WindowSide),
 	}
@@ -67,17 +67,17 @@ func (q *Queue) Init(queueType, queueName string, settings entity.QueueSettings)
 		switch strings.ToUpper(settings.Strategy) {
 		case "ROUND_ROBIN", "":
 			log.Info().Msg("Using round-robin strategy for fair queue")
-			queue = memory.NewFairMemoryQueue()
+			queue = memory.NewFairRoundRobinQueue()
 		case "WEIGHTED":
 			log.Info().Msg("Using weighted strategy for fair queue")
-			queue = memory.NewFairAckMemoryQueue(settings.MaxUnacked)
+			queue = memory.NewFairWeightedQueue(settings.MaxUnacked)
 		default:
 			log.Warn().Msgf("Unknown fair queue strategy: %s, defaulting to round-robin", settings.Strategy)
-			queue = memory.NewFairMemoryQueue()
+			queue = memory.NewFairRoundRobinQueue()
 		}
 	case "DELAYED":
 		log.Info().Msg("Using delayed queue")
-		queue = memory.NewDelayedMemoryQueue(true)
+		queue = memory.NewDelayedQueue(true)
 	}
 
 	q.config = &entity.QueueConfig{
