@@ -2,6 +2,7 @@ package memory
 
 import (
 	"container/heap"
+	"math"
 	"sync"
 
 	avl "github.com/kgantsov/doq/pkg/weighted_avl"
@@ -24,7 +25,8 @@ func CalculateWeight(maxUnacked int, unacked int, queueSize int) int {
 	}
 
 	if maxUnacked == 0 {
-		return 10 // If maxUnacked is zero, return a default weight
+		// default to max int
+		maxUnacked = math.MaxInt64
 	}
 
 	if unacked >= maxUnacked {

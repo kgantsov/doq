@@ -2,6 +2,7 @@ package memory
 
 import (
 	"container/heap"
+	"math"
 	"sync"
 )
 
@@ -79,7 +80,7 @@ type FairRoundRobinQueue struct {
 func NewFairRoundRobinQueue(maxUnacked int) *FairRoundRobinQueue {
 	if maxUnacked == 0 {
 		// default to max int
-		maxUnacked = int(^uint(0) >> 1)
+		maxUnacked = math.MaxInt64
 	}
 	return &FairRoundRobinQueue{
 		queues:         make(map[string]*LinkedListNode),
