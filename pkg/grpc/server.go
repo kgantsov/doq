@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/http"
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/rs/zerolog/log"
@@ -43,7 +44,14 @@ func (s *QueueServer) CreateQueue(
 		return s.proxy.CreateQueue(ctx, s.node.Leader(), req)
 	}
 
-	err := s.node.CreateQueue(req.Type, req.Name)
+	err := s.node.CreateQueue(
+		req.Type,
+		req.Name,
+		entity.QueueSettings{
+			Strategy:   req.Settings.Strategy.String(),
+			MaxUnacked: int(req.Settings.MaxUnacked),
+		},
+	)
 	if err != nil {
 		return &pb.CreateQueueResponse{Success: false}, fmt.Errorf(
 			"failed to create a queue %s", req.Name,

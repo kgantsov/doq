@@ -2,6 +2,7 @@ package memory
 
 import (
 	"container/heap"
+	"math"
 	"sync"
 )
 
@@ -63,27 +64,35 @@ func (l *LinkedList) Len() uint64 {
 	return l.total
 }
 
-// FairMemoryQueue is a fair queue that balances between different groups
-type FairMemoryQueue struct {
+// FairRoundRobinQueue is a fair queue that balances between different groups
+type FairRoundRobinQueue struct {
 	queues      map[string]*LinkedListNode
 	roundRobin  *LinkedList
 	currentNone *LinkedListNode
 	mu          sync.RWMutex
 
-	totalMessages uint64
+	maxUnacked     int
+	unackedByGroup map[string]int
+	totalMessages  uint64
 }
 
 // FairQueue creates a new FairQueue
-func NewFairMemoryQueue() *FairMemoryQueue {
-	return &FairMemoryQueue{
-		queues:      make(map[string]*LinkedListNode),
-		roundRobin:  &LinkedList{},
-		currentNone: nil,
+func NewFairRoundRobinQueue(maxUnacked int) *FairRoundRobinQueue {
+	if maxUnacked == 0 {
+		// default to max int
+		maxUnacked = math.MaxInt64
+	}
+	return &FairRoundRobinQueue{
+		queues:         make(map[string]*LinkedListNode),
+		roundRobin:     &LinkedList{},
+		unackedByGroup: make(map[string]int),
+		maxUnacked:     maxUnacked,
+		currentNone:    nil,
 	}
 }
 
 // Enqueue adds a message to the queue
-func (fq *FairMemoryQueue) Enqueue(group string, item *Item) {
+func (fq *FairRoundRobinQueue) Enqueue(group string, item *Item) {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -99,7 +108,7 @@ func (fq *FairMemoryQueue) Enqueue(group string, item *Item) {
 }
 
 // Dequeue removes and returns the next message in a fair way
-func (fq *FairMemoryQueue) Dequeue() *Item {
+func (fq *FairRoundRobinQueue) Dequeue(ack bool) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -116,6 +125,22 @@ func (fq *FairMemoryQueue) Dequeue() *Item {
 		return nil
 	}
 
+	if fq.unackedByGroup[fq.currentNone.group] >= fq.maxUnacked {
+		// If the current group has too many unacked messages, move to the next group
+		fq.currentNone = fq.currentNone.next
+		if fq.currentNone == nil {
+			fq.currentNone = fq.roundRobin.head // Wrap around to the start
+		}
+		if fq.currentNone.Queue().Len() == 0 {
+			return nil // No messages in the next group either
+		}
+
+		if fq.unackedByGroup[fq.currentNone.group] >= fq.maxUnacked {
+			// If the next group also has too many unacked messages, we can't dequeue
+			return nil
+		}
+	}
+
 	// Get the message from the group's queue
 	item := heap.Pop(fq.currentNone.Queue()).(*Item)
 
@@ -130,11 +155,15 @@ func (fq *FairMemoryQueue) Dequeue() *Item {
 		fq.currentNone = fq.currentNone.next
 	}
 
+	if !ack {
+		fq.unackedByGroup[item.Group]++
+	}
+
 	fq.totalMessages--
 	return item
 }
 
-func (fq *FairMemoryQueue) Get(group string, id uint64) *Item {
+func (fq *FairRoundRobinQueue) Get(group string, id uint64) *Item {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
 
@@ -145,7 +174,7 @@ func (fq *FairMemoryQueue) Get(group string, id uint64) *Item {
 	return fq.queues[group].Queue().Get(id)
 }
 
-func (fq *FairMemoryQueue) Delete(group string, id uint64) *Item {
+func (fq *FairRoundRobinQueue) Delete(group string, id uint64) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -159,7 +188,7 @@ func (fq *FairMemoryQueue) Delete(group string, id uint64) *Item {
 	return item
 }
 
-func (fq *FairMemoryQueue) UpdatePriority(group string, id uint64, priority int64) {
+func (fq *FairRoundRobinQueue) UpdatePriority(group string, id uint64, priority int64) {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -170,9 +199,26 @@ func (fq *FairMemoryQueue) UpdatePriority(group string, id uint64, priority int6
 	fq.queues[group].Queue().UpdatePriority(id, priority)
 }
 
-func (fq *FairMemoryQueue) Len() uint64 {
+func (fq *FairRoundRobinQueue) Len() uint64 {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
 
 	return fq.totalMessages
+}
+
+func (fq *FairRoundRobinQueue) UpdateWeights(group string, id uint64) error {
+	fq.mu.Lock()
+	defer fq.mu.Unlock()
+
+	if _, ok := fq.unackedByGroup[group]; !ok {
+		return nil
+	}
+
+	if fq.unackedByGroup[group] <= 0 {
+		delete(fq.unackedByGroup, group)
+	} else {
+		fq.unackedByGroup[group]--
+	}
+
+	return nil
 }

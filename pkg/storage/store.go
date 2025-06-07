@@ -7,7 +7,7 @@ import (
 
 type Store interface {
 	LoadQueue(queueName string) (*entity.QueueConfig, error)
-	CreateQueue(queueType, queueName string) error
+	CreateQueue(queueType, queueName string, settings entity.QueueSettings) error
 	DeleteQueue(queueName string) error
 	Enqueue(
 		queueName string,

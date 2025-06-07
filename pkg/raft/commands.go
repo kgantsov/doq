@@ -231,12 +231,16 @@ func (n *Node) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 	return q.GetStats(), nil
 }
 
-func (n *Node) CreateQueue(queueType, queueName string) error {
+func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
 	cmd := Command{
 		Op: "createQueue",
 		Payload: CreateQueuePayload{
 			QueueType: queueType,
 			QueueName: queueName,
+			Settings: QueueSettings{
+				Strategy:   settings.Strategy,
+				MaxUnacked: settings.MaxUnacked,
+			},
 		},
 	}
 	data, err := json.Marshal(cmd)

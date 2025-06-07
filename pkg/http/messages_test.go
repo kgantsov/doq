@@ -33,7 +33,7 @@ func TestEnqueueDequeue(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "my-queue")
+	h.node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
 
 	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
 		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
@@ -136,7 +136,7 @@ func TestEnqueueGet(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "my-queue")
+	h.node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
 
 	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
 		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
@@ -194,7 +194,7 @@ func TestNack(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "my-queue")
+	h.node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
 
 	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
 		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
@@ -266,7 +266,7 @@ func TestUpdatePriority(t *testing.T) {
 	}
 	h.RegisterRoutes(api)
 
-	h.node.CreateQueue("delayed", "my-queue-1")
+	h.node.CreateQueue("delayed", "my-queue-1", entity.QueueSettings{})
 
 	type ErrorOutput struct {
 		Title  string `json:"title"`
@@ -353,7 +353,7 @@ func TestEnqueueProxy(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "my-queue")
+	h.node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
 
 	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
 		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
@@ -409,7 +409,7 @@ func TestDequeueProxy(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "indexing-queue")
+	h.node.CreateQueue("delayed", "indexing-queue", entity.QueueSettings{})
 
 	resp := api.Get("/API/v1/queues/indexing-queue/messages?ack=true")
 
@@ -456,7 +456,7 @@ func TestAckProxy(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "indexing-queue")
+	h.node.CreateQueue("delayed", "indexing-queue", entity.QueueSettings{})
 
 	resp := api.Post(
 		"/API/v1/queues/indexing-queue/messages/1122/ack", map[string]any{})
@@ -501,7 +501,7 @@ func TestNackProxy(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "indexing-queue")
+	h.node.CreateQueue("delayed", "indexing-queue", entity.QueueSettings{})
 
 	resp := api.Post(
 		"/API/v1/queues/indexing-queue/messages/1122/nack", map[string]any{
@@ -549,7 +549,7 @@ func TestUpdatePriorityProxy(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "indexing-queue")
+	h.node.CreateQueue("delayed", "indexing-queue", entity.QueueSettings{})
 
 	resp := api.Put("/API/v1/queues/indexing-queue/messages/980/priority", map[string]any{
 		"priority": 777,
@@ -571,14 +571,14 @@ type testNode struct {
 	leader   string
 	messages map[uint64]*entity.Message
 	acks     map[uint64]*entity.Message
-	queues   map[string]*memory.DelayedMemoryQueue
+	queues   map[string]*memory.DelayedQueue
 }
 
 func newTestNode(leader string, isLeader bool) *testNode {
 	return &testNode{
 		messages: make(map[uint64]*entity.Message),
 		acks:     make(map[uint64]*entity.Message),
-		queues:   make(map[string]*memory.DelayedMemoryQueue),
+		queues:   make(map[string]*memory.DelayedQueue),
 		leader:   leader,
 		isLeader: isLeader,
 	}
@@ -658,8 +658,8 @@ func (n *testNode) PrometheusRegistry() prometheus.Registerer {
 	return nil
 }
 
-func (n *testNode) CreateQueue(queueType, queueName string) error {
-	n.queues[queueName] = memory.NewDelayedMemoryQueue(true)
+func (n *testNode) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
+	n.queues[queueName] = memory.NewDelayedQueue(true)
 	return nil
 }
 
@@ -700,7 +700,7 @@ func (n *testNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) 
 		return nil, errors.ErrEmptyQueue
 	}
 
-	item := q.Dequeue()
+	item := q.Dequeue(false)
 
 	message := n.messages[item.ID]
 

@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFairMemoryQueueSingleCustomer(t *testing.T) {
+func TestFairRoundRobinQueueSingleCustomer(t *testing.T) {
 	tests := []struct {
 		name     string
 		messages []struct {
@@ -117,7 +117,7 @@ func TestFairMemoryQueueSingleCustomer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fq := NewFairMemoryQueue()
+			fq := NewFairRoundRobinQueue(75)
 
 			for i, message := range tt.messages {
 				assert.Equal(t, uint64(i), fq.Len())
@@ -131,7 +131,7 @@ func TestFairMemoryQueueSingleCustomer(t *testing.T) {
 					message := fq.Get(expectedMessage.group, expectedMessage.item.ID)
 					assert.Equal(t, expectedMessage.item.ID, message.ID)
 
-					assert.Equal(t, expectedMessage.item.ID, fq.Dequeue().ID)
+					assert.Equal(t, expectedMessage.item.ID, fq.Dequeue(true).ID)
 					assert.Nil(t, fq.Get(expectedMessage.group, expectedMessage.item.ID))
 				}
 			}
@@ -139,8 +139,8 @@ func TestFairMemoryQueueSingleCustomer(t *testing.T) {
 	}
 }
 
-func TestFairMemoryQueueDelete(t *testing.T) {
-	fq := NewFairMemoryQueue()
+func TestFairRoundRobinQueueDelete(t *testing.T) {
+	fq := NewFairRoundRobinQueue(8)
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 4, Priority: 10})
@@ -148,12 +148,12 @@ func TestFairMemoryQueueDelete(t *testing.T) {
 
 	fq.Delete("customer1", 1)
 
-	assert.Equal(t, uint64(4), fq.Dequeue().ID)
-	assert.Equal(t, uint64(5), fq.Dequeue().ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
 }
 
-func TestFairMemoryQueueUpdatePriority(t *testing.T) {
-	fq := NewFairMemoryQueue()
+func TestFairRoundRobinQueueUpdatePriority(t *testing.T) {
+	fq := NewFairRoundRobinQueue(8)
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 4, Priority: 10})
@@ -161,13 +161,13 @@ func TestFairMemoryQueueUpdatePriority(t *testing.T) {
 
 	fq.UpdatePriority("customer1", 1, 20)
 
-	assert.Equal(t, uint64(4), fq.Dequeue().ID)
-	assert.Equal(t, uint64(5), fq.Dequeue().ID)
-	assert.Equal(t, uint64(1), fq.Dequeue().ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
 }
 
-func TestFairMemoryQueue(t *testing.T) {
-	fq := NewFairMemoryQueue()
+func TestFairRoundRobinQueue(t *testing.T) {
+	fq := NewFairRoundRobinQueue(9)
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 2, Priority: 10})
@@ -180,33 +180,61 @@ func TestFairMemoryQueue(t *testing.T) {
 	fq.Enqueue("customer4", &Item{ID: 9, Priority: 10})
 	fq.Enqueue("customer5", &Item{ID: 10, Priority: 10})
 
-	assert.Equal(t, uint64(1), fq.Dequeue().ID)
-	assert.Equal(t, uint64(5), fq.Dequeue().ID)
-	assert.Equal(t, uint64(7), fq.Dequeue().ID)
-	assert.Equal(t, uint64(9), fq.Dequeue().ID)
-	assert.Equal(t, uint64(10), fq.Dequeue().ID)
-	assert.Equal(t, uint64(2), fq.Dequeue().ID)
-	assert.Equal(t, uint64(6), fq.Dequeue().ID)
-	assert.Equal(t, uint64(8), fq.Dequeue().ID)
-	assert.Equal(t, uint64(3), fq.Dequeue().ID)
-	assert.Equal(t, uint64(4), fq.Dequeue().ID)
+	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(7), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(9), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(10), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(2), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(6), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(8), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(3), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
 }
 
-func TestFairMemoryQueue1(t *testing.T) {
-	fq := NewFairMemoryQueue()
+func TestFairRoundRobinQueue1(t *testing.T) {
+	fq := NewFairRoundRobinQueue(7)
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 2, Priority: 10})
 	fq.Enqueue("customer2", &Item{ID: 3, Priority: 10})
 
-	assert.Equal(t, uint64(1), fq.Dequeue().ID)
-	assert.Equal(t, uint64(3), fq.Dequeue().ID)
-	assert.Equal(t, uint64(2), fq.Dequeue().ID)
-	assert.Nil(t, fq.Dequeue())
+	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(3), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(2), fq.Dequeue(true).ID)
+	assert.Nil(t, fq.Dequeue(true))
 }
 
-func BenchmarkFairMemoryQueueEnqueue(b *testing.B) {
-	fq := NewFairMemoryQueue()
+func TestFairRoundRobinQueueMaxUnacked(t *testing.T) {
+	queue := NewFairRoundRobinQueue(2)
+
+	// Enqueue items for a single group
+	queue.Enqueue("group1", &Item{ID: 1, Priority: 10, Group: "group1"})
+	queue.Enqueue("group1", &Item{ID: 2, Priority: 10, Group: "group1"})
+	queue.Enqueue("group1", &Item{ID: 3, Priority: 10, Group: "group1"})
+	queue.Enqueue("group1", &Item{ID: 4, Priority: 10, Group: "group1"})
+
+	// Dequeue without acking until max unacked is reached
+	item1 := queue.Dequeue(false)
+	assert.NotNil(t, item1)
+
+	item2 := queue.Dequeue(false)
+	assert.NotNil(t, item2)
+
+	item3 := queue.Dequeue(false)
+	assert.Nil(t, item3) // Should be nil because max unacked is reached
+
+	// Ack one message
+	err := queue.UpdateWeights("group1", item1.ID)
+	assert.NoError(t, err)
+
+	// Should be able to dequeue again
+	item4 := queue.Dequeue(false)
+	assert.NotNil(t, item4)
+}
+
+func BenchmarkFairRoundRobinQueueEnqueue(b *testing.B) {
+	fq := NewFairRoundRobinQueue(8)
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
@@ -214,8 +242,8 @@ func BenchmarkFairMemoryQueueEnqueue(b *testing.B) {
 	}
 }
 
-func BenchmarkFairMemoryQueueDequeue(b *testing.B) {
-	fq := NewFairMemoryQueue()
+func BenchmarkFairRoundRobinQueueDequeue(b *testing.B) {
+	fq := NewFairRoundRobinQueue(8)
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
@@ -225,6 +253,6 @@ func BenchmarkFairMemoryQueueDequeue(b *testing.B) {
 	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing
 
 	for i := 0; i < b.N; i++ {
-		fq.Dequeue()
+		fq.Dequeue(true)
 	}
 }

@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -16,12 +17,13 @@ import (
 )
 
 type QueueInfo struct {
-	Name    string
-	Type    string
-	Stats   *metrics.Stats
-	Ready   int64
-	Unacked int64
-	Total   int64
+	Name     string
+	Type     string
+	Settings entity.QueueSettings
+	Stats    *metrics.Stats
+	Ready    int64
+	Unacked  int64
+	Total    int64
 }
 
 type Queue struct {
@@ -47,21 +49,42 @@ func NewQueue(
 	bpq := &Queue{
 		store:             store,
 		cfg:               cfg,
-		ackQueue:          memory.NewDelayedMemoryQueue(false),
+		ackQueue:          memory.NewDelayedQueue(false),
 		PrometheusMetrics: promMetrics,
 		stats:             metrics.NewQueueStats(cfg.Queue.QueueStats.WindowSide),
 	}
 
 	return bpq
 }
-func (q *Queue) Init(queueType, queueName string) error {
+
+func (q *Queue) Init(queueType, queueName string, settings entity.QueueSettings) error {
 	var queue memory.MemoryQueue
-	if queueType == "fair" {
-		queue = memory.NewFairMemoryQueue()
-	} else {
-		queue = memory.NewDelayedMemoryQueue(true)
+
+	log.Info().Msgf("Initializing queue: %s, type: %s, settings: %+v", queueName, queueType, settings)
+
+	switch strings.ToUpper(queueType) {
+	case "FAIR":
+		switch strings.ToUpper(settings.Strategy) {
+		case "ROUND_ROBIN", "":
+			log.Info().Msg("Using round-robin strategy for fair queue")
+			queue = memory.NewFairRoundRobinQueue(settings.MaxUnacked)
+		case "WEIGHTED":
+			log.Info().Msg("Using weighted strategy for fair queue")
+			queue = memory.NewFairWeightedQueue(settings.MaxUnacked)
+		default:
+			log.Warn().Msgf("Unknown fair queue strategy: %s, defaulting to round-robin", settings.Strategy)
+			queue = memory.NewFairRoundRobinQueue(settings.MaxUnacked)
+		}
+	case "DELAYED":
+		log.Info().Msg("Using delayed queue")
+		queue = memory.NewDelayedQueue(true)
 	}
-	q.config = &entity.QueueConfig{Name: queueName, Type: queueType}
+
+	q.config = &entity.QueueConfig{
+		Name:     queueName,
+		Type:     queueType,
+		Settings: settings,
+	}
 	q.queue = queue
 
 	q.StartAckQueueMonitoring()
@@ -73,12 +96,13 @@ func (q *Queue) Init(queueType, queueName string) error {
 
 func (q *Queue) GetStats() *QueueInfo {
 	return &QueueInfo{
-		Name:    q.config.Name,
-		Type:    q.config.Type,
-		Stats:   q.stats.GetRPS(),
-		Ready:   int64(q.queue.Len()),
-		Unacked: int64(q.ackQueue.Len()),
-		Total:   int64(q.queue.Len() + q.ackQueue.Len()),
+		Name:     q.config.Name,
+		Type:     q.config.Type,
+		Settings: q.config.Settings,
+		Stats:    q.stats.GetRPS(),
+		Ready:    int64(q.queue.Len()),
+		Unacked:  int64(q.ackQueue.Len()),
+		Total:    int64(q.queue.Len() + q.ackQueue.Len()),
 	}
 }
 
@@ -108,7 +132,7 @@ func (q *Queue) monitorAckQueue() {
 		select {
 		case <-ticker.C:
 			for {
-				item := q.ackQueue.Dequeue()
+				item := q.ackQueue.Dequeue(false)
 				if item == nil {
 					break
 				}
@@ -143,18 +167,18 @@ func (q *Queue) StopAckQueueMonitoring() {
 	close(q.ackQueueMonitoringChan)
 }
 
-func (q *Queue) Create(queueType, queueName string) error {
+func (q *Queue) Create(queueType, queueName string, settings entity.QueueSettings) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	q.config = &entity.QueueConfig{Name: queueName, Type: queueType}
 
-	err := q.store.CreateQueue(queueType, queueName)
+	err := q.store.CreateQueue(queueType, queueName, settings)
 	if err != nil {
 		return err
 	}
 
-	return q.Init(queueType, queueName)
+	return q.Init(queueType, queueName, settings)
 }
 
 func (q *Queue) DeleteQueue() error {
@@ -188,7 +212,7 @@ func (q *Queue) Load(queueName string) error {
 		return err
 	}
 
-	err = q.Init(qc.Type, qc.Name)
+	err = q.Init(qc.Type, qc.Name, qc.Settings)
 	if err != nil {
 		return err
 	}
@@ -240,7 +264,7 @@ func (q *Queue) Dequeue(ack bool) (*entity.Message, error) {
 		return nil, errors.ErrEmptyQueue
 	}
 
-	queueItem := q.queue.Dequeue()
+	queueItem := q.queue.Dequeue(ack)
 	if queueItem == nil {
 		return nil, errors.ErrEmptyQueue
 	}
@@ -324,6 +348,16 @@ func (q *Queue) Ack(id uint64) error {
 
 	if queueItem == nil {
 		return errors.ErrMessageNotFound
+	}
+
+	if q.config.Type == "fair" {
+		msg, err := q.Get(queueItem.ID)
+		if err != nil {
+			log.Error().Err(err).Msgf("Failed to get message by ID: %d", queueItem.ID)
+			return err
+		}
+
+		q.queue.UpdateWeights(msg.Group, msg.ID)
 	}
 
 	err := q.store.Ack(q.config.Name, queueItem.ID)

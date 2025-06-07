@@ -17,9 +17,15 @@ import (
 	"github.com/dgraph-io/badger/v4"
 )
 
+type QueueSettings struct {
+	Strategy   string `json:"strategy,omitempty" enum:"round_robin,weighted" example:"round_robin" doc:"Strategy for message distribution among consumers"`
+	MaxUnacked int    `json:"max_unacked" minimum:"1" example:"7" doc:"Maximum expected unacknowledged messages in the queue"`
+}
+
 type CreateQueuePayload struct {
-	QueueType string `json:"queue_type"`
-	QueueName string `json:"queue_name"`
+	QueueType string        `json:"queue_type"`
+	QueueName string        `json:"queue_name"`
+	Settings  QueueSettings `json:"settings"`
 }
 
 type DeleteQueuePayload struct {
@@ -512,7 +518,14 @@ func (f *FSM) applyUpdatePriority(payload UpdatePriorityPayload) *FSMResponse {
 }
 
 func (f *FSM) applyCreateQueue(payload CreateQueuePayload) *FSMResponse {
-	_, err := f.queueManager.CreateQueue(payload.QueueType, payload.QueueName)
+	_, err := f.queueManager.CreateQueue(
+		payload.QueueType,
+		payload.QueueName,
+		entity.QueueSettings{
+			Strategy:   payload.Settings.Strategy,
+			MaxUnacked: payload.Settings.MaxUnacked,
+		},
+	)
 	if err != nil {
 		return &FSMResponse{
 			QueueName: payload.QueueName,
@@ -576,7 +589,10 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 			continue
 		}
 
-		q, err := f.queueManager.CreateQueue(msg.QueueType, msg.QueueName)
+		q, err := f.queueManager.CreateQueue(msg.QueueType, msg.QueueName, entity.QueueSettings{
+			Strategy:   msg.QueueSettings.Strategy,
+			MaxUnacked: msg.QueueSettings.MaxUnacked,
+		})
 		if err != nil {
 			log.Warn().Msgf("Failed to create a queue: %v", err)
 			continue
