@@ -41,6 +41,10 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 			Status: "CREATED",
 			Name:   queueName,
 			Type:   queueType,
+			Settings: QueueSettings{
+				Strategy:   queueSettings.Strategy,
+				MaxUnacked: queueSettings.MaxUnacked,
+			},
 		},
 	}
 
