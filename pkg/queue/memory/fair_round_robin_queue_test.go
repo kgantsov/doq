@@ -117,7 +117,7 @@ func TestFairRoundRobinQueueSingleCustomer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fq := NewFairRoundRobinQueue()
+			fq := NewFairRoundRobinQueue(75)
 
 			for i, message := range tt.messages {
 				assert.Equal(t, uint64(i), fq.Len())
@@ -140,7 +140,7 @@ func TestFairRoundRobinQueueSingleCustomer(t *testing.T) {
 }
 
 func TestFairRoundRobinQueueDelete(t *testing.T) {
-	fq := NewFairRoundRobinQueue()
+	fq := NewFairRoundRobinQueue(8)
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 4, Priority: 10})
@@ -153,7 +153,7 @@ func TestFairRoundRobinQueueDelete(t *testing.T) {
 }
 
 func TestFairRoundRobinQueueUpdatePriority(t *testing.T) {
-	fq := NewFairRoundRobinQueue()
+	fq := NewFairRoundRobinQueue(8)
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 4, Priority: 10})
@@ -167,7 +167,7 @@ func TestFairRoundRobinQueueUpdatePriority(t *testing.T) {
 }
 
 func TestFairRoundRobinQueue(t *testing.T) {
-	fq := NewFairRoundRobinQueue()
+	fq := NewFairRoundRobinQueue(9)
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 2, Priority: 10})
@@ -193,7 +193,7 @@ func TestFairRoundRobinQueue(t *testing.T) {
 }
 
 func TestFairRoundRobinQueue1(t *testing.T) {
-	fq := NewFairRoundRobinQueue()
+	fq := NewFairRoundRobinQueue(7)
 
 	fq.Enqueue("customer1", &Item{ID: 1, Priority: 10})
 	fq.Enqueue("customer1", &Item{ID: 2, Priority: 10})
@@ -205,8 +205,36 @@ func TestFairRoundRobinQueue1(t *testing.T) {
 	assert.Nil(t, fq.Dequeue(true))
 }
 
+func TestFairRoundRobinQueueMaxUnacked(t *testing.T) {
+	queue := NewFairRoundRobinQueue(2)
+
+	// Enqueue items for a single group
+	queue.Enqueue("group1", &Item{ID: 1, Priority: 10, Group: "group1"})
+	queue.Enqueue("group1", &Item{ID: 2, Priority: 10, Group: "group1"})
+	queue.Enqueue("group1", &Item{ID: 3, Priority: 10, Group: "group1"})
+	queue.Enqueue("group1", &Item{ID: 4, Priority: 10, Group: "group1"})
+
+	// Dequeue without acking until max unacked is reached
+	item1 := queue.Dequeue(false)
+	assert.NotNil(t, item1)
+
+	item2 := queue.Dequeue(false)
+	assert.NotNil(t, item2)
+
+	item3 := queue.Dequeue(false)
+	assert.Nil(t, item3) // Should be nil because max unacked is reached
+
+	// Ack one message
+	err := queue.UpdateWeights("group1", item1.ID)
+	assert.NoError(t, err)
+
+	// Should be able to dequeue again
+	item4 := queue.Dequeue(false)
+	assert.NotNil(t, item4)
+}
+
 func BenchmarkFairRoundRobinQueueEnqueue(b *testing.B) {
-	fq := NewFairRoundRobinQueue()
+	fq := NewFairRoundRobinQueue(8)
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
@@ -215,7 +243,7 @@ func BenchmarkFairRoundRobinQueueEnqueue(b *testing.B) {
 }
 
 func BenchmarkFairRoundRobinQueueDequeue(b *testing.B) {
-	fq := NewFairRoundRobinQueue()
+	fq := NewFairRoundRobinQueue(8)
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {

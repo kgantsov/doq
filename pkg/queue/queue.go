@@ -67,13 +67,13 @@ func (q *Queue) Init(queueType, queueName string, settings entity.QueueSettings)
 		switch strings.ToUpper(settings.Strategy) {
 		case "ROUND_ROBIN", "":
 			log.Info().Msg("Using round-robin strategy for fair queue")
-			queue = memory.NewFairRoundRobinQueue()
+			queue = memory.NewFairRoundRobinQueue(settings.MaxUnacked)
 		case "WEIGHTED":
 			log.Info().Msg("Using weighted strategy for fair queue")
 			queue = memory.NewFairWeightedQueue(settings.MaxUnacked)
 		default:
 			log.Warn().Msgf("Unknown fair queue strategy: %s, defaulting to round-robin", settings.Strategy)
-			queue = memory.NewFairRoundRobinQueue()
+			queue = memory.NewFairRoundRobinQueue(settings.MaxUnacked)
 		}
 	case "DELAYED":
 		log.Info().Msg("Using delayed queue")

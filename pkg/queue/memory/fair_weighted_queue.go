@@ -178,7 +178,8 @@ func (q *FairWeightedQueue) UpdateWeights(group string, id uint64) error {
 		),
 	)
 
-	if q.unackedByGroup[group] <= 0 {
+	if q.queues[group].Len() == 0 && q.unackedByGroup[group] <= 0 {
+		// if q.unackedByGroup[group] <= 0 {
 		delete(q.unackedByGroup, group)
 		delete(q.queues, group)
 		q.weights.Remove(group)
