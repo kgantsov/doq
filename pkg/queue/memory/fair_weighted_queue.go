@@ -19,13 +19,18 @@ type FairWeightedQueue struct {
 
 // CalculateWeight calculates the weight for a group based on unacked items and queue size.
 func CalculateWeight(maxUnacked int, unacked int, queueSize int) int {
-	if queueSize == 0 || maxUnacked == 0 {
+	if queueSize == 0 {
 		return 0
 	}
-	if unacked > maxUnacked {
+
+	if maxUnacked == 0 {
+		return 10 // If maxUnacked is zero, return a default weight
+	}
+
+	if unacked >= maxUnacked {
 		return 0
 	}
-	unackedFactor := 1 - float64(unacked)/float64(maxUnacked)
+	unackedFactor := 1 - float64(unacked)/float64(maxUnacked+1)
 	queueSizeFactor := float64(1)
 	// queueSizeFactor := float64(queueSize) / float64(queueSize+unacked) // Optional: normalizes queue size impact
 	weight := unackedFactor * queueSizeFactor * 10

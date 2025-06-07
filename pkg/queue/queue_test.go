@@ -621,13 +621,20 @@ func TestFairDequeue(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("fair", "test_queue", entity.QueueSettings{})
+	pq.Create(
+		"fair",
+		"test_queue",
+		entity.QueueSettings{
+			Strategy:   "weighted",
+			MaxUnacked: 11,
+		},
+	)
 
 	customerMessages := map[string]int{
-		"customer-1": 100,
-		"customer-2": 50,
-		"customer-4": 30,
-		"customer-5": 10,
+		"customer-1": 10,
+		"customer-2": 5,
+		"customer-3": 3,
+		"customer-4": 1,
 	}
 
 	sent := 1
@@ -641,17 +648,19 @@ func TestFairDequeue(t *testing.T) {
 		}
 	}
 
-	for i := 0; i < 10; i++ {
-		msg, err := pq.Dequeue(false)
-		assert.Nil(t, err)
-		assert.NotNil(t, msg)
+	items := make(map[string]int)
 
+	for _, count := range customerMessages {
+		for i := 0; i < count; i++ {
+			message, err := pq.Dequeue(false)
+			if err == nil {
+				items[message.Group] += 1
+			}
+		}
 	}
 
-	// fmt.Printf("Dequeued message: %s %+v\n", msg.Group, pq.unackedByGroup.Items())
-
-	// assert.Equal(t, "", pq.unackedByGroup.Items())
-
-	// pq.Ack(msg.ID)
-
+	assert.Equal(t, 10, items["customer-1"])
+	assert.Equal(t, 5, items["customer-2"])
+	assert.Equal(t, 3, items["customer-3"])
+	assert.Equal(t, 1, items["customer-4"])
 }

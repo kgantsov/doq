@@ -25,28 +25,28 @@ func TestCalculateWeight(t *testing.T) {
 			name:       "Zero maxUnacked returns zero weight",
 			maxUnacked: 0,
 			unacked:    0,
-			queueSize:  10,
-			expected:   0,
+			queueSize:  100,
+			expected:   10,
 		},
 		{
 			name:       "Unacked greater than maxUnacked returns zero weight",
 			maxUnacked: 5,
 			unacked:    6,
-			queueSize:  10,
+			queueSize:  100,
 			expected:   0,
 		},
 		{
 			name:       "Ideal case - no unacked, full queue",
 			maxUnacked: 10,
 			unacked:    0,
-			queueSize:  10,
+			queueSize:  100,
 			expected:   10,
 		},
 		{
 			name:       "Half unacked, full queue",
 			maxUnacked: 10,
 			unacked:    5,
-			queueSize:  10,
+			queueSize:  100,
 			expected:   5,
 		},
 		{
@@ -55,6 +55,13 @@ func TestCalculateWeight(t *testing.T) {
 			unacked:    3,
 			queueSize:  2,
 			expected:   7,
+		},
+		{
+			name:       "Almos all unacked, non-empty queue",
+			maxUnacked: 10,
+			unacked:    9,
+			queueSize:  5,
+			expected:   1,
 		},
 		{
 			name:       "All unacked, non-empty queue",
@@ -90,11 +97,11 @@ func TestFairWeightedQueueBasic(t *testing.T) {
 	assert.Equal(t, uint64(0), queue.Len())
 }
 
-func TestFairWeightedQueueTTTT(t *testing.T) {
+func TestFairWeightedQueueGroups(t *testing.T) {
 	queue := NewFairWeightedQueue(8)
 	customerMessages := map[string]int{
 		"customer-1": 10,
-		"customer-2": 5,
+		"customer-2": 8,
 		"customer-3": 3,
 		"customer-4": 1,
 	}
@@ -119,7 +126,7 @@ func TestFairWeightedQueueTTTT(t *testing.T) {
 	}
 
 	assert.Equal(t, 8, items["customer-1"])
-	assert.Equal(t, 5, items["customer-2"])
+	assert.Equal(t, 8, items["customer-2"])
 	assert.Equal(t, 3, items["customer-3"])
 	assert.Equal(t, 1, items["customer-4"])
 	assert.Equal(t, uint64(2), queue.Len())
@@ -288,11 +295,12 @@ func TestFairWeightedQueueMaxUnacked(t *testing.T) {
 
 	// Dequeue without acking until max unacked is reached
 	item1 := queue.Dequeue(false)
-	item2 := queue.Dequeue(false)
-	item3 := queue.Dequeue(false)
-
 	assert.NotNil(t, item1)
+
+	item2 := queue.Dequeue(false)
 	assert.NotNil(t, item2)
+
+	item3 := queue.Dequeue(false)
 	assert.Nil(t, item3) // Should be nil because max unacked is reached
 
 	// Ack one message
