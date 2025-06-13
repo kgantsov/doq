@@ -88,8 +88,12 @@ func (h *Handler) Queues(ctx context.Context, input *QueuesInput) (*QueuesOutput
 
 	for _, queue := range queues {
 		queueOutputs = append(queueOutputs, QueueOutput{
-			Name:       queue.Name,
-			Type:       queue.Type,
+			Name: queue.Name,
+			Type: queue.Type,
+			Settings: QueueSettings{
+				Strategy:   queue.Settings.Strategy,
+				MaxUnacked: queue.Settings.MaxUnacked,
+			},
 			EnqueueRPS: queue.Stats.EnqueueRPS,
 			DequeueRPS: queue.Stats.DequeueRPS,
 			AckRPS:     queue.Stats.AckRPS,
