@@ -31,9 +31,9 @@ func (bpq *BadgerStore) GetMessagesKey(queueName string, id uint64) []byte {
 	return addPrefix(bpq.getMessagesPrefix(queueName), uint64ToBytes(id))
 }
 
-func (s *BadgerStore) CreateQueue(queueType, queueName string) error {
+func (s *BadgerStore) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
 	err := s.db.Update(func(txn *badger.Txn) error {
-		config := &entity.QueueConfig{Name: queueName, Type: queueType}
+		config := &entity.QueueConfig{Name: queueName, Type: queueType, Settings: settings}
 
 		data, err := config.ToBytes()
 		if err != nil {

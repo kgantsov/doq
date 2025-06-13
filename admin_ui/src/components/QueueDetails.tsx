@@ -27,6 +27,7 @@ import { QueueStatsBuffer, QueueStats } from "../stats";
 import EnqueueMessageForm from "./EnqueueMessageForm";
 import DequeueMessageForm from "./DequeueMessageForm";
 import SparkLine from "./SparkLine";
+import { Tooltip } from "./ui/tooltip";
 
 const QueueDetails = ({ queueName }: { queueName: string }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -42,7 +43,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
       navigate(`/`);
       queryClient.invalidateQueries({ queryKey: ["queues"] });
       toaster.create({
-        title: "Qeueu deleted.",
+        title: "Queue deleted.",
         description: `The queue '${queueName}' has been deleted successfully.`,
         type: "success",
         duration: 9000,
@@ -122,12 +123,33 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
     <>
       <Box minWidth="120px">
         <Flex>
-          <Text fontSize="2xl" mb={4}>
-            {queue.name} &nbsp;
-            <Badge colorPalette={queue.type === "delayed" ? "teal" : "cyan"}>
-              {queue.type}
-            </Badge>
-          </Text>
+          <Box fontSize="2xl" flexDirection="row" mb={4}>
+            <Text fontSize="2xl">{queue.name}</Text>
+            <Box margin={1} display="inline-flex" gap={1}>
+              <Tooltip content="The type of the queue">
+                <Badge
+                  colorPalette={queue.type === "delayed" ? "teal" : "cyan"}
+                >
+                  Type: {queue.type}
+                </Badge>
+              </Tooltip>
+
+              {queue.settings?.strategy && (
+                <Tooltip content="The strategy used by the queue">
+                  <Badge colorPalette={"blue"}>
+                    Strategy: {queue.settings?.strategy}
+                  </Badge>
+                </Tooltip>
+              )}
+              {queue.settings?.max_unacked && (
+                <Tooltip content="The maximum number of unacknowledged messages">
+                  <Badge colorPalette={"purple"}>
+                    Max Unacked: {queue.settings?.max_unacked}
+                  </Badge>
+                </Tooltip>
+              )}
+            </Box>
+          </Box>
           <Spacer />
           <Menu.Root
             onSelect={(item) => {

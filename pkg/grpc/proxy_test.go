@@ -30,6 +30,11 @@ func TestProxyCreateQueue(t *testing.T) {
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
 		Name: "test_queue",
+		Type: "fair",
+		Settings: &pb.QueueSettings{
+			Strategy:   pb.QueueSettings_WEIGHTED,
+			MaxUnacked: 10,
+		},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, true, respCreateQueue.Success)
@@ -61,7 +66,9 @@ func TestProxyEnqueueDequeue(t *testing.T) {
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
-		Name: "test_queue",
+		Name:     "test_queue",
+		Type:     "delayed",
+		Settings: &pb.QueueSettings{},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, true, respCreateQueue.Success)
@@ -111,7 +118,9 @@ func TestProxyDelete(t *testing.T) {
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
-		Name: "test_queue",
+		Name:     "test_queue",
+		Type:     "delayed",
+		Settings: &pb.QueueSettings{},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, true, respCreateQueue.Success)
@@ -174,7 +183,9 @@ func TestProxyNackAck(t *testing.T) {
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
-		Name: "test_queue",
+		Name:     "test_queue",
+		Type:     "delayed",
+		Settings: &pb.QueueSettings{},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, true, respCreateQueue.Success)
@@ -255,7 +266,9 @@ func TestProxyUpdatePriority(t *testing.T) {
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
-		Name: "test_queue",
+		Name:     "test_queue",
+		Type:     "delayed",
+		Settings: &pb.QueueSettings{},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, true, respCreateQueue.Success)

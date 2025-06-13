@@ -1,12 +1,14 @@
 package queue
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
@@ -63,7 +65,7 @@ func TestQueue(t *testing.T) {
 				}},
 				nil,
 			)
-			pq.Create("delayed", "test_queue")
+			pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 			for i, m := range tt.messages {
 				pq.Enqueue(uint64(i+1), "default", m.Priority, m.Content, m.Metadata)
@@ -104,7 +106,7 @@ func TestQueueEmptyQueue(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue_stored")
+	pq.Create("delayed", "test_queue_stored", entity.QueueSettings{})
 
 	m, err := pq.Dequeue(true)
 	assert.EqualError(t, err, errors.ErrEmptyQueue.Error())
@@ -130,7 +132,7 @@ func TestQueueLoad(t *testing.T) {
 		}},
 		nil,
 	)
-	err = pq.Create("delayed", "test_queue")
+	err = pq.Create("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
@@ -173,7 +175,7 @@ func TestQueueDeleteQueue(t *testing.T) {
 		}},
 		nil,
 	)
-	err = pq.Create("delayed", "test_queue")
+	err = pq.Create("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
@@ -206,7 +208,7 @@ func TestQueueDelete(t *testing.T) {
 		}},
 		nil,
 	)
-	err = pq.Create("delayed", "test_queue")
+	err = pq.Create("delayed", "test_queue", entity.QueueSettings{})
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed", pq.config.Type)
 	assert.Equal(t, "test_queue", pq.config.Name)
@@ -242,7 +244,7 @@ func TestQueueChangePriority(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue")
+	pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "1"})
 	assert.Nil(t, err)
@@ -350,7 +352,7 @@ func TestQueueDelayedMessage(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue_1")
+	pq.Create("delayed", "test_queue_1", entity.QueueSettings{})
 
 	priority := time.Now().UTC().Add(1 * time.Second).Unix()
 	m1, err := pq.Enqueue(1, "default", priority, "delayed message 1", map[string]string{})
@@ -391,7 +393,7 @@ func TestQueueAck(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue")
+	pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
@@ -465,7 +467,7 @@ func TestQueueNack(t *testing.T) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue")
+	pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "0"})
 	assert.Nil(t, err)
@@ -563,7 +565,7 @@ func BenchmarkQueueEnqueue(b *testing.B) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue")
+	pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
@@ -587,7 +589,7 @@ func BenchmarkQueueDequeue(b *testing.B) {
 		}},
 		nil,
 	)
-	pq.Create("delayed", "test_queue")
+	pq.Create("delayed", "test_queue", entity.QueueSettings{})
 
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
@@ -599,4 +601,66 @@ func BenchmarkQueueDequeue(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		pq.Dequeue(true)
 	}
+}
+
+func TestFairDequeue(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	pq := NewQueue(
+		storage.NewBadgerStore(db),
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
+		nil,
+	)
+	pq.Create(
+		"fair",
+		"test_queue",
+		entity.QueueSettings{
+			Strategy:   "weighted",
+			MaxUnacked: 11,
+		},
+	)
+
+	customerMessages := map[string]int{
+		"customer-1": 10,
+		"customer-2": 5,
+		"customer-3": 3,
+		"customer-4": 1,
+	}
+
+	sent := 1
+	for customer, count := range customerMessages {
+		for i := 0; i < count; i++ {
+			m, err := pq.Enqueue(uint64(sent), customer, 1, fmt.Sprintf("content %d", i), nil)
+			assert.Nil(t, err)
+			assert.NotNil(t, m)
+
+			sent++
+		}
+	}
+
+	items := make(map[string]int)
+
+	for _, count := range customerMessages {
+		for i := 0; i < count; i++ {
+			message, err := pq.Dequeue(false)
+			if err == nil {
+				items[message.Group] += 1
+			}
+		}
+	}
+
+	assert.Equal(t, 10, items["customer-1"])
+	assert.Equal(t, 5, items["customer-2"])
+	assert.Equal(t, 3, items["customer-3"])
+	assert.Equal(t, 1, items["customer-4"])
 }

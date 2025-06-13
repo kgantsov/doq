@@ -6,6 +6,7 @@ import {
   Box,
   Select,
   Dialog,
+  Fieldset,
   createListCollection,
 } from "@chakra-ui/react";
 import { toaster } from "./ui/toaster";
@@ -22,13 +23,15 @@ const CreateQueueModal = ({
 }) => {
   const [name, setName] = useState("");
   const [type, setType] = useState(["delayed"]);
+  const [strategy, setStrategy] = useState(["weighted"]);
+  const [maxUnacked, setMaxUnacked] = useState(0);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: createQueue,
     onSuccess: () => {
       toaster.create({
-        title: "Qeueu Created.",
+        title: "Queue Created.",
         description: `The queue with name ${name} has been created successfully.`,
         type: "success",
         duration: 9000,
@@ -36,6 +39,8 @@ const CreateQueueModal = ({
       queryClient.invalidateQueries({ queryKey: ["queues"] });
       setName("");
       setType(["delayed"]);
+      setStrategy(["weighted"]);
+      setMaxUnacked(0);
     },
   });
 
@@ -48,6 +53,8 @@ const CreateQueueModal = ({
     mutation.mutate({
       name: name,
       type: type[0],
+      maxUnacked: maxUnacked,
+      strategy: strategy[0],
     });
     onClose();
   };
@@ -58,6 +65,12 @@ const CreateQueueModal = ({
     items: [
       { label: "Delayed", value: "delayed" },
       { label: "Fair", value: "fair" },
+    ],
+  });
+  const strategies = createListCollection({
+    items: [
+      { label: "Weighted", value: "weighted" },
+      { label: "Round Robin", value: "round_robin" },
     ],
   });
 
@@ -86,14 +99,13 @@ const CreateQueueModal = ({
                 <Select.Root
                   size="sm"
                   collection={types}
-                  defaultValue={["delayed"]}
+                  defaultValue={type}
                   onValueChange={(v) => setType(v.value)}
                 >
                   <Select.HiddenSelect />
-                  <Select.Label>Select framework</Select.Label>
                   <Select.Control>
                     <Select.Trigger>
-                      <Select.ValueText placeholder="Select framework" />
+                      <Select.ValueText placeholder="Select type" />
                     </Select.Trigger>
                     <Select.IndicatorGroup>
                       <Select.Indicator />
@@ -111,6 +123,56 @@ const CreateQueueModal = ({
                   </Select.Positioner>
                 </Select.Root>
               </Field.Root>
+              {type[0] === "fair" ? (
+                <Fieldset.Root mt={10}>
+                  <Fieldset.Legend>Settings</Fieldset.Legend>
+
+                  <Field.Root invalid={isError}>
+                    <Field.Label>Strategy</Field.Label>
+                    <Select.Root
+                      size="sm"
+                      collection={strategies}
+                      defaultValue={strategy}
+                      onValueChange={(v) => setStrategy(v.value)}
+                    >
+                      <Select.HiddenSelect />
+                      <Select.Control>
+                        <Select.Trigger>
+                          <Select.ValueText placeholder="Select strategy" />
+                        </Select.Trigger>
+                        <Select.IndicatorGroup>
+                          <Select.Indicator />
+                        </Select.IndicatorGroup>
+                      </Select.Control>
+                      <Select.Positioner>
+                        <Select.Content>
+                          {strategies.items.map((strategyOption) => (
+                            <Select.Item
+                              item={strategyOption}
+                              key={strategyOption.value}
+                            >
+                              {strategyOption.label}
+                              <Select.ItemIndicator />
+                            </Select.Item>
+                          ))}
+                        </Select.Content>
+                      </Select.Positioner>
+                    </Select.Root>
+                  </Field.Root>
+
+                  <Field.Root invalid={isError}>
+                    <Field.Label>Max Unacked</Field.Label>
+                    <Input
+                      onChange={(e) => setMaxUnacked(Number(e.target.value))}
+                      value={maxUnacked}
+                      type="number"
+                      autoFocus
+                    ></Input>
+                  </Field.Root>
+                </Fieldset.Root>
+              ) : (
+                ""
+              )}
               <Box mt={4}>
                 <Progress.Root
                   size="xs"

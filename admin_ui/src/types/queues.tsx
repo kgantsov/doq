@@ -1,6 +1,10 @@
 export interface Queue {
   name: string;
   type: string;
+  settings?: {
+    max_unacked?: number;
+    strategy?: string;
+  };
   enqueue_rps: number;
   dequeue_rps: number;
   ack_rps: number;

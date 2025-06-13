@@ -21,9 +21,23 @@ service DOQ {
     rpc UpdatePriority(UpdatePriorityRequest) returns (UpdatePriorityResponse);
 }
 
+
+message QueueSettings {
+    enum Strategy {
+        STRATEGY_UNSPECIFIED = 0;
+        ROUND_ROBIN = 1;
+        WEIGHTED = 2;
+    }
+
+    Strategy strategy = 1;
+    uint32 max_unacked = 2;
+}
+
 message CreateQueueRequest {
     string name = 1;
     string type = 2;
+
+    QueueSettings settings = 3;
 }
 
 message CreateQueueResponse {

@@ -22,6 +22,8 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "./DataTable";
 import { useState } from "react";
 
+import { Tooltip } from "./ui/tooltip";
+
 const columnHelper = createColumnHelper<Queue>();
 
 const columns = [
@@ -42,6 +44,26 @@ const columns = [
       );
     },
     header: "Type",
+  }),
+  columnHelper.accessor("settings", {
+    cell: (info) => {
+      const settings = info.getValue();
+      return (
+        <Box margin={1} display="inline-flex" gap={1}>
+          {settings?.strategy && (
+            <Tooltip content="The strategy used by the queue">
+              <Badge colorPalette={"blue"}>{settings?.strategy}</Badge>
+            </Tooltip>
+          )}
+          {settings?.max_unacked && (
+            <Tooltip content="The maximum number of unacknowledged messages">
+              <Badge colorPalette={"purple"}>{settings?.max_unacked}</Badge>
+            </Tooltip>
+          )}
+        </Box>
+      );
+    },
+    header: "Settings",
   }),
   columnHelper.accessor("ready", {
     cell: (info) => info.getValue(),

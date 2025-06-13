@@ -8,6 +8,7 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
@@ -72,7 +73,7 @@ func TestFSMPersistRestore(t *testing.T) {
 
 	idGenerator, _ := snowflake.NewNode(1)
 
-	queue1, err := queueManager.CreateQueue("delayed", "queue_1")
+	queue1, err := queueManager.CreateQueue("delayed", "queue_1", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	q1m1, err := queue1.Enqueue(
@@ -174,7 +175,7 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 
 	idGenerator, _ := snowflake.NewNode(1)
 
-	queue1, err := queueManager.CreateQueue("fair", "queue_1")
+	queue1, err := queueManager.CreateQueue("fair", "queue_1", entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	q1m1, err := queue1.Enqueue(

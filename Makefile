@@ -21,6 +21,9 @@ proto_compile:
 		--go-grpc_opt=paths=source_relative \
 		--proto_path=.
 
+run_web:
+	cd admin_ui; npm run dev
+
 run_node_0:
 	cd cmd/server ; go run . --storage.data_dir data --cluster.node_id node-0 --http.port 8000 --raft.address localhost:9000 --grpc.address localhost:10000
 

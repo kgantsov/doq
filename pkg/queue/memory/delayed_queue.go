@@ -6,25 +6,25 @@ import (
 	"time"
 )
 
-type DelayedMemoryQueue struct {
+type DelayedQueue struct {
 	queue *PriorityMemoryQueue
 	mu    sync.RWMutex
 }
 
-func NewDelayedMemoryQueue(minFirst bool) *DelayedMemoryQueue {
-	return &DelayedMemoryQueue{
+func NewDelayedQueue(minFirst bool) *DelayedQueue {
+	return &DelayedQueue{
 		queue: NewPriorityMemoryQueue(minFirst),
 	}
 }
 
-func (pq *DelayedMemoryQueue) Enqueue(group string, item *Item) {
+func (pq *DelayedQueue) Enqueue(group string, item *Item) {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
 	heap.Push(pq.queue, item)
 }
 
-func (pq *DelayedMemoryQueue) Dequeue() *Item {
+func (pq *DelayedQueue) Dequeue(ack bool) *Item {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
@@ -43,30 +43,35 @@ func (pq *DelayedMemoryQueue) Dequeue() *Item {
 	return heap.Pop(pq.queue).(*Item)
 }
 
-func (pq *DelayedMemoryQueue) Get(group string, id uint64) *Item {
+func (pq *DelayedQueue) Get(group string, id uint64) *Item {
 	pq.mu.RLock()
 	defer pq.mu.RUnlock()
 
 	return pq.queue.Get(id)
 }
 
-func (pq *DelayedMemoryQueue) Delete(group string, id uint64) *Item {
+func (pq *DelayedQueue) Delete(group string, id uint64) *Item {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
 	return pq.queue.Delete(id)
 }
 
-func (pq *DelayedMemoryQueue) UpdatePriority(group string, id uint64, priority int64) {
+func (pq *DelayedQueue) UpdatePriority(group string, id uint64, priority int64) {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
 	pq.queue.UpdatePriority(id, priority)
 }
 
-func (pq *DelayedMemoryQueue) Len() uint64 {
+func (pq *DelayedQueue) Len() uint64 {
 	pq.mu.RLock()
 	defer pq.mu.RUnlock()
 
 	return uint64(pq.queue.Len())
+}
+
+func (pq *DelayedQueue) UpdateWeights(group string, id uint64) error {
+
+	return nil
 }
