@@ -43,7 +43,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
       navigate(`/`);
       queryClient.invalidateQueries({ queryKey: ["queues"] });
       toaster.create({
-        title: "Qeueu deleted.",
+        title: "Queue deleted.",
         description: `The queue '${queueName}' has been deleted successfully.`,
         type: "success",
         duration: 9000,
