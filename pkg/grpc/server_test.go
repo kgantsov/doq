@@ -92,7 +92,7 @@ func (n *testNode) DeleteQueue(queueName string) error {
 }
 
 func (n *testNode) Enqueue(
-	queueName string, group string, priority int64, content string, metadata map[string]string,
+	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
 ) (*entity.Message, error) {
 	q, ok := n.queues[queueName]
 	if !ok {

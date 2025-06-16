@@ -91,7 +91,7 @@ func (s *QueueServer) Enqueue(
 	}
 
 	message, err := s.node.Enqueue(
-		req.QueueName, req.Group, req.Priority, req.Content, req.Metadata,
+		req.QueueName, req.Id, req.Group, req.Priority, req.Content, req.Metadata,
 	)
 
 	if err != nil {
@@ -125,7 +125,7 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 		}
 
 		message, err := s.node.Enqueue(
-			req.QueueName, req.Group, req.Priority, req.Content, req.Metadata,
+			req.QueueName, req.Id, req.Group, req.Priority, req.Content, req.Metadata,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to enqueue a message")

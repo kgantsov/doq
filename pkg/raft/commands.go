@@ -9,12 +9,15 @@ import (
 )
 
 func (n *Node) Enqueue(
-	queueName string, group string, priority int64, content string, metadata map[string]string,
+	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
 ) (*entity.Message, error) {
+	if id == 0 {
+		id = uint64(n.idGenerator.Generate().Int64())
+	}
 	cmd := Command{
 		Op: "enqueue",
 		Payload: EnqueuePayload{
-			ID:        uint64(n.idGenerator.Generate().Int64()),
+			ID:        id,
 			QueueName: queueName,
 			Group:     group,
 			Priority:  priority,

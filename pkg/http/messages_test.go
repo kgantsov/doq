@@ -674,7 +674,7 @@ func (n *testNode) DeleteQueue(queueName string) error {
 }
 
 func (n *testNode) Enqueue(
-	queueName string, group string, priority int64, content string, metadata map[string]string,
+	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
 ) (*entity.Message, error) {
 	q, ok := n.queues[queueName]
 	if !ok {
@@ -682,8 +682,11 @@ func (n *testNode) Enqueue(
 	}
 
 	n.nextID++
+	if id == 0 {
+		id = n.nextID
+	}
 	message := &entity.Message{
-		ID: n.nextID, Group: group, Priority: priority, Content: content, Metadata: metadata,
+		ID: id, Group: group, Priority: priority, Content: content, Metadata: metadata,
 	}
 	n.messages[message.ID] = message
 	q.Enqueue(group, &memory.Item{ID: message.ID, Priority: message.Priority})

@@ -80,6 +80,7 @@ type DeleteQueueOutput struct {
 }
 
 type EnqueueInputBody struct {
+	ID       string            `json:"id,omitempty" doc:"ID of the message"`
 	Group    string            `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
 	Priority int64             `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Content  string            `json:"content" example:"{\"user_id\": 1}" doc:"Content of the message"`

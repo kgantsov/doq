@@ -1,6 +1,7 @@
 import { Message } from "../types/messages";
 
 export type EnqueueRequest = {
+  id: string;
   queueName: string;
   group: string;
   priority: number;
@@ -13,6 +14,7 @@ export type DequeueRequest = {
 };
 
 export const EnqueueMessage = async ({
+  id,
   queueName,
   group,
   priority,
@@ -25,11 +27,15 @@ export const EnqueueMessage = async ({
       Accept: "application/json, application/problem+json",
     },
     body: JSON.stringify({
+      id,
       group,
       priority,
       content,
     }),
   });
+  if (!response.ok) {
+    throw new Error(`Failed to enqueue message: ${response.statusText}`);
+  }
   return await response.json();
 };
 

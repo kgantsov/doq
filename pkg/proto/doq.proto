@@ -54,10 +54,11 @@ message DeleteQueueResponse {
 
 message EnqueueRequest {
     string queueName = 1;
-    string group = 2;
-    int64 priority = 3;
-    string content = 4;
-    map<string, string> metadata = 5;
+    uint64 id = 2;
+    string group = 3;
+    int64 priority = 4;
+    string content = 5;
+    map<string, string> metadata = 6;
 }
 
 message EnqueueResponse {

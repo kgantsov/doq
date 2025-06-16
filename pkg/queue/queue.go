@@ -245,7 +245,14 @@ func (q *Queue) Enqueue(
 	if err != nil {
 		return msg, err
 	}
+	item := q.queue.Get(group, queueItem.ID) // Ensure the item is in the queue
+	if item != nil {
+		log.Debug().Msgf("Item with ID %d already exists in the queue, updating priority", queueItem.ID)
+		queueItem.UpdatePriority(item.Priority)
+		return msg, nil
+	}
 
+	log.Debug().Msgf("Enqueuing new item with ID %d", queueItem.ID)
 	q.queue.Enqueue(msg.Group, queueItem)
 
 	q.stats.IncrementEnqueue()

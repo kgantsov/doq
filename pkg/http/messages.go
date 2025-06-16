@@ -19,16 +19,22 @@ type (
 )
 
 func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOutput, error) {
+	var id uint64
 	queueName := input.QueueName
 	group := input.Body.Group
 	priority := input.Body.Priority
 	content := input.Body.Content
 	metadata := input.Body.Metadata
 
+	if input.Body.ID != "" {
+		id, _ = strconv.ParseUint(input.Body.ID, 10, 64)
+	}
+
 	log.Info().Msgf(
-		"Enqueue request %t: %s %s, %s, %d, %s %v",
+		"Enqueue request %t: %s %d, %s, %s, %d, %s %v",
 		h.node.IsLeader(),
 		h.node.Leader(),
+		id,
 		queueName,
 		group,
 		priority,
@@ -48,7 +54,7 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 		return res, nil
 	}
 
-	msg, err := h.node.Enqueue(queueName, group, priority, content, metadata)
+	msg, err := h.node.Enqueue(queueName, id, group, priority, content, metadata)
 
 	if err != nil {
 		return nil, huma.Error409Conflict("Failed to enqueue a message", err)

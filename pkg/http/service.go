@@ -46,6 +46,7 @@ type Node interface {
 	GetQueueInfo(queueName string) (*queue.QueueInfo, error)
 	Enqueue(
 		queueName string,
+		id uint64,
 		group string,
 		priority int64,
 		content string,

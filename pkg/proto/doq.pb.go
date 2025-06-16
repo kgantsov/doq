@@ -317,10 +317,11 @@ func (x *DeleteQueueResponse) GetSuccess() bool {
 type EnqueueRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	QueueName     string                 `protobuf:"bytes,1,opt,name=queueName,proto3" json:"queueName,omitempty"`
-	Group         string                 `protobuf:"bytes,2,opt,name=group,proto3" json:"group,omitempty"`
-	Priority      int64                  `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
-	Content       string                 `protobuf:"bytes,4,opt,name=content,proto3" json:"content,omitempty"`
-	Metadata      map[string]string      `protobuf:"bytes,5,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Id            uint64                 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	Group         string                 `protobuf:"bytes,3,opt,name=group,proto3" json:"group,omitempty"`
+	Priority      int64                  `protobuf:"varint,4,opt,name=priority,proto3" json:"priority,omitempty"`
+	Content       string                 `protobuf:"bytes,5,opt,name=content,proto3" json:"content,omitempty"`
+	Metadata      map[string]string      `protobuf:"bytes,6,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -360,6 +361,13 @@ func (x *EnqueueRequest) GetQueueName() string {
 		return x.QueueName
 	}
 	return ""
+}
+
+func (x *EnqueueRequest) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
 }
 
 func (x *EnqueueRequest) GetGroup() string {
@@ -1200,13 +1208,14 @@ const file_pkg_proto_doq_proto_rawDesc = "" +
 	"\x12DeleteQueueRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"/\n" +
 	"\x13DeleteQueueResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xf8\x01\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x88\x02\n" +
 	"\x0eEnqueueRequest\x12\x1c\n" +
-	"\tqueueName\x18\x01 \x01(\tR\tqueueName\x12\x14\n" +
-	"\x05group\x18\x02 \x01(\tR\x05group\x12\x1a\n" +
-	"\bpriority\x18\x03 \x01(\x03R\bpriority\x12\x18\n" +
-	"\acontent\x18\x04 \x01(\tR\acontent\x12?\n" +
-	"\bmetadata\x18\x05 \x03(\v2#.queue.EnqueueRequest.MetadataEntryR\bmetadata\x1a;\n" +
+	"\tqueueName\x18\x01 \x01(\tR\tqueueName\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\x04R\x02id\x12\x14\n" +
+	"\x05group\x18\x03 \x01(\tR\x05group\x12\x1a\n" +
+	"\bpriority\x18\x04 \x01(\x03R\bpriority\x12\x18\n" +
+	"\acontent\x18\x05 \x01(\tR\acontent\x12?\n" +
+	"\bmetadata\x18\x06 \x03(\v2#.queue.EnqueueRequest.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa4\x02\n" +
