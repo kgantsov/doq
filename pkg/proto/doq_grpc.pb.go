@@ -21,6 +21,8 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	DOQ_CreateQueue_FullMethodName    = "/queue.DOQ/CreateQueue"
 	DOQ_DeleteQueue_FullMethodName    = "/queue.DOQ/DeleteQueue"
+	DOQ_GetQueue_FullMethodName       = "/queue.DOQ/GetQueue"
+	DOQ_GetQueues_FullMethodName      = "/queue.DOQ/GetQueues"
 	DOQ_Enqueue_FullMethodName        = "/queue.DOQ/Enqueue"
 	DOQ_EnqueueStream_FullMethodName  = "/queue.DOQ/EnqueueStream"
 	DOQ_Dequeue_FullMethodName        = "/queue.DOQ/Dequeue"
@@ -38,6 +40,8 @@ const (
 type DOQClient interface {
 	CreateQueue(ctx context.Context, in *CreateQueueRequest, opts ...grpc.CallOption) (*CreateQueueResponse, error)
 	DeleteQueue(ctx context.Context, in *DeleteQueueRequest, opts ...grpc.CallOption) (*DeleteQueueResponse, error)
+	GetQueue(ctx context.Context, in *GetQueueRequest, opts ...grpc.CallOption) (*GetQueueResponse, error)
+	GetQueues(ctx context.Context, in *GetQueuesRequest, opts ...grpc.CallOption) (*GetQueuesResponse, error)
 	Enqueue(ctx context.Context, in *EnqueueRequest, opts ...grpc.CallOption) (*EnqueueResponse, error)
 	EnqueueStream(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[EnqueueRequest, EnqueueResponse], error)
 	Dequeue(ctx context.Context, in *DequeueRequest, opts ...grpc.CallOption) (*DequeueResponse, error)
@@ -71,6 +75,26 @@ func (c *dOQClient) DeleteQueue(ctx context.Context, in *DeleteQueueRequest, opt
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeleteQueueResponse)
 	err := c.cc.Invoke(ctx, DOQ_DeleteQueue_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dOQClient) GetQueue(ctx context.Context, in *GetQueueRequest, opts ...grpc.CallOption) (*GetQueueResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetQueueResponse)
+	err := c.cc.Invoke(ctx, DOQ_GetQueue_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dOQClient) GetQueues(ctx context.Context, in *GetQueuesRequest, opts ...grpc.CallOption) (*GetQueuesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetQueuesResponse)
+	err := c.cc.Invoke(ctx, DOQ_GetQueues_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -179,6 +203,8 @@ func (c *dOQClient) UpdatePriority(ctx context.Context, in *UpdatePriorityReques
 type DOQServer interface {
 	CreateQueue(context.Context, *CreateQueueRequest) (*CreateQueueResponse, error)
 	DeleteQueue(context.Context, *DeleteQueueRequest) (*DeleteQueueResponse, error)
+	GetQueue(context.Context, *GetQueueRequest) (*GetQueueResponse, error)
+	GetQueues(context.Context, *GetQueuesRequest) (*GetQueuesResponse, error)
 	Enqueue(context.Context, *EnqueueRequest) (*EnqueueResponse, error)
 	EnqueueStream(grpc.BidiStreamingServer[EnqueueRequest, EnqueueResponse]) error
 	Dequeue(context.Context, *DequeueRequest) (*DequeueResponse, error)
@@ -203,6 +229,12 @@ func (UnimplementedDOQServer) CreateQueue(context.Context, *CreateQueueRequest) 
 }
 func (UnimplementedDOQServer) DeleteQueue(context.Context, *DeleteQueueRequest) (*DeleteQueueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteQueue not implemented")
+}
+func (UnimplementedDOQServer) GetQueue(context.Context, *GetQueueRequest) (*GetQueueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetQueue not implemented")
+}
+func (UnimplementedDOQServer) GetQueues(context.Context, *GetQueuesRequest) (*GetQueuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetQueues not implemented")
 }
 func (UnimplementedDOQServer) Enqueue(context.Context, *EnqueueRequest) (*EnqueueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Enqueue not implemented")
@@ -284,6 +316,42 @@ func _DOQ_DeleteQueue_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(DOQServer).DeleteQueue(ctx, req.(*DeleteQueueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DOQ_GetQueue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetQueueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DOQServer).GetQueue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DOQ_GetQueue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DOQServer).GetQueue(ctx, req.(*GetQueueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DOQ_GetQueues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetQueuesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DOQServer).GetQueues(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DOQ_GetQueues_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DOQServer).GetQueues(ctx, req.(*GetQueuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -442,6 +510,14 @@ var DOQ_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteQueue",
 			Handler:    _DOQ_DeleteQueue_Handler,
+		},
+		{
+			MethodName: "GetQueue",
+			Handler:    _DOQ_GetQueue_Handler,
+		},
+		{
+			MethodName: "GetQueues",
+			Handler:    _DOQ_GetQueues_Handler,
 		},
 		{
 			MethodName: "Enqueue",

@@ -92,6 +92,68 @@ func (s *QueueServer) DeleteQueue(
 	return &pb.DeleteQueueResponse{Success: true}, nil
 }
 
+// GetQueues returns a list of all queues
+func (s *QueueServer) GetQueues(
+	ctx context.Context,
+	req *pb.GetQueuesRequest,
+) (*pb.GetQueuesResponse, error) {
+
+	queues := s.node.GetQueues()
+	queueInfos := make([]*pb.GetQueueResponse, len(queues))
+
+	for i, queue := range queues {
+		queueInfos[i] = &pb.GetQueueResponse{
+			Name: queue.Name,
+			Type: queue.Type,
+			Settings: &pb.QueueSettings{
+				Strategy:   pb.QueueSettings_Strategy(pb.QueueSettings_Strategy_value[queue.Settings.Strategy]),
+				MaxUnacked: uint32(queue.Settings.MaxUnacked),
+			},
+			Stats: &pb.Stats{
+				EnqueueRPS: queue.Stats.EnqueueRPS,
+				DequeueRPS: queue.Stats.DequeueRPS,
+				AckRPS:     queue.Stats.AckRPS,
+				NackRPS:    queue.Stats.NackRPS,
+			},
+			Ready:   queue.Ready,
+			Unacked: queue.Unacked,
+			Total:   queue.Total,
+		}
+	}
+
+	return &pb.GetQueuesResponse{Queues: queueInfos}, nil
+}
+
+// GetQueue returns a queue by name
+func (s *QueueServer) GetQueue(
+	ctx context.Context,
+	req *pb.GetQueueRequest,
+) (*pb.GetQueueResponse, error) {
+
+	queue, err := s.node.GetQueueInfo(req.Name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get a queue %s", req.Name)
+	}
+
+	return &pb.GetQueueResponse{
+		Name: queue.Name,
+		Type: queue.Type,
+		Settings: &pb.QueueSettings{
+			Strategy:   pb.QueueSettings_Strategy(pb.QueueSettings_Strategy_value[queue.Settings.Strategy]),
+			MaxUnacked: uint32(queue.Settings.MaxUnacked),
+		},
+		Stats: &pb.Stats{
+			EnqueueRPS: queue.Stats.EnqueueRPS,
+			DequeueRPS: queue.Stats.DequeueRPS,
+			AckRPS:     queue.Stats.AckRPS,
+			NackRPS:    queue.Stats.NackRPS,
+		},
+		Ready:   queue.Ready,
+		Unacked: queue.Unacked,
+		Total:   queue.Total,
+	}, nil
+}
+
 // Enqueue enqueues a message to a queue
 func (s *QueueServer) Enqueue(
 	ctx context.Context,

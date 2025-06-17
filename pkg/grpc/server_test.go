@@ -11,6 +11,7 @@ import (
 
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
+	"github.com/kgantsov/doq/pkg/metrics"
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/kgantsov/doq/pkg/queue/memory"
@@ -65,11 +66,42 @@ func (n *testNode) GenerateID() uint64 {
 }
 
 func (n *testNode) GetQueues() []*queue.QueueInfo {
-	return []*queue.QueueInfo{}
+	queues := []*queue.QueueInfo{}
+
+	for name := range n.queues {
+		info, err := n.GetQueueInfo(name)
+		if err != nil {
+			log.Printf("Error getting queue info for %s: %v", name, err)
+			continue
+		}
+		queues = append(queues, info)
+	}
+
+	return queues
 }
 
 func (n *testNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
-	return &queue.QueueInfo{}, nil
+	_, ok := n.queues[queueName]
+	if !ok {
+		return nil, errors.ErrQueueNotFound
+	}
+	return &queue.QueueInfo{
+		Name: queueName,
+		Type: "delayed", // Assuming all queues are of type "delayed" for this mock
+		Settings: entity.QueueSettings{
+			MaxUnacked: 8,
+		},
+		Stats: &metrics.Stats{
+			EnqueueRPS: 3.1,
+			DequeueRPS: 2.5,
+			AckRPS:     1.2,
+			NackRPS:    2.3,
+		},
+		Ready:   512,
+		Unacked: 13,
+		Total:   1024,
+	}, nil
+
 }
 
 func (n *testNode) PrometheusRegistry() prometheus.Registerer {
@@ -715,4 +747,75 @@ func TestEnqueuetDequeueStream(t *testing.T) {
 
 		dequeueStream.Send(&pb.DequeueRequest{})
 	}
+}
+
+func TestGetQueues(t *testing.T) {
+	ctx := context.Background()
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	// Create a queue first
+	req := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	_, err = client.CreateQueue(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateQueue failed: %v", err)
+	}
+
+	resp, err := client.GetQueues(ctx, &pb.GetQueuesRequest{})
+	if err != nil {
+		t.Fatalf("GetQueues failed: %v", err)
+	}
+
+	assert.NotEmpty(t, resp.Queues)
+	assert.Equal(t, "test-queue", resp.Queues[0].Name)
+	assert.Equal(t, "delayed", resp.Queues[0].Type)
+	assert.Equal(t, int64(512), resp.Queues[0].Ready)
+	assert.Equal(t, int64(13), resp.Queues[0].Unacked)
+	assert.Equal(t, int64(1024), resp.Queues[0].Total)
+	assert.Equal(t, float64(3.1), resp.Queues[0].Stats.EnqueueRPS)
+	assert.Equal(t, float64(2.5), resp.Queues[0].Stats.DequeueRPS)
+	assert.Equal(t, float64(1.2), resp.Queues[0].Stats.AckRPS)
+	assert.Equal(t, float64(2.3), resp.Queues[0].Stats.NackRPS)
+}
+
+func TestGetQueue(t *testing.T) {
+	ctx := context.Background()
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	// Create a queue first
+	req := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	_, err = client.CreateQueue(ctx, req)
+	if err != nil {
+		t.Fatalf("CreateQueue failed: %v", err)
+	}
+
+	resp, err := client.GetQueue(ctx, &pb.GetQueueRequest{Name: "test-queue"})
+	if err != nil {
+		t.Fatalf("GetQueue failed: %v", err)
+	}
+
+	assert.Equal(t, "test-queue", resp.Name)
+	assert.Equal(t, "delayed", resp.Type)
+	assert.Equal(t, int64(512), resp.Ready)
+	assert.Equal(t, int64(13), resp.Unacked)
+	assert.Equal(t, int64(1024), resp.Total)
+	assert.Equal(t, float64(3.1), resp.Stats.EnqueueRPS)
+	assert.Equal(t, float64(2.5), resp.Stats.DequeueRPS)
+	assert.Equal(t, float64(1.2), resp.Stats.AckRPS)
+	assert.Equal(t, float64(2.3), resp.Stats.NackRPS)
 }

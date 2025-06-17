@@ -7,6 +7,8 @@ option go_package = "github.com/kgantsov/doq/pkg/proto;proto";
 service DOQ {
     rpc CreateQueue(CreateQueueRequest) returns (CreateQueueResponse);
     rpc DeleteQueue(DeleteQueueRequest) returns (DeleteQueueResponse);
+    rpc GetQueue(GetQueueRequest) returns (GetQueueResponse);
+    rpc GetQueues(GetQueuesRequest) returns (GetQueuesResponse);
 
     rpc Enqueue(EnqueueRequest) returns (EnqueueResponse) {}
     rpc EnqueueStream(stream EnqueueRequest) returns (stream EnqueueResponse) {}
@@ -50,6 +52,39 @@ message DeleteQueueRequest {
 
 message DeleteQueueResponse {
     bool success = 1;
+}
+
+
+message GetQueueRequest {
+    string name = 1;
+}
+
+message Stats {
+    double enqueueRPS = 1;
+    double dequeueRPS = 2;
+    double ackRPS = 3;
+    double nackRPS = 4;
+}
+
+message GetQueueResponse {
+    string name = 1;
+    string type = 2;
+
+    QueueSettings settings = 3;
+
+    Stats stats = 4;
+
+    int64 ready = 5; // Number of messages ready to be dequeued
+    int64 unacked = 6; // Number of messages that have been dequeued but not acknowledged
+    int64 total = 7; // Total number of messages in the queue
+}
+
+message GetQueuesRequest {
+    string type = 1; // Optional filter by queue type
+}
+
+message GetQueuesResponse {
+    repeated GetQueueResponse queues = 1;
 }
 
 message EnqueueRequest {
