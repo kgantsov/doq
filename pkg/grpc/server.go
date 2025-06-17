@@ -44,6 +44,17 @@ func (s *QueueServer) CreateQueue(
 		return s.proxy.CreateQueue(ctx, s.node.Leader(), req)
 	}
 
+	if req.Settings == nil {
+		req.Settings = &pb.QueueSettings{
+			Strategy:   pb.QueueSettings_ROUND_ROBIN,
+			MaxUnacked: 0,
+		}
+	}
+
+	if req.Settings.Strategy == pb.QueueSettings_STRATEGY_UNSPECIFIED {
+		req.Settings.Strategy = pb.QueueSettings_ROUND_ROBIN
+	}
+
 	err := s.node.CreateQueue(
 		req.Type,
 		req.Name,
