@@ -26,7 +26,7 @@ func TestCluster_Init(t *testing.T) {
 	serviceDiscovery := createMockServiceDiscoverySRV()
 
 	c := NewCluster(
-		serviceDiscovery, "test-namespace", "doq", "8000",
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
 	)
 	c.inClusterConfigFunc = mockInClusterConfig
 
@@ -50,7 +50,7 @@ func TestCluster_InitError(t *testing.T) {
 	}
 
 	c := NewCluster(
-		serviceDiscovery, "test-namespace", "doq", "8000",
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
 	)
 	c.inClusterConfigFunc = mockInClusterConfig
 
@@ -64,7 +64,7 @@ func TestCluster_InitError(t *testing.T) {
 	}
 
 	c = NewCluster(
-		serviceDiscovery, "test-namespace", "doq", "8000",
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
 	)
 	c.inClusterConfigFunc = mockInClusterConfig
 
@@ -78,7 +78,7 @@ func TestCluster_InitError(t *testing.T) {
 	}
 
 	c = NewCluster(
-		serviceDiscovery, "test-namespace", "doq", "8000",
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
 	)
 	c.inClusterConfigFunc = mockInClusterConfig
 
@@ -95,7 +95,7 @@ func TestCluster_NodeID(t *testing.T) {
 	}
 
 	c := NewCluster(
-		serviceDiscovery, "test-namespace", "doq", "8000",
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
 	)
 	c.inClusterConfigFunc = mockInClusterConfig
 
@@ -109,7 +109,7 @@ func TestCluster_NodeID(t *testing.T) {
 	}
 
 	c = NewCluster(
-		serviceDiscovery, "test-namespace", "doq", "8000",
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
 	)
 	c.inClusterConfigFunc = mockInClusterConfig
 
@@ -127,28 +127,28 @@ func TestCluster_RaftAddr(t *testing.T) {
 	}
 
 	c := NewCluster(
-		serviceDiscovery, "test-namespace", "doq", "8000",
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
 	)
 	c.inClusterConfigFunc = mockInClusterConfig
 
 	err := c.Init()
 	assert.NoError(t, err)
 
-	assert.Equal(t, "doq-0:12000", c.RaftAddr())
+	assert.Equal(t, "doq-0:9000", c.RaftAddr())
 
 	serviceDiscovery.lookupHostnameFn = func() (string, error) {
 		return "doq-2", nil
 	}
 
 	c = NewCluster(
-		serviceDiscovery, "test-namespace", "doq", "8000",
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
 	)
 	c.inClusterConfigFunc = mockInClusterConfig
 
 	err = c.Init()
 	assert.NoError(t, err)
 
-	assert.Equal(t, "doq-2:12000", c.RaftAddr())
+	assert.Equal(t, "doq-2:9000", c.RaftAddr())
 }
 
 // TestCluster_Hosts tests the Hosts method of the Cluster
@@ -156,7 +156,7 @@ func TestCluster_Hosts(t *testing.T) {
 	serviceDiscovery := createMockServiceDiscoverySRV()
 
 	c := NewCluster(
-		serviceDiscovery, "test-namespace", "doq", "8000",
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
 	)
 	c.inClusterConfigFunc = mockInClusterConfig
 

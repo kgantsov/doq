@@ -13,3 +13,7 @@ spec:
       port: 8000
       targetPort: 8000
       protocol: TCP
+    - name: grpc
+      port: 10000
+      targetPort: 10000
+      protocol: TCP

@@ -64,7 +64,13 @@ func Run(cmd *cobra.Command, args []string) {
 			namespace = config.Cluster.Namespace
 		}
 		serviceDiscovery := cluster.NewServiceDiscoverySRV(namespace, config.Cluster.ServiceName)
-		cl = cluster.NewCluster(serviceDiscovery, namespace, config.Cluster.ServiceName, config.Http.Port)
+		cl = cluster.NewCluster(
+			serviceDiscovery,
+			namespace,
+			config.Cluster.ServiceName,
+			config.Raft.Address,
+			config.Http.Port,
+		)
 
 		if err := cl.Init(); err != nil {
 			log.Warn().Msgf("Error initialising a cluster: %s", err)

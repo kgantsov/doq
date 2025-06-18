@@ -29,10 +29,16 @@ type Cluster struct {
 	inClusterConfigFunc func() (*rest.Config, error)
 }
 
-func NewCluster(serviceDiscovery ServiceDiscovery, namespace, ServiceName, httpAddr string) *Cluster {
+func NewCluster(
+	serviceDiscovery ServiceDiscovery,
+	namespace, ServiceName,
+	raftAddr string,
+	httpAddr string,
+) *Cluster {
 	c := &Cluster{
 		namespace:           namespace,
 		serviceName:         ServiceName,
+		raftAddr:            raftAddr,
 		httpAddr:            httpAddr,
 		serviceDiscovery:    serviceDiscovery,
 		inClusterConfigFunc: rest.InClusterConfig,
@@ -71,11 +77,17 @@ func (c *Cluster) Init() error {
 		}
 	}
 
+	_, raftPort, err := net.SplitHostPort(c.raftAddr)
+	if err != nil {
+		log.Warn().Msgf("Error splitting host and port: %s %v\n", c.raftAddr, err)
+		raftPort = "9000" // Default Raft port
+	}
+
 	host, _, err := net.SplitHostPort(c.nodeID)
 	if err != nil {
 		log.Warn().Msgf("Error splitting host and port: %s %v\n", c.nodeID, err)
 	}
-	c.raftAddr = fmt.Sprintf("%s:12000", host)
+	c.raftAddr = fmt.Sprintf("%s:%s", host, raftPort)
 
 	c.InitKubeClient()
 
