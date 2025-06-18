@@ -66,28 +66,32 @@ func (n *testNode) GenerateID() uint64 {
 }
 
 func (n *testNode) GetQueues() []*queue.QueueInfo {
-	queues := []*queue.QueueInfo{}
-
-	for name := range n.queues {
-		info, err := n.GetQueueInfo(name)
-		if err != nil {
-			log.Printf("Error getting queue info for %s: %v", name, err)
-			continue
-		}
-		queues = append(queues, info)
+	queues := []*queue.QueueInfo{
+		&queue.QueueInfo{
+			Name: "test-queue", // Mock queue name
+			Type: "delayed",    // Assuming all queues are of type "delayed" for this mock
+			Settings: entity.QueueSettings{
+				MaxUnacked: 8,
+			},
+			Stats: &metrics.Stats{
+				EnqueueRPS: 3.1,
+				DequeueRPS: 2.5,
+				AckRPS:     1.2,
+				NackRPS:    2.3,
+			},
+			Ready:   512,
+			Unacked: 13,
+			Total:   1024,
+		},
 	}
 
 	return queues
 }
 
 func (n *testNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
-	_, ok := n.queues[queueName]
-	if !ok {
-		return nil, errors.ErrQueueNotFound
-	}
 	return &queue.QueueInfo{
-		Name: queueName,
-		Type: "delayed", // Assuming all queues are of type "delayed" for this mock
+		Name: "test-queue", // Mock queue name
+		Type: "delayed",    // Assuming all queues are of type "delayed" for this mock
 		Settings: entity.QueueSettings{
 			MaxUnacked: 8,
 		},
@@ -248,8 +252,6 @@ var lis *bufconn.Listener
 // Initialize a buffer listener to mock the gRPC connection
 func init() {
 	lis = bufconn.Listen(bufSize)
-	// grpcServer := grpc.NewServer()
-	// pb.RegisterDOQServer(grpcServer, NewQueueServer(newTestNode()))
 
 	grpcServer, _ := NewGRPCServer(newTestNode(), 0)
 
