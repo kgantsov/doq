@@ -3,9 +3,8 @@ package cluster
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -49,7 +48,7 @@ func (j *Joiner) Join() error {
 		time.Sleep(time.Duration(1) * time.Second)
 	}
 
-	return errors.New(fmt.Sprintf("failed to join node at %s: %s", host, err.Error()))
+	return fmt.Errorf("failed to join node at %s: %s", host, err.Error())
 }
 
 func (j *Joiner) join(joinAddr, raftAddr, nodeID string) error {
@@ -76,10 +75,13 @@ func (j *Joiner) join(joinAddr, raftAddr, nodeID string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("Failed to join: %s", joinAddr))
+		return fmt.Errorf("Failed to join: %s", joinAddr)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("Failed to read response body: %w", err)
+	}
 	log.Info().Msgf("JOINED %+v %+v", resp.StatusCode, string(body))
 	return nil
 }
