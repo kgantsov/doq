@@ -27,6 +27,8 @@ spec:
             - "doq"
             - "--http.port"
             - "8000"
+            - "--grpc.address"
+            - "0.0.0.0:10000"
             - "--raft.address"
             - "9000"
             - "--prometheus.enabled"
@@ -38,6 +40,32 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /usr/local/doq/data
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 100Mi
+            limits:
+              cpu: 2000m
+              memory: 1500Mi
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 8000
+              scheme: HTTP
+            initialDelaySeconds: 120
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          readinessProbe:
+            failureThreshold: 2
+            httpGet:
+              path: /readyz
+              port: 8000
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 2
 
   volumeClaimTemplates:
   - kind: PersistentVolumeClaim
