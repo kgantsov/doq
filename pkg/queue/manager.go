@@ -96,6 +96,9 @@ func (qm *QueueManager) GetQueue(queueName string) (*Queue, error) {
 		if err != nil {
 			return nil, errors.ErrQueueNotFound
 		}
+
+		qm.queues[queueName] = q
+
 		return q, nil
 	}
 	return q, nil
