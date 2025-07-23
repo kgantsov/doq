@@ -1,13 +1,13 @@
 package storage
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
+	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/rs/zerolog/log"
 )
 
@@ -296,44 +296,37 @@ func (s *BadgerStore) UpdateMessage(
 	})
 }
 
-func (s *BadgerStore) PersistSnapshot(queueType, queueName string, sink raft.SnapshotSink) error {
+func (s *BadgerStore) PersistSnapshot(queueConfig *entity.QueueConfig, sink raft.SnapshotSink) error {
 	return s.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
 
-		prefix := s.getMessagesPrefix(queueName)
+		snapshotItem := &pb.SnapshotItem{
+			Item: &pb.SnapshotItem_Queue{
+				Queue: queueConfig.ToProto(),
+			},
+		}
+		log.Info().Msgf("Writing queue snapshot item for queue %#v", snapshotItem)
+
+		if err := WriteSnapshotItem(sink, snapshotItem); err != nil {
+			return fmt.Errorf("failed to write message snapshot item: %v", err)
+		}
+
+		prefix := s.getMessagesPrefix(queueConfig.Name)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 
 			err := item.Value(func(val []byte) error {
-				msg, err := entity.MessageFromBytes(val)
-
+				msg, err := entity.MessageProtoFromBytes(val)
 				if err != nil {
 					return err
 				}
 
-				msg.QueueType = queueType
-				msg.QueueName = queueName
-
-				data, err := json.Marshal(msg)
-				if err != nil {
-					log.Error().Err(err).Msgf("Failed to marshal queue %s item", queueName)
-					return err
+				snapshotItem := &pb.SnapshotItem{
+					Item: &pb.SnapshotItem_Message{Message: msg},
 				}
-
-				_, err = sink.Write(data)
-				if err != nil {
-					log.Error().Err(err).Msgf(
-						"Failed to write a queue %s item to snapshot sink", queueName,
-					)
-					return err
-				}
-
-				_, err = sink.Write([]byte("\n"))
-				if err != nil {
-					log.Error().Err(err).Msgf(
-						"Failed to write a newline to snapshot sink for queue %s", queueName,
-					)
+				if err := WriteSnapshotItem(sink, snapshotItem); err != nil {
+					return fmt.Errorf("failed to write message snapshot item: %v", err)
 				}
 
 				return nil

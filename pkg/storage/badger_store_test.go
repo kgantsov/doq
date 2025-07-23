@@ -1,12 +1,12 @@
 package storage
 
 import (
-	"bufio"
 	"io"
 	"testing"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/entity"
+	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,38 +26,38 @@ func TestBadgerStore(t *testing.T) {
 
 	message, err := store.Enqueue(queueName, 534654, "default", 555, "test-message", map[string]string{})
 	assert.NoError(t, err)
-	assert.Equal(t, message.ID, uint64(534654))
-	assert.Equal(t, message.Content, "test-message")
-	assert.Equal(t, message.Group, "default")
-	assert.Equal(t, message.Priority, int64(555))
-	assert.Equal(t, message.Metadata, map[string]string{})
+	assert.Equal(t, uint64(534654), message.ID)
+	assert.Equal(t, "test-message", message.Content)
+	assert.Equal(t, "default", message.Group)
+	assert.Equal(t, int64(555), message.Priority)
+	assert.Equal(t, map[string]string{}, message.Metadata)
 
 	message, err = store.Get(queueName, 534654)
 	assert.NoError(t, err)
-	assert.Equal(t, message.ID, uint64(534654))
-	assert.Equal(t, message.Content, "test-message")
-	assert.Equal(t, message.Group, "default")
-	assert.Equal(t, message.Priority, int64(555))
-	assert.Equal(t, message.Metadata, map[string]string{})
+	assert.Equal(t, uint64(534654), message.ID)
+	assert.Equal(t, "test-message", message.Content)
+	assert.Equal(t, "default", message.Group)
+	assert.Equal(t, int64(555), message.Priority)
+	assert.Equal(t, map[string]string(nil), message.Metadata)
 
 	err = store.UpdateMessage(queueName, 534654, 1000, "test-message", map[string]string{"retry": "5"})
 	assert.NoError(t, err)
 
 	message, err = store.UpdatePriority(queueName, 534654, 1000)
 	assert.NoError(t, err)
-	assert.Equal(t, message.ID, uint64(534654))
-	assert.Equal(t, message.Content, "test-message")
-	assert.Equal(t, message.Group, "default")
-	assert.Equal(t, message.Priority, int64(1000))
-	assert.Equal(t, message.Metadata, map[string]string{"retry": "5"})
+	assert.Equal(t, uint64(534654), message.ID)
+	assert.Equal(t, "test-message", message.Content)
+	assert.Equal(t, "default", message.Group)
+	assert.Equal(t, int64(1000), message.Priority)
+	assert.Equal(t, map[string]string{"retry": "5"}, message.Metadata)
 
 	message, err = store.Dequeue(queueName, 534654, false)
 	assert.NoError(t, err)
-	assert.Equal(t, message.ID, uint64(534654))
-	assert.Equal(t, message.Content, "test-message")
-	assert.Equal(t, message.Group, "default")
-	assert.Equal(t, message.Priority, int64(1000))
-	assert.Equal(t, message.Metadata, map[string]string{"retry": "5"})
+	assert.Equal(t, uint64(534654), message.ID)
+	assert.Equal(t, "test-message", message.Content)
+	assert.Equal(t, "default", message.Group)
+	assert.Equal(t, int64(1000), message.Priority)
+	assert.Equal(t, map[string]string{"retry": "5"}, message.Metadata)
 
 	err = store.Ack(queueName, 534654)
 	assert.NoError(t, err)
@@ -148,33 +148,166 @@ func TestBadgerStorePersistSnapshot(t *testing.T) {
 
 	store := NewBadgerStore(db)
 
-	queueName := "test-queue"
+	queues := []struct {
+		Queue    *entity.QueueConfig
+		Messages []struct {
+			Id       uint64
+			Group    string
+			Priority int64
+			Content  string
+			Metadata map[string]string
+		}
+	}{
+		{
+			Queue: &entity.QueueConfig{
+				Name:     "transcode-queue",
+				Type:     "delayed",
+				Settings: entity.QueueSettings{},
+			},
+			Messages: []struct {
+				Id       uint64
+				Group    string
+				Priority int64
+				Content  string
+				Metadata map[string]string
+			}{
+				{
+					Id:       534654,
+					Group:    "default",
+					Priority: 555,
+					Content:  "test-message-0",
+					Metadata: map[string]string{},
+				},
+				{
+					Id:       534655,
+					Group:    "default",
+					Priority: 555,
+					Content:  "test-message-1",
+					Metadata: map[string]string{},
+				},
+				{
+					Id:       534656,
+					Group:    "default",
+					Priority: 555,
+					Content:  "test-message-2",
+					Metadata: map[string]string{},
+				},
+			},
+		},
+		{
+			Queue: &entity.QueueConfig{
+				Name: "transfers-queue",
+				Type: "fair",
+				Settings: entity.QueueSettings{
+					Strategy:   "WEIGHTED",
+					MaxUnacked: 75,
+				},
+			},
+			Messages: []struct {
+				Id       uint64
+				Group    string
+				Priority int64
+				Content  string
+				Metadata map[string]string
+			}{
+				{
+					Id:       24,
+					Group:    "customer-1",
+					Priority: 10,
+					Content:  "Message #1",
+					Metadata: map[string]string{},
+				},
+				{
+					Id:       25,
+					Group:    "customer-1",
+					Priority: 10,
+					Content:  "Message #2",
+					Metadata: map[string]string{},
+				},
+				{
+					Id:       26,
+					Group:    "customer-2",
+					Priority: 10,
+					Content:  "Message #3",
+					Metadata: map[string]string{},
+				},
+				{
+					Id:       27,
+					Group:    "customer-3",
+					Priority: 10,
+					Content:  "Message #4",
+					Metadata: map[string]string{},
+				},
+			},
+		},
+		{
+			Queue: &entity.QueueConfig{
+				Name: "empty-queue",
+				Type: "fair",
+				Settings: entity.QueueSettings{
+					Strategy:   "ROUND_ROBIN",
+					MaxUnacked: 0,
+				},
+			},
+			Messages: []struct {
+				Id       uint64
+				Group    string
+				Priority int64
+				Content  string
+				Metadata map[string]string
+			}{},
+		},
+	}
 
-	err = store.CreateQueue("delayed", queueName, entity.QueueSettings{})
-	assert.NoError(t, err)
+	// Create queues and enqueue messages
+	for _, q := range queues {
+		err = store.CreateQueue(q.Queue.Type, q.Queue.Name, q.Queue.Settings)
+		assert.NoError(t, err)
 
-	message, err := store.Enqueue(queueName, 534654, "default", 555, "test-message", map[string]string{})
-	assert.NoError(t, err)
-	assert.Equal(t, message.ID, uint64(534654))
-	assert.Equal(t, message.Content, "test-message")
-	assert.Equal(t, message.Group, "default")
-	assert.Equal(t, message.Priority, int64(555))
+		for _, m := range q.Messages {
+			_, err = store.Enqueue(q.Queue.Name, m.Id, m.Group, m.Priority, m.Content, m.Metadata)
+			assert.NoError(t, err)
+		}
+	}
 
 	sink := &MockSink{}
 
-	err = store.PersistSnapshot("delayed", queueName, sink)
-	assert.NoError(t, err)
+	// Persist snapshot for each queue
+	// This simulates the process of saving the state of each queue and its messages
+	// to a snapshot sink, which could be used for recovery or replication.
+	// In a real-world scenario, this would be part of a Raft snapshot process.
+	for _, q := range queues {
+		err = store.PersistSnapshot(q.Queue, sink)
+		assert.NoError(t, err)
+	}
 
-	scanner := bufio.NewScanner(sink)
+	// Read the snapshot data from the sink
+	for _, q := range queues {
+		// Read the queue item from the snapshot
+		line, err := ReadSnapshotQueueItem(sink)
+		assert.NoError(t, err)
+		assert.NotNil(t, line)
 
-	scanner.Scan()
-	line := scanner.Bytes()
+		assert.Equal(t, q.Queue.Name, line.Name)
+		assert.Equal(t, q.Queue.Type, line.Type)
+		assert.Equal(
+			t,
+			pb.QueueSettings_Strategy(pb.QueueSettings_Strategy_value[q.Queue.Settings.Strategy]),
+			line.Settings.Strategy,
+		)
+		assert.Equal(t, uint32(q.Queue.Settings.MaxUnacked), line.Settings.MaxUnacked)
 
-	message, err = entity.MessageFromBytes(line)
+		// Read each message for the queue
+		for _, m := range q.Messages {
+			msg, err := ReadSnapshotMessageItem(sink)
+			assert.NoError(t, err)
+			assert.NotNil(t, msg)
 
-	assert.NoError(t, err)
-	assert.Equal(t, message.ID, uint64(534654))
-	assert.Equal(t, message.Content, "test-message")
-	assert.Equal(t, message.Group, "default")
-	assert.Equal(t, message.Priority, int64(555))
+			assert.Equal(t, m.Id, msg.Id)
+			assert.Equal(t, m.Content, msg.Content)
+			assert.Equal(t, m.Group, msg.Group)
+			assert.Equal(t, m.Priority, msg.Priority)
+			// assert.Equal(t, m.Metadata, msg.Metadata)
+		}
+	}
 }

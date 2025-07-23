@@ -29,5 +29,5 @@ type Store interface {
 		content string,
 		metadata map[string]string,
 	) error
-	PersistSnapshot(queueType, queueName string, sink raft.SnapshotSink) error
+	PersistSnapshot(queueConfig *entity.QueueConfig, sink raft.SnapshotSink) error
 }

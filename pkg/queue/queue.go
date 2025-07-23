@@ -433,5 +433,5 @@ func (q *Queue) Len() int {
 }
 
 func (q *Queue) PersistSnapshot(sink raft.SnapshotSink) error {
-	return q.store.PersistSnapshot(q.config.Type, q.config.Name, sink)
+	return q.store.PersistSnapshot(q.config, sink)
 }

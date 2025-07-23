@@ -1,7 +1,8 @@
 package entity
 
 import (
-	"encoding/json"
+	pb "github.com/kgantsov/doq/pkg/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 type Message struct {
@@ -17,7 +18,18 @@ type Message struct {
 }
 
 func (m *Message) ToBytes() ([]byte, error) {
-	return json.Marshal(m)
+	msg := m.ToProto()
+	return proto.Marshal(msg)
+}
+
+func (m *Message) ToProto() *pb.Message {
+	return &pb.Message{
+		Group:    m.Group,
+		Id:       m.ID,
+		Priority: m.Priority,
+		Content:  m.Content,
+		Metadata: m.Metadata,
+	}
 }
 
 func (m *Message) UpdatePriority(newPriority int64) {
@@ -25,7 +37,19 @@ func (m *Message) UpdatePriority(newPriority int64) {
 }
 
 func MessageFromBytes(data []byte) (*Message, error) {
-	var msg Message
-	err := json.Unmarshal(data, &msg)
+	var msg pb.Message
+	err := proto.Unmarshal(data, &msg)
+	return &Message{
+		Group:    msg.Group,
+		ID:       msg.Id,
+		Priority: msg.Priority,
+		Content:  msg.Content,
+		Metadata: msg.Metadata,
+	}, err
+}
+
+func MessageProtoFromBytes(data []byte) (*pb.Message, error) {
+	var msg pb.Message
+	err := proto.Unmarshal(data, &msg)
 	return &msg, err
 }

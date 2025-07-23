@@ -35,6 +35,28 @@ message QueueSettings {
     uint32 max_unacked = 2;
 }
 
+message Queue {
+    string name = 1;
+    string type = 2;
+
+    QueueSettings settings = 3;
+}
+
+message Message {
+    string group = 1;
+    uint64 id = 2;
+    int64 priority = 3;
+    string content = 4;
+    map<string, string> metadata = 5;
+}
+
+message SnapshotItem {
+  oneof item {
+    Queue queue = 1;
+    Message message = 2;
+  }
+}
+
 message CreateQueueRequest {
     string name = 1;
     string type = 2;

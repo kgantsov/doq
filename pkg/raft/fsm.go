@@ -1,7 +1,6 @@
 package raft
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,7 +10,9 @@ import (
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
+	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/kgantsov/doq/pkg/queue"
+	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 
 	"github.com/dgraph-io/badger/v4"
@@ -575,43 +576,50 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	scanner := bufio.NewScanner(rc)
 	linesTotal := 0
 	linesRestored := 0
+	queuesTotal := 0
 
-	for scanner.Scan() {
-		line := scanner.Bytes()
+	var q *queue.Queue
+
+	for {
+		item, err := storage.ReadSnapshotItem(rc)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
 		linesTotal++
 
-		msg, err := entity.MessageFromBytes(line)
-		if err != nil {
-			log.Warn().Msgf("Failed to unmarshal command: %v %v", err, string(line))
-			continue
+		switch v := item.Item.(type) {
+		case *pb.SnapshotItem_Queue:
+			log.Debug().Msgf("Restoring queue: %s", v.Queue.Name)
+			q, err = f.queueManager.CreateQueue(v.Queue.Type, v.Queue.Name, entity.QueueSettings{
+				Strategy:   v.Queue.Settings.Strategy.String(),
+				MaxUnacked: int(v.Queue.Settings.MaxUnacked),
+			})
+			if err != nil {
+				log.Warn().Msgf("Failed to create a queue: %v", err)
+				continue
+			}
+			queuesTotal++
+		case *pb.SnapshotItem_Message:
+			log.Debug().Msgf("Restoring message: %d %s %d", v.Message.Id, v.Message.Group, v.Message.Priority)
+			q.Enqueue(
+				v.Message.Id,
+				v.Message.Group,
+				v.Message.Priority,
+				v.Message.Content,
+				v.Message.Metadata,
+			)
+		default:
+			return fmt.Errorf("unknown item in snapshot")
 		}
-
-		q, err := f.queueManager.CreateQueue(msg.QueueType, msg.QueueName, entity.QueueSettings{
-			Strategy:   msg.QueueSettings.Strategy,
-			MaxUnacked: msg.QueueSettings.MaxUnacked,
-		})
-		if err != nil {
-			log.Warn().Msgf("Failed to create a queue: %v", err)
-			continue
-		}
-
-		q.Enqueue(msg.ID, msg.Group, msg.Priority, msg.Content, msg.Metadata)
-
 		linesRestored++
 	}
 
-	if err := scanner.Err(); err != nil {
-		log.Info().Msgf(
-			"Error while reading snapshot: %v. Restored %d out of %d lines",
-			err,
-			linesRestored,
-			linesTotal,
-		)
-		return err
-	}
 	log.Warn().Msgf("Restored %d out of %d lines", linesRestored, linesTotal)
 
 	return nil
