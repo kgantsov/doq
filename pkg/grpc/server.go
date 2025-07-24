@@ -29,7 +29,10 @@ func NewQueueServer(node http.Node, port int) *QueueServer {
 }
 
 func NewGRPCServer(node http.Node, port int) (*grpc.Server, error) {
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(LoggingUnaryInterceptor()),
+		grpc.StreamInterceptor(LoggingStreamInterceptor()),
+	)
 	pb.RegisterDOQServer(grpcServer, NewQueueServer(node, port))
 
 	return grpcServer, nil
