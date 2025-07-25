@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/metrics"
@@ -253,7 +254,14 @@ var lis *bufconn.Listener
 func init() {
 	lis = bufconn.Listen(bufSize)
 
-	grpcServer, _ := NewGRPCServer(newTestNode(), 0)
+	cfg := &config.Config{
+		Http: config.HttpConfig{Port: "8080"},
+		Prometheus: config.PrometheusConfig{
+			Enabled: false,
+		},
+	}
+
+	grpcServer, _ := NewGRPCServer(cfg, newTestNode(), 0)
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {

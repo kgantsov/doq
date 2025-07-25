@@ -149,7 +149,7 @@ func Run(cmd *cobra.Command, args []string) {
 
 		port := lis.Addr().(*net.TCPAddr).Port
 
-		grpcServer, err := grpc.NewGRPCServer(node, port)
+		grpcServer, err := grpc.NewGRPCServer(config, node, port)
 		if err != nil {
 			log.Fatal().Msgf("failed to create GRPC server: %v", err)
 		}

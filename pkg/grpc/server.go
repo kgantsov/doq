@@ -6,9 +6,11 @@ import (
 	"io"
 	"time"
 
+	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/http"
 	pb "github.com/kgantsov/doq/pkg/proto"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 )
@@ -28,10 +30,17 @@ func NewQueueServer(node http.Node, port int) *QueueServer {
 	}
 }
 
-func NewGRPCServer(node http.Node, port int) (*grpc.Server, error) {
+func NewGRPCServer(config *config.Config, node http.Node, port int) (*grpc.Server, error) {
+	var prometheusMetrics *PrometheusMetrics
+	if config.Prometheus.Enabled {
+		promRegistry := node.PrometheusRegistry()
+		prometheusMetrics = NewPrometheusMetrics(promRegistry, "doq", "grpc")
+		promRegistry.Register(collectors.NewGoCollector())
+	}
+
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(LoggingUnaryInterceptor()),
-		grpc.StreamInterceptor(LoggingStreamInterceptor()),
+		grpc.UnaryInterceptor(UnaryInterceptor(config.Prometheus.Enabled, prometheusMetrics)),
+		grpc.StreamInterceptor(StreamInterceptor(config.Prometheus.Enabled, prometheusMetrics)),
 	)
 	pb.RegisterDOQServer(grpcServer, NewQueueServer(node, port))
 
