@@ -38,6 +38,7 @@ func TestNodeSingleNode(t *testing.T) {
 		},
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 		},
 	}
 
@@ -177,6 +178,7 @@ func TestNodeDeleteQueue(t *testing.T) {
 		},
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 		},
 	}
 
@@ -185,6 +187,24 @@ func TestNodeDeleteQueue(t *testing.T) {
 
 	// Simple way to ensure there is a leader.
 	time.Sleep(3 * time.Second)
+
+	err = n.CreateQueue("fair", "test_queue", entity.QueueSettings{
+		Strategy:   "ROUND_ROBIN",
+		MaxUnacked: 75,
+	})
+	assert.Nil(t, err)
+
+	queue, err := n.GetQueueInfo("test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, "ROUND_ROBIN", queue.Settings.Strategy)
+	assert.Equal(t, int(75), queue.Settings.MaxUnacked)
+
+	err = n.DeleteQueue("test_queue")
+	assert.Nil(t, err)
+
+	queue, err = n.GetQueueInfo("test_queue")
+	assert.NotNil(t, err)
+	assert.Nil(t, queue)
 
 	err = n.DeleteQueue("non_existent_queue")
 	assert.Error(t, err)
@@ -215,6 +235,7 @@ func TestNodeSingleNodeAck(t *testing.T) {
 		},
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 		},
 	}
 
@@ -274,6 +295,7 @@ func TestNodeSingleNodeNack(t *testing.T) {
 		},
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 		},
 	}
 
@@ -337,6 +359,7 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 		},
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 		},
 	}
 

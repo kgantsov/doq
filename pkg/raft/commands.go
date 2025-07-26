@@ -1,8 +1,10 @@
 package raft
 
 import (
-	"encoding/json"
 	"time"
+
+	pb "github.com/kgantsov/doq/pkg/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/queue"
@@ -14,18 +16,21 @@ func (n *Node) Enqueue(
 	if id == 0 {
 		id = uint64(n.idGenerator.Generate().Int64())
 	}
-	cmd := Command{
-		Op: "enqueue",
-		Payload: EnqueuePayload{
-			ID:        id,
-			QueueName: queueName,
-			Group:     group,
-			Priority:  priority,
-			Content:   content,
-			Metadata:  metadata,
+
+	cmd := &pb.RaftCommand{
+		Cmd: &pb.RaftCommand_Enqueue{
+			Enqueue: &pb.EnqueueRequest{
+				QueueName: queueName,
+				Id:        id,
+				Group:     group,
+				Priority:  priority,
+				Content:   content,
+				Metadata:  metadata,
+			},
 		},
 	}
-	data, err := json.Marshal(cmd)
+
+	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -50,14 +55,15 @@ func (n *Node) Enqueue(
 }
 
 func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
-	cmd := Command{
-		Op: "dequeue",
-		Payload: DequeuePayload{
-			QueueName: QueueName,
-			Ack:       ack,
+	cmd := &pb.RaftCommand{
+		Cmd: &pb.RaftCommand_Dequeue{
+			Dequeue: &pb.DequeueRequest{
+				QueueName: QueueName,
+				Ack:       ack,
+			},
 		},
 	}
-	data, err := json.Marshal(cmd)
+	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -82,15 +88,15 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
 }
 
 func (n *Node) Get(QueueName string, id uint64) (*entity.Message, error) {
-	cmd := Command{
-		Op: "get",
-		Payload: GetPayload{
-			QueueName: QueueName,
-			// Group:     group,
-			ID: id,
+	cmd := &pb.RaftCommand{
+		Cmd: &pb.RaftCommand_Get{
+			Get: &pb.GetRequest{
+				QueueName: QueueName,
+				Id:        id,
+			},
 		},
 	}
-	data, err := json.Marshal(cmd)
+	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -115,14 +121,16 @@ func (n *Node) Get(QueueName string, id uint64) (*entity.Message, error) {
 }
 
 func (n *Node) Delete(QueueName string, id uint64) error {
-	cmd := Command{
-		Op: "delete",
-		Payload: DeletePayload{
-			QueueName: QueueName,
-			ID:        id,
+	cmd := &pb.RaftCommand{
+		Cmd: &pb.RaftCommand_Delete{
+			Delete: &pb.DeleteRequest{
+				QueueName: QueueName,
+				Id:        id,
+			},
 		},
 	}
-	data, err := json.Marshal(cmd)
+
+	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
 	}
@@ -141,14 +149,15 @@ func (n *Node) Delete(QueueName string, id uint64) error {
 }
 
 func (n *Node) Ack(QueueName string, id uint64) error {
-	cmd := Command{
-		Op: "ack",
-		Payload: AckPayload{
-			QueueName: QueueName,
-			ID:        id,
+	cmd := &pb.RaftCommand{
+		Cmd: &pb.RaftCommand_Ack{
+			Ack: &pb.AckRequest{
+				QueueName: QueueName,
+				Id:        id,
+			},
 		},
 	}
-	data, err := json.Marshal(cmd)
+	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
 	}
@@ -167,16 +176,17 @@ func (n *Node) Ack(QueueName string, id uint64) error {
 }
 
 func (n *Node) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
-	cmd := Command{
-		Op: "nack",
-		Payload: NackPayload{
-			QueueName: QueueName,
-			ID:        id,
-			Priority:  priority,
-			Metadata:  metadata,
+	cmd := &pb.RaftCommand{
+		Cmd: &pb.RaftCommand_Nack{
+			Nack: &pb.NackRequest{
+				QueueName: QueueName,
+				Id:        id,
+				Priority:  priority,
+				Metadata:  metadata,
+			},
 		},
 	}
-	data, err := json.Marshal(cmd)
+	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
 	}
@@ -195,15 +205,16 @@ func (n *Node) Nack(QueueName string, id uint64, priority int64, metadata map[st
 }
 
 func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error {
-	cmd := Command{
-		Op: "updatePriority",
-		Payload: UpdatePriorityPayload{
-			ID:        id,
-			QueueName: queueName,
-			Priority:  priority,
+	cmd := &pb.RaftCommand{
+		Cmd: &pb.RaftCommand_UpdatePriority{
+			UpdatePriority: &pb.UpdatePriorityRequest{
+				Id:        id,
+				QueueName: queueName,
+				Priority:  priority,
+			},
 		},
 	}
-	data, err := json.Marshal(cmd)
+	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
 	}
@@ -235,18 +246,21 @@ func (n *Node) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 }
 
 func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
-	cmd := Command{
-		Op: "createQueue",
-		Payload: CreateQueuePayload{
-			QueueType: queueType,
-			QueueName: queueName,
-			Settings: QueueSettings{
-				Strategy:   settings.Strategy,
-				MaxUnacked: settings.MaxUnacked,
+	cmd := &pb.RaftCommand{
+		Cmd: &pb.RaftCommand_CreateQueue{
+			CreateQueue: &pb.CreateQueueRequest{
+				Type: queueType,
+				Name: queueName,
+				Settings: &pb.QueueSettings{
+					Strategy: pb.QueueSettings_Strategy(
+						pb.QueueSettings_Strategy_value[settings.Strategy],
+					),
+					MaxUnacked: uint32(settings.MaxUnacked),
+				},
 			},
 		},
 	}
-	data, err := json.Marshal(cmd)
+	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
 	}
@@ -264,13 +278,14 @@ func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSet
 	return nil
 }
 func (n *Node) DeleteQueue(queueName string) error {
-	cmd := Command{
-		Op: "deleteQueue",
-		Payload: DeleteQueuePayload{
-			QueueName: queueName,
+	cmd := &pb.RaftCommand{
+		Cmd: &pb.RaftCommand_DeleteQueue{
+			DeleteQueue: &pb.DeleteQueueRequest{
+				Name: queueName,
+			},
 		},
 	}
-	data, err := json.Marshal(cmd)
+	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
 	}

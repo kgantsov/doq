@@ -396,20 +396,20 @@ func (q *Queue) Nack(id uint64, priority int64, metadata map[string]string) erro
 		return err
 	}
 
-	if priority != 0 {
-		message.Priority = priority
-	}
-
 	queueItem := &memory.Item{
 		ID:       message.ID,
 		Priority: message.Priority,
 		Group:    message.Group,
 	}
 
+	if priority != 0 {
+		queueItem.Priority = priority
+	}
+
 	q.queue.Enqueue(message.Group, queueItem)
 	q.ackQueue.Delete("default", item.ID)
 
-	if metadata != nil {
+	if metadata != nil || queueItem.Priority != message.Priority {
 		err = q.store.UpdateMessage(q.config.Name, item.ID, priority, "", metadata)
 
 		if err != nil {

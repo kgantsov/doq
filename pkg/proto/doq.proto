@@ -196,3 +196,20 @@ message UpdatePriorityRequest {
 message UpdatePriorityResponse {
     bool success = 1;
 }
+
+message RaftCommand {
+  oneof cmd {
+    CreateQueueRequest createQueue = 1;
+    DeleteQueueRequest deleteQueue = 2;
+    GetQueueRequest getQueue = 3;
+    GetQueuesRequest getQueues = 4;
+
+    EnqueueRequest enqueue = 5;
+    DequeueRequest dequeue = 6;
+    GetRequest get = 7;
+    DeleteRequest delete = 8;
+    AckRequest ack = 9;
+    NackRequest nack = 10;
+    UpdatePriorityRequest updatePriority = 11;
+  }
+}

@@ -1696,6 +1696,232 @@ func (x *UpdatePriorityResponse) GetSuccess() bool {
 	return false
 }
 
+type RaftCommand struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Cmd:
+	//
+	//	*RaftCommand_CreateQueue
+	//	*RaftCommand_DeleteQueue
+	//	*RaftCommand_GetQueue
+	//	*RaftCommand_GetQueues
+	//	*RaftCommand_Enqueue
+	//	*RaftCommand_Dequeue
+	//	*RaftCommand_Get
+	//	*RaftCommand_Delete
+	//	*RaftCommand_Ack
+	//	*RaftCommand_Nack
+	//	*RaftCommand_UpdatePriority
+	Cmd           isRaftCommand_Cmd `protobuf_oneof:"cmd"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RaftCommand) Reset() {
+	*x = RaftCommand{}
+	mi := &file_pkg_proto_doq_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RaftCommand) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RaftCommand) ProtoMessage() {}
+
+func (x *RaftCommand) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_proto_doq_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RaftCommand.ProtoReflect.Descriptor instead.
+func (*RaftCommand) Descriptor() ([]byte, []int) {
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *RaftCommand) GetCmd() isRaftCommand_Cmd {
+	if x != nil {
+		return x.Cmd
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetCreateQueue() *CreateQueueRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_CreateQueue); ok {
+			return x.CreateQueue
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetDeleteQueue() *DeleteQueueRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_DeleteQueue); ok {
+			return x.DeleteQueue
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetGetQueue() *GetQueueRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_GetQueue); ok {
+			return x.GetQueue
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetGetQueues() *GetQueuesRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_GetQueues); ok {
+			return x.GetQueues
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetEnqueue() *EnqueueRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_Enqueue); ok {
+			return x.Enqueue
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetDequeue() *DequeueRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_Dequeue); ok {
+			return x.Dequeue
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetGet() *GetRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_Get); ok {
+			return x.Get
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetDelete() *DeleteRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_Delete); ok {
+			return x.Delete
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetAck() *AckRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_Ack); ok {
+			return x.Ack
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetNack() *NackRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_Nack); ok {
+			return x.Nack
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetUpdatePriority() *UpdatePriorityRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_UpdatePriority); ok {
+			return x.UpdatePriority
+		}
+	}
+	return nil
+}
+
+type isRaftCommand_Cmd interface {
+	isRaftCommand_Cmd()
+}
+
+type RaftCommand_CreateQueue struct {
+	CreateQueue *CreateQueueRequest `protobuf:"bytes,1,opt,name=createQueue,proto3,oneof"`
+}
+
+type RaftCommand_DeleteQueue struct {
+	DeleteQueue *DeleteQueueRequest `protobuf:"bytes,2,opt,name=deleteQueue,proto3,oneof"`
+}
+
+type RaftCommand_GetQueue struct {
+	GetQueue *GetQueueRequest `protobuf:"bytes,3,opt,name=getQueue,proto3,oneof"`
+}
+
+type RaftCommand_GetQueues struct {
+	GetQueues *GetQueuesRequest `protobuf:"bytes,4,opt,name=getQueues,proto3,oneof"`
+}
+
+type RaftCommand_Enqueue struct {
+	Enqueue *EnqueueRequest `protobuf:"bytes,5,opt,name=enqueue,proto3,oneof"`
+}
+
+type RaftCommand_Dequeue struct {
+	Dequeue *DequeueRequest `protobuf:"bytes,6,opt,name=dequeue,proto3,oneof"`
+}
+
+type RaftCommand_Get struct {
+	Get *GetRequest `protobuf:"bytes,7,opt,name=get,proto3,oneof"`
+}
+
+type RaftCommand_Delete struct {
+	Delete *DeleteRequest `protobuf:"bytes,8,opt,name=delete,proto3,oneof"`
+}
+
+type RaftCommand_Ack struct {
+	Ack *AckRequest `protobuf:"bytes,9,opt,name=ack,proto3,oneof"`
+}
+
+type RaftCommand_Nack struct {
+	Nack *NackRequest `protobuf:"bytes,10,opt,name=nack,proto3,oneof"`
+}
+
+type RaftCommand_UpdatePriority struct {
+	UpdatePriority *UpdatePriorityRequest `protobuf:"bytes,11,opt,name=updatePriority,proto3,oneof"`
+}
+
+func (*RaftCommand_CreateQueue) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_DeleteQueue) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_GetQueue) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_GetQueues) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_Enqueue) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_Dequeue) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_Get) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_Delete) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_Ack) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_Nack) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_UpdatePriority) isRaftCommand_Cmd() {}
+
 var File_pkg_proto_doq_proto protoreflect.FileDescriptor
 
 const file_pkg_proto_doq_proto_rawDesc = "" +
@@ -1835,7 +2061,21 @@ const file_pkg_proto_doq_proto_rawDesc = "" +
 	"\x02id\x18\x02 \x01(\x04R\x02id\x12\x1a\n" +
 	"\bpriority\x18\x03 \x01(\x03R\bpriority\"2\n" +
 	"\x16UpdatePriorityResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess2\xa9\x06\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xd7\x04\n" +
+	"\vRaftCommand\x12=\n" +
+	"\vcreateQueue\x18\x01 \x01(\v2\x19.queue.CreateQueueRequestH\x00R\vcreateQueue\x12=\n" +
+	"\vdeleteQueue\x18\x02 \x01(\v2\x19.queue.DeleteQueueRequestH\x00R\vdeleteQueue\x124\n" +
+	"\bgetQueue\x18\x03 \x01(\v2\x16.queue.GetQueueRequestH\x00R\bgetQueue\x127\n" +
+	"\tgetQueues\x18\x04 \x01(\v2\x17.queue.GetQueuesRequestH\x00R\tgetQueues\x121\n" +
+	"\aenqueue\x18\x05 \x01(\v2\x15.queue.EnqueueRequestH\x00R\aenqueue\x121\n" +
+	"\adequeue\x18\x06 \x01(\v2\x15.queue.DequeueRequestH\x00R\adequeue\x12%\n" +
+	"\x03get\x18\a \x01(\v2\x11.queue.GetRequestH\x00R\x03get\x12.\n" +
+	"\x06delete\x18\b \x01(\v2\x14.queue.DeleteRequestH\x00R\x06delete\x12%\n" +
+	"\x03ack\x18\t \x01(\v2\x11.queue.AckRequestH\x00R\x03ack\x12(\n" +
+	"\x04nack\x18\n" +
+	" \x01(\v2\x12.queue.NackRequestH\x00R\x04nack\x12F\n" +
+	"\x0eupdatePriority\x18\v \x01(\v2\x1c.queue.UpdatePriorityRequestH\x00R\x0eupdatePriorityB\x05\n" +
+	"\x03cmd2\xa9\x06\n" +
 	"\x03DOQ\x12D\n" +
 	"\vCreateQueue\x12\x19.queue.CreateQueueRequest\x1a\x1a.queue.CreateQueueResponse\x12D\n" +
 	"\vDeleteQueue\x12\x19.queue.DeleteQueueRequest\x1a\x1a.queue.DeleteQueueResponse\x12;\n" +
@@ -1864,7 +2104,7 @@ func file_pkg_proto_doq_proto_rawDescGZIP() []byte {
 }
 
 var file_pkg_proto_doq_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pkg_proto_doq_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
+var file_pkg_proto_doq_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_pkg_proto_doq_proto_goTypes = []any{
 	(QueueSettings_Strategy)(0),    // 0: queue.QueueSettings.Strategy
 	(*QueueSettings)(nil),          // 1: queue.QueueSettings
@@ -1894,59 +2134,71 @@ var file_pkg_proto_doq_proto_goTypes = []any{
 	(*NackResponse)(nil),           // 25: queue.NackResponse
 	(*UpdatePriorityRequest)(nil),  // 26: queue.UpdatePriorityRequest
 	(*UpdatePriorityResponse)(nil), // 27: queue.UpdatePriorityResponse
-	nil,                            // 28: queue.Message.MetadataEntry
-	nil,                            // 29: queue.EnqueueRequest.MetadataEntry
-	nil,                            // 30: queue.EnqueueResponse.MetadataEntry
-	nil,                            // 31: queue.DequeueResponse.MetadataEntry
-	nil,                            // 32: queue.GetResponse.MetadataEntry
-	nil,                            // 33: queue.NackRequest.MetadataEntry
+	(*RaftCommand)(nil),            // 28: queue.RaftCommand
+	nil,                            // 29: queue.Message.MetadataEntry
+	nil,                            // 30: queue.EnqueueRequest.MetadataEntry
+	nil,                            // 31: queue.EnqueueResponse.MetadataEntry
+	nil,                            // 32: queue.DequeueResponse.MetadataEntry
+	nil,                            // 33: queue.GetResponse.MetadataEntry
+	nil,                            // 34: queue.NackRequest.MetadataEntry
 }
 var file_pkg_proto_doq_proto_depIdxs = []int32{
 	0,  // 0: queue.QueueSettings.strategy:type_name -> queue.QueueSettings.Strategy
 	1,  // 1: queue.Queue.settings:type_name -> queue.QueueSettings
-	28, // 2: queue.Message.metadata:type_name -> queue.Message.MetadataEntry
+	29, // 2: queue.Message.metadata:type_name -> queue.Message.MetadataEntry
 	2,  // 3: queue.SnapshotItem.queue:type_name -> queue.Queue
 	3,  // 4: queue.SnapshotItem.message:type_name -> queue.Message
 	1,  // 5: queue.CreateQueueRequest.settings:type_name -> queue.QueueSettings
 	1,  // 6: queue.GetQueueResponse.settings:type_name -> queue.QueueSettings
 	10, // 7: queue.GetQueueResponse.stats:type_name -> queue.Stats
 	11, // 8: queue.GetQueuesResponse.queues:type_name -> queue.GetQueueResponse
-	29, // 9: queue.EnqueueRequest.metadata:type_name -> queue.EnqueueRequest.MetadataEntry
-	30, // 10: queue.EnqueueResponse.metadata:type_name -> queue.EnqueueResponse.MetadataEntry
-	31, // 11: queue.DequeueResponse.metadata:type_name -> queue.DequeueResponse.MetadataEntry
-	32, // 12: queue.GetResponse.metadata:type_name -> queue.GetResponse.MetadataEntry
-	33, // 13: queue.NackRequest.metadata:type_name -> queue.NackRequest.MetadataEntry
-	5,  // 14: queue.DOQ.CreateQueue:input_type -> queue.CreateQueueRequest
-	7,  // 15: queue.DOQ.DeleteQueue:input_type -> queue.DeleteQueueRequest
-	9,  // 16: queue.DOQ.GetQueue:input_type -> queue.GetQueueRequest
-	12, // 17: queue.DOQ.GetQueues:input_type -> queue.GetQueuesRequest
-	14, // 18: queue.DOQ.Enqueue:input_type -> queue.EnqueueRequest
-	14, // 19: queue.DOQ.EnqueueStream:input_type -> queue.EnqueueRequest
-	16, // 20: queue.DOQ.Dequeue:input_type -> queue.DequeueRequest
-	16, // 21: queue.DOQ.DequeueStream:input_type -> queue.DequeueRequest
-	18, // 22: queue.DOQ.Get:input_type -> queue.GetRequest
-	20, // 23: queue.DOQ.Delete:input_type -> queue.DeleteRequest
-	22, // 24: queue.DOQ.Ack:input_type -> queue.AckRequest
-	24, // 25: queue.DOQ.Nack:input_type -> queue.NackRequest
-	26, // 26: queue.DOQ.UpdatePriority:input_type -> queue.UpdatePriorityRequest
-	6,  // 27: queue.DOQ.CreateQueue:output_type -> queue.CreateQueueResponse
-	8,  // 28: queue.DOQ.DeleteQueue:output_type -> queue.DeleteQueueResponse
-	11, // 29: queue.DOQ.GetQueue:output_type -> queue.GetQueueResponse
-	13, // 30: queue.DOQ.GetQueues:output_type -> queue.GetQueuesResponse
-	15, // 31: queue.DOQ.Enqueue:output_type -> queue.EnqueueResponse
-	15, // 32: queue.DOQ.EnqueueStream:output_type -> queue.EnqueueResponse
-	17, // 33: queue.DOQ.Dequeue:output_type -> queue.DequeueResponse
-	17, // 34: queue.DOQ.DequeueStream:output_type -> queue.DequeueResponse
-	19, // 35: queue.DOQ.Get:output_type -> queue.GetResponse
-	21, // 36: queue.DOQ.Delete:output_type -> queue.DeleteResponse
-	23, // 37: queue.DOQ.Ack:output_type -> queue.AckResponse
-	25, // 38: queue.DOQ.Nack:output_type -> queue.NackResponse
-	27, // 39: queue.DOQ.UpdatePriority:output_type -> queue.UpdatePriorityResponse
-	27, // [27:40] is the sub-list for method output_type
-	14, // [14:27] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	30, // 9: queue.EnqueueRequest.metadata:type_name -> queue.EnqueueRequest.MetadataEntry
+	31, // 10: queue.EnqueueResponse.metadata:type_name -> queue.EnqueueResponse.MetadataEntry
+	32, // 11: queue.DequeueResponse.metadata:type_name -> queue.DequeueResponse.MetadataEntry
+	33, // 12: queue.GetResponse.metadata:type_name -> queue.GetResponse.MetadataEntry
+	34, // 13: queue.NackRequest.metadata:type_name -> queue.NackRequest.MetadataEntry
+	5,  // 14: queue.RaftCommand.createQueue:type_name -> queue.CreateQueueRequest
+	7,  // 15: queue.RaftCommand.deleteQueue:type_name -> queue.DeleteQueueRequest
+	9,  // 16: queue.RaftCommand.getQueue:type_name -> queue.GetQueueRequest
+	12, // 17: queue.RaftCommand.getQueues:type_name -> queue.GetQueuesRequest
+	14, // 18: queue.RaftCommand.enqueue:type_name -> queue.EnqueueRequest
+	16, // 19: queue.RaftCommand.dequeue:type_name -> queue.DequeueRequest
+	18, // 20: queue.RaftCommand.get:type_name -> queue.GetRequest
+	20, // 21: queue.RaftCommand.delete:type_name -> queue.DeleteRequest
+	22, // 22: queue.RaftCommand.ack:type_name -> queue.AckRequest
+	24, // 23: queue.RaftCommand.nack:type_name -> queue.NackRequest
+	26, // 24: queue.RaftCommand.updatePriority:type_name -> queue.UpdatePriorityRequest
+	5,  // 25: queue.DOQ.CreateQueue:input_type -> queue.CreateQueueRequest
+	7,  // 26: queue.DOQ.DeleteQueue:input_type -> queue.DeleteQueueRequest
+	9,  // 27: queue.DOQ.GetQueue:input_type -> queue.GetQueueRequest
+	12, // 28: queue.DOQ.GetQueues:input_type -> queue.GetQueuesRequest
+	14, // 29: queue.DOQ.Enqueue:input_type -> queue.EnqueueRequest
+	14, // 30: queue.DOQ.EnqueueStream:input_type -> queue.EnqueueRequest
+	16, // 31: queue.DOQ.Dequeue:input_type -> queue.DequeueRequest
+	16, // 32: queue.DOQ.DequeueStream:input_type -> queue.DequeueRequest
+	18, // 33: queue.DOQ.Get:input_type -> queue.GetRequest
+	20, // 34: queue.DOQ.Delete:input_type -> queue.DeleteRequest
+	22, // 35: queue.DOQ.Ack:input_type -> queue.AckRequest
+	24, // 36: queue.DOQ.Nack:input_type -> queue.NackRequest
+	26, // 37: queue.DOQ.UpdatePriority:input_type -> queue.UpdatePriorityRequest
+	6,  // 38: queue.DOQ.CreateQueue:output_type -> queue.CreateQueueResponse
+	8,  // 39: queue.DOQ.DeleteQueue:output_type -> queue.DeleteQueueResponse
+	11, // 40: queue.DOQ.GetQueue:output_type -> queue.GetQueueResponse
+	13, // 41: queue.DOQ.GetQueues:output_type -> queue.GetQueuesResponse
+	15, // 42: queue.DOQ.Enqueue:output_type -> queue.EnqueueResponse
+	15, // 43: queue.DOQ.EnqueueStream:output_type -> queue.EnqueueResponse
+	17, // 44: queue.DOQ.Dequeue:output_type -> queue.DequeueResponse
+	17, // 45: queue.DOQ.DequeueStream:output_type -> queue.DequeueResponse
+	19, // 46: queue.DOQ.Get:output_type -> queue.GetResponse
+	21, // 47: queue.DOQ.Delete:output_type -> queue.DeleteResponse
+	23, // 48: queue.DOQ.Ack:output_type -> queue.AckResponse
+	25, // 49: queue.DOQ.Nack:output_type -> queue.NackResponse
+	27, // 50: queue.DOQ.UpdatePriority:output_type -> queue.UpdatePriorityResponse
+	38, // [38:51] is the sub-list for method output_type
+	25, // [25:38] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_doq_proto_init() }
@@ -1958,13 +2210,26 @@ func file_pkg_proto_doq_proto_init() {
 		(*SnapshotItem_Queue)(nil),
 		(*SnapshotItem_Message)(nil),
 	}
+	file_pkg_proto_doq_proto_msgTypes[27].OneofWrappers = []any{
+		(*RaftCommand_CreateQueue)(nil),
+		(*RaftCommand_DeleteQueue)(nil),
+		(*RaftCommand_GetQueue)(nil),
+		(*RaftCommand_GetQueues)(nil),
+		(*RaftCommand_Enqueue)(nil),
+		(*RaftCommand_Dequeue)(nil),
+		(*RaftCommand_Get)(nil),
+		(*RaftCommand_Delete)(nil),
+		(*RaftCommand_Ack)(nil),
+		(*RaftCommand_Nack)(nil),
+		(*RaftCommand_UpdatePriority)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_doq_proto_rawDesc), len(file_pkg_proto_doq_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   33,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
