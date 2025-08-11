@@ -79,13 +79,13 @@ func (c *Cluster) Init() error {
 
 	_, raftPort, err := net.SplitHostPort(c.raftAddr)
 	if err != nil {
-		log.Warn().Msgf("Error splitting host and port: %s %v\n", c.raftAddr, err)
+		log.Warn().Msgf("Error splitting host and port for raftAddr: %s %v\n", c.raftAddr, err)
 		raftPort = "9000" // Default Raft port
 	}
 
 	host, _, err := net.SplitHostPort(c.nodeID)
 	if err != nil {
-		log.Warn().Msgf("Error splitting host and port: %s %v\n", c.nodeID, err)
+		log.Warn().Msgf("Error splitting host and port for nodeID: %s %v\n", c.nodeID, err)
 	}
 	c.raftAddr = fmt.Sprintf("%s:%s", host, raftPort)
 
