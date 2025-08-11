@@ -51,7 +51,7 @@ func (p *GRPCProxy) initClient(leader string) error {
 func (p *GRPCProxy) CreateQueue(ctx context.Context, host string, req *pb.CreateQueueRequest) (*pb.CreateQueueResponse, error) {
 	log.Debug().Msgf("PROXY CreateQueue: %+v to the leader node: %s", req, host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return &pb.CreateQueueResponse{Success: false}, err
 		}
@@ -62,7 +62,7 @@ func (p *GRPCProxy) CreateQueue(ctx context.Context, host string, req *pb.Create
 func (p *GRPCProxy) DeleteQueue(ctx context.Context, host string, req *pb.DeleteQueueRequest) (*pb.DeleteQueueResponse, error) {
 	log.Debug().Msgf("PROXY DeleteQueue: %+v to the leader node: %s", req, host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return &pb.DeleteQueueResponse{Success: false}, err
 		}
@@ -73,7 +73,7 @@ func (p *GRPCProxy) DeleteQueue(ctx context.Context, host string, req *pb.Delete
 func (p *GRPCProxy) Enqueue(ctx context.Context, host string, req *pb.EnqueueRequest) (*pb.EnqueueResponse, error) {
 	log.Debug().Msgf("PROXY Enqueue: %+v to the leader node: %s", req, host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return &pb.EnqueueResponse{Success: false}, err
 		}
@@ -84,7 +84,7 @@ func (p *GRPCProxy) Enqueue(ctx context.Context, host string, req *pb.EnqueueReq
 func (p *GRPCProxy) Dequeue(ctx context.Context, host string, req *pb.DequeueRequest) (*pb.DequeueResponse, error) {
 	log.Debug().Msgf("PROXY Dequeue: %+v to the leader node: %s", req, host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return &pb.DequeueResponse{Success: false}, err
 		}
@@ -95,7 +95,7 @@ func (p *GRPCProxy) Dequeue(ctx context.Context, host string, req *pb.DequeueReq
 func (p *GRPCProxy) Get(ctx context.Context, host string, req *pb.GetRequest) (*pb.GetResponse, error) {
 	log.Debug().Msgf("PROXY Get: %+v to the leader node: %s", req, host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return &pb.GetResponse{Success: false}, err
 		}
@@ -106,7 +106,7 @@ func (p *GRPCProxy) Get(ctx context.Context, host string, req *pb.GetRequest) (*
 func (p *GRPCProxy) Delete(ctx context.Context, host string, req *pb.DeleteRequest) (*pb.DeleteResponse, error) {
 	log.Debug().Msgf("PROXY Delete: %+v to the leader node: %s", req, host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return &pb.DeleteResponse{Success: false}, err
 		}
@@ -117,7 +117,7 @@ func (p *GRPCProxy) Delete(ctx context.Context, host string, req *pb.DeleteReque
 func (p *GRPCProxy) Ack(ctx context.Context, host string, req *pb.AckRequest) (*pb.AckResponse, error) {
 	log.Debug().Msgf("PROXY Ack: %+v to the leader node: %s", req, host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return &pb.AckResponse{Success: false}, err
 		}
@@ -128,7 +128,7 @@ func (p *GRPCProxy) Ack(ctx context.Context, host string, req *pb.AckRequest) (*
 func (p *GRPCProxy) Nack(ctx context.Context, host string, req *pb.NackRequest) (*pb.NackResponse, error) {
 	log.Debug().Msgf("PROXY Nack: %+v to the leader node: %s", req, host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return &pb.NackResponse{Success: false}, err
 		}
@@ -139,7 +139,7 @@ func (p *GRPCProxy) Nack(ctx context.Context, host string, req *pb.NackRequest) 
 func (p *GRPCProxy) UpdatePriority(ctx context.Context, host string, req *pb.UpdatePriorityRequest) (*pb.UpdatePriorityResponse, error) {
 	log.Debug().Msgf("PROXY UpdatePriority: %+v to the leader node: %s", req, host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return &pb.UpdatePriorityResponse{Success: false}, err
 		}
@@ -150,7 +150,7 @@ func (p *GRPCProxy) UpdatePriority(ctx context.Context, host string, req *pb.Upd
 func (p *GRPCProxy) EnqueueStream(inStream pb.DOQ_EnqueueStreamServer, host string) error {
 	log.Debug().Msgf("PROXY EnqueueStream to the leader node: %s", host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return err
 		}
@@ -202,7 +202,7 @@ func (p *GRPCProxy) EnqueueStream(inStream pb.DOQ_EnqueueStreamServer, host stri
 func (p *GRPCProxy) DequeueStream(outStream pb.DOQ_DequeueStreamServer, host string) error {
 	log.Debug().Msgf("PROXY DequeueStream to the leader node: %s", host)
 
-	if p.leader != host {
+	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
 			return err
 		}
