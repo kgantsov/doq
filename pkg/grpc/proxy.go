@@ -24,7 +24,11 @@ func NewGRPCProxy(client pb.DOQClient, port int) *GRPCProxy {
 	}
 }
 
-func (p *GRPCProxy) initClient(leader string) {
+func (p *GRPCProxy) initClient(leader string) error {
+	if leader == "" {
+		return fmt.Errorf("leader address is empty")
+	}
+
 	p.leader = leader
 
 	host := leader
@@ -40,13 +44,17 @@ func (p *GRPCProxy) initClient(leader string) {
 	// defer conn.Close()
 
 	p.client = pb.NewDOQClient(conn)
+
+	return nil
 }
 
 func (p *GRPCProxy) CreateQueue(ctx context.Context, host string, req *pb.CreateQueueRequest) (*pb.CreateQueueResponse, error) {
 	log.Debug().Msgf("PROXY CreateQueue: %+v to the leader node: %s", req, host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return &pb.CreateQueueResponse{Success: false}, err
+		}
 	}
 	return p.client.CreateQueue(ctx, req)
 }
@@ -55,7 +63,9 @@ func (p *GRPCProxy) DeleteQueue(ctx context.Context, host string, req *pb.Delete
 	log.Debug().Msgf("PROXY DeleteQueue: %+v to the leader node: %s", req, host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return &pb.DeleteQueueResponse{Success: false}, err
+		}
 	}
 	return p.client.DeleteQueue(ctx, req)
 }
@@ -64,7 +74,9 @@ func (p *GRPCProxy) Enqueue(ctx context.Context, host string, req *pb.EnqueueReq
 	log.Debug().Msgf("PROXY Enqueue: %+v to the leader node: %s", req, host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return &pb.EnqueueResponse{Success: false}, err
+		}
 	}
 	return p.client.Enqueue(ctx, req)
 }
@@ -73,7 +85,9 @@ func (p *GRPCProxy) Dequeue(ctx context.Context, host string, req *pb.DequeueReq
 	log.Debug().Msgf("PROXY Dequeue: %+v to the leader node: %s", req, host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return &pb.DequeueResponse{Success: false}, err
+		}
 	}
 	return p.client.Dequeue(ctx, req)
 }
@@ -82,7 +96,9 @@ func (p *GRPCProxy) Get(ctx context.Context, host string, req *pb.GetRequest) (*
 	log.Debug().Msgf("PROXY Get: %+v to the leader node: %s", req, host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return &pb.GetResponse{Success: false}, err
+		}
 	}
 	return p.client.Get(ctx, req)
 }
@@ -91,7 +107,9 @@ func (p *GRPCProxy) Delete(ctx context.Context, host string, req *pb.DeleteReque
 	log.Debug().Msgf("PROXY Delete: %+v to the leader node: %s", req, host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return &pb.DeleteResponse{Success: false}, err
+		}
 	}
 	return p.client.Delete(ctx, req)
 }
@@ -100,7 +118,9 @@ func (p *GRPCProxy) Ack(ctx context.Context, host string, req *pb.AckRequest) (*
 	log.Debug().Msgf("PROXY Ack: %+v to the leader node: %s", req, host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return &pb.AckResponse{Success: false}, err
+		}
 	}
 	return p.client.Ack(ctx, req)
 }
@@ -109,7 +129,9 @@ func (p *GRPCProxy) Nack(ctx context.Context, host string, req *pb.NackRequest) 
 	log.Debug().Msgf("PROXY Nack: %+v to the leader node: %s", req, host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return &pb.NackResponse{Success: false}, err
+		}
 	}
 	return p.client.Nack(ctx, req)
 }
@@ -118,7 +140,9 @@ func (p *GRPCProxy) UpdatePriority(ctx context.Context, host string, req *pb.Upd
 	log.Debug().Msgf("PROXY UpdatePriority: %+v to the leader node: %s", req, host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return &pb.UpdatePriorityResponse{Success: false}, err
+		}
 	}
 	return p.client.UpdatePriority(ctx, req)
 }
@@ -127,7 +151,9 @@ func (p *GRPCProxy) EnqueueStream(inStream pb.DOQ_EnqueueStreamServer, host stri
 	log.Debug().Msgf("PROXY EnqueueStream to the leader node: %s", host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return err
+		}
 	}
 
 	outStream, err := p.client.EnqueueStream(inStream.Context())
@@ -177,7 +203,9 @@ func (p *GRPCProxy) DequeueStream(outStream pb.DOQ_DequeueStreamServer, host str
 	log.Debug().Msgf("PROXY DequeueStream to the leader node: %s", host)
 
 	if p.leader != host {
-		p.initClient(host)
+		if err := p.initClient(host); err != nil {
+			return err
+		}
 	}
 
 	inStream, err := p.client.DequeueStream(outStream.Context())
