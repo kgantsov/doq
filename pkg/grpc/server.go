@@ -47,6 +47,24 @@ func NewGRPCServer(config *config.Config, node http.Node, port int) (*grpc.Serve
 	return grpcServer, nil
 }
 
+func (s *QueueServer) GenerateIDs(
+	ctx context.Context,
+	req *pb.GenerateIDsRequest,
+) (*pb.GenerateIDsResponse, error) {
+
+	if req.Number <= 0 || req.Number > 1000 {
+		return &pb.GenerateIDsResponse{Success: false}, fmt.Errorf("number must be between 1 and 1000")
+	}
+
+	ids := make([]uint64, 0, req.Number)
+	for i := 0; i < int(req.Number); i++ {
+		id := s.node.GenerateID()
+		ids = append(ids, id)
+	}
+
+	return &pb.GenerateIDsResponse{Ids: ids, Success: true}, nil
+}
+
 // CreateQueue creates a new queue
 func (s *QueueServer) CreateQueue(
 	ctx context.Context,

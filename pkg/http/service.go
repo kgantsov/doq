@@ -187,6 +187,19 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 	huma.Register(
 		api,
 		huma.Operation{
+			OperationID: "generate-id",
+			Method:      http.MethodPost,
+			Path:        "/API/v1/ids",
+			Summary:     "Generate a new ID",
+			Description: "Generate a new unique ID",
+			Tags:        []string{"Messages"},
+		},
+		h.GenerateID,
+	)
+
+	huma.Register(
+		api,
+		huma.Operation{
 			OperationID: "create-queue",
 			Method:      http.MethodPost,
 			Path:        "/API/v1/queues",

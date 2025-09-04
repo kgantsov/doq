@@ -129,8 +129,13 @@ func (n *Node) InitIDGenerator() error {
 		return err
 	}
 
+	servers := configFuture.Configuration().Servers
+	sort.Slice(servers, func(i, j int) bool {
+		return servers[i].ID < servers[j].ID
+	})
+
 	index := -1
-	for i, srv := range configFuture.Configuration().Servers {
+	for i, srv := range servers {
 		if srv.ID == raft.ServerID(n.id) {
 			index = i
 			break

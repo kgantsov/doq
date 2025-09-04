@@ -6,9 +6,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/bwmarrin/snowflake"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
@@ -18,6 +20,69 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestGenerateIDs(t *testing.T) {
+	_, api := humatest.New(t)
+
+	idGenerator, err := snowflake.NewNode(1)
+	assert.NoError(t, err)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/API/v1/ids", r.URL.Path)
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+
+		var request GenerateIdInputBody
+		err := json.NewDecoder(r.Body).Decode(&request)
+		assert.NoError(t, err)
+
+		var ids []string
+		for i := 0; i < request.Number; i++ {
+			ids = append(ids, fmt.Sprintf("%d", idGenerator.Generate().Int64()))
+		}
+
+		response := GenerateIdOutputBody{IDs: ids}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	h := &Handler{
+		node:  newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		proxy: NewProxy(server.Client(), ""),
+	}
+	h.RegisterRoutes(api)
+
+	type ErrorOutput struct {
+		Title  string `json:"title"`
+		Status int    `json:"status"`
+		Detail string `json:"detail"`
+	}
+
+	h.node.CreateQueue("delayed", "indexing-queue", entity.QueueSettings{})
+
+	resp := api.Post(
+		"/API/v1/ids", map[string]any{
+			"number": 234,
+		})
+
+	output := &GenerateIdOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), output)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, 234, len(output.IDs))
+
+	lastId := uint64(0)
+	for _, idStr := range output.IDs {
+		id, err := strconv.ParseUint(idStr, 10, 64)
+		assert.NoError(t, err)
+		assert.Greater(t, id, lastId)
+		lastId = id
+	}
+}
 
 func TestEnqueueDequeue(t *testing.T) {
 	_, api := humatest.New(t)

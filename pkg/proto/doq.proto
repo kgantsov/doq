@@ -5,6 +5,7 @@ package queue;
 option go_package = "github.com/kgantsov/doq/pkg/proto;proto";
 
 service DOQ {
+    rpc GenerateIDs(GenerateIDsRequest) returns (GenerateIDsResponse);
     rpc CreateQueue(CreateQueueRequest) returns (CreateQueueResponse);
     rpc DeleteQueue(DeleteQueueRequest) returns (DeleteQueueResponse);
     rpc GetQueue(GetQueueRequest) returns (GetQueueResponse);
@@ -23,6 +24,14 @@ service DOQ {
     rpc UpdatePriority(UpdatePriorityRequest) returns (UpdatePriorityResponse);
 }
 
+message GenerateIDsRequest {
+    int32 number = 1;
+}
+
+message GenerateIDsResponse {
+    bool success = 1;
+    repeated uint64 ids = 2;
+}
 
 message QueueSettings {
     enum Strategy {

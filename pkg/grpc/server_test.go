@@ -275,6 +275,44 @@ func bufDialer(context.Context, string) (net.Conn, error) {
 	return lis.Dial()
 }
 
+func TestGenerateIDs(t *testing.T) {
+	tests := []struct {
+		name   string
+		number int
+	}{
+		{"Single ID", 1},
+		{"Multiple IDs", 5},
+		{"Large Number", 1000},
+	}
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	for _, tt := range tests {
+		lastId := uint64(0)
+
+		t.Run(tt.name, func(t *testing.T) {
+			req := &pb.GenerateIDsRequest{Number: int32(tt.number)}
+			resp, err := client.GenerateIDs(ctx, req)
+			assert.Nil(t, err)
+			assert.Equal(t, tt.number, len(resp.Ids))
+
+			for _, id := range resp.Ids {
+				assert.Greater(t, id, lastId)
+				lastId = id
+			}
+		})
+	}
+}
+
 func TestCreateQueue(t *testing.T) {
 	// Create a connection to the test gRPC server
 	ctx := context.Background()

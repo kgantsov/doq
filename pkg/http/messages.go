@@ -271,3 +271,20 @@ func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput
 	}
 	return res, nil
 }
+
+func (h *Handler) GenerateID(ctx context.Context, input *GenerateIdInput) (*GenerateIdOutput, error) {
+
+	ids := make([]string, 0, input.Body.Number)
+	for i := 0; i < input.Body.Number; i++ {
+		id := h.node.GenerateID()
+		ids = append(ids, strconv.Itoa(int(id)))
+	}
+
+	res := &GenerateIdOutput{
+		Status: http.StatusOK,
+		Body: GenerateIdOutputBody{
+			IDs: ids,
+		},
+	}
+	return res, nil
+}

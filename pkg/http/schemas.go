@@ -257,3 +257,20 @@ type QueuesOutput struct {
 	Status int
 	Body   QueuesOutputBody
 }
+
+type GenerateIdInputBody struct {
+	Number int `json:"number" minimum:"1" maximum:"1000" example:"1" doc:"Number of IDs to generate"`
+}
+
+type GenerateIdInput struct {
+	Body GenerateIdInputBody
+}
+
+type GenerateIdOutputBody struct {
+	IDs []string `json:"ids" doc:"List of generated IDs"`
+}
+
+type GenerateIdOutput struct {
+	Status int
+	Body   GenerateIdOutputBody
+}
