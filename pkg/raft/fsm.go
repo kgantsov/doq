@@ -76,7 +76,7 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 
 func (f *FSM) applyLeaderConfigChange(payload *pb.RaftCommand_LeaderConfigChange) interface{} {
 	log.Info().Msgf(
-		"-----> Leader config change: %s at %s (gRPC: %s)",
+		"Leader config change: %s at %s (gRPC: %s)",
 		payload.LeaderConfigChange.NodeId,
 		payload.LeaderConfigChange.RaftAddr,
 		payload.LeaderConfigChange.GrpcAddr,
