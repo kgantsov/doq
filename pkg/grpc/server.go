@@ -17,16 +17,14 @@ import (
 
 type QueueServer struct {
 	pb.UnimplementedDOQServer
-	node  http.Node
-	proxy *GRPCProxy
-	port  int
+	node http.Node
+	port int
 }
 
 func NewQueueServer(node http.Node, port int) *QueueServer {
 	return &QueueServer{
-		node:  node,
-		port:  port,
-		proxy: NewGRPCProxy(nil, port),
+		node: node,
+		port: port,
 	}
 }
 
@@ -70,10 +68,6 @@ func (s *QueueServer) CreateQueue(
 	ctx context.Context,
 	req *pb.CreateQueueRequest,
 ) (*pb.CreateQueueResponse, error) {
-	if !s.node.IsLeader() {
-		return s.proxy.CreateQueue(ctx, s.node.Leader(), req)
-	}
-
 	if req.Settings == nil {
 		req.Settings = &pb.QueueSettings{
 			Strategy:   pb.QueueSettings_ROUND_ROBIN,
@@ -107,10 +101,6 @@ func (s *QueueServer) DeleteQueue(
 	ctx context.Context,
 	req *pb.DeleteQueueRequest,
 ) (*pb.DeleteQueueResponse, error) {
-	if !s.node.IsLeader() {
-		return s.proxy.DeleteQueue(ctx, s.node.Leader(), req)
-	}
-
 	err := s.node.DeleteQueue(req.Name)
 
 	if err != nil {
@@ -189,10 +179,6 @@ func (s *QueueServer) Enqueue(
 	ctx context.Context,
 	req *pb.EnqueueRequest,
 ) (*pb.EnqueueResponse, error) {
-	if !s.node.IsLeader() {
-		return s.proxy.Enqueue(ctx, s.node.Leader(), req)
-	}
-
 	message, err := s.node.Enqueue(
 		req.QueueName, req.Id, req.Group, req.Priority, req.Content, req.Metadata,
 	)
@@ -213,10 +199,6 @@ func (s *QueueServer) Enqueue(
 
 // EnqueueStream implements client-side streaming for enqueuing messages
 func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
-	if !s.node.IsLeader() {
-		return s.proxy.EnqueueStream(stream, s.node.Leader())
-	}
-
 	for {
 		req, err := stream.Recv()
 		if err == io.EOF {
@@ -253,10 +235,6 @@ func (s *QueueServer) Dequeue(
 	ctx context.Context,
 	req *pb.DequeueRequest,
 ) (*pb.DequeueResponse, error) {
-	if !s.node.IsLeader() {
-		return s.proxy.Dequeue(ctx, s.node.Leader(), req)
-	}
-
 	message, err := s.node.Dequeue(req.QueueName, req.Ack)
 	if err != nil {
 		return &pb.DequeueResponse{Success: false}, fmt.Errorf("failed to dequeue a message")
@@ -274,10 +252,6 @@ func (s *QueueServer) Dequeue(
 
 // DequeueStream implements server-side streaming for dequeuing messages
 func (s *QueueServer) DequeueStream(stream pb.DOQ_DequeueStreamServer) error {
-	if !s.node.IsLeader() {
-		return s.proxy.DequeueStream(stream, s.node.Leader())
-	}
-
 	var queueName string
 	var ack bool
 
@@ -334,10 +308,6 @@ func (s *QueueServer) DequeueStream(stream pb.DOQ_DequeueStreamServer) error {
 
 // Get returns a message from a queue by ID
 func (s *QueueServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	if !s.node.IsLeader() {
-		return s.proxy.Get(ctx, s.node.Leader(), req)
-	}
-
 	message, err := s.node.Get(req.QueueName, req.Id)
 	if err != nil {
 		return &pb.GetResponse{Success: false}, fmt.Errorf("failed to get a message")
@@ -359,10 +329,6 @@ func (s *QueueServer) Delete(
 	ctx context.Context,
 	req *pb.DeleteRequest,
 ) (*pb.DeleteResponse, error) {
-	if !s.node.IsLeader() {
-		return s.proxy.Delete(ctx, s.node.Leader(), req)
-	}
-
 	err := s.node.Delete(req.QueueName, req.Id)
 	if err != nil {
 		return &pb.DeleteResponse{Success: false}, fmt.Errorf("failed to delete a message")
@@ -375,10 +341,6 @@ func (s *QueueServer) Delete(
 
 // Ack acknowledges a message (this could be used to confirm message processing)
 func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckResponse, error) {
-	if !s.node.IsLeader() {
-		return s.proxy.Ack(ctx, s.node.Leader(), req)
-	}
-
 	err := s.node.Ack(req.QueueName, req.Id)
 	if err != nil {
 		return &pb.AckResponse{Success: false}, fmt.Errorf("failed to ack a message")
@@ -390,10 +352,6 @@ func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckRespo
 // Nack negatively acknowledges a message (this could be used to put a message back to the queue
 // in case of processing failure)
 func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackResponse, error) {
-	if !s.node.IsLeader() {
-		return s.proxy.Nack(ctx, s.node.Leader(), req)
-	}
-
 	err := s.node.Nack(req.QueueName, req.Id, req.Priority, req.Metadata)
 	if err != nil {
 		return &pb.NackResponse{Success: false}, fmt.Errorf("failed to ack a message")
@@ -407,10 +365,6 @@ func (s *QueueServer) UpdatePriority(
 	ctx context.Context,
 	req *pb.UpdatePriorityRequest,
 ) (*pb.UpdatePriorityResponse, error) {
-	if !s.node.IsLeader() {
-		return s.proxy.UpdatePriority(ctx, s.node.Leader(), req)
-	}
-
 	err := s.node.UpdatePriority(req.QueueName, req.Id, req.Priority)
 	if err != nil {
 		return &pb.UpdatePriorityResponse{Success: false}, fmt.Errorf(

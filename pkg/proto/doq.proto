@@ -24,6 +24,12 @@ service DOQ {
     rpc UpdatePriority(UpdatePriorityRequest) returns (UpdatePriorityResponse);
 }
 
+message LeaderConfigChange {
+  string node_id = 1;
+  string raft_addr = 2;
+  string grpc_addr = 3;
+}
+
 message GenerateIDsRequest {
     int32 number = 1;
 }
@@ -59,10 +65,18 @@ message Message {
     map<string, string> metadata = 5;
 }
 
+message LeaderConfiguration {
+  string node_id = 1;
+  string raft_addr = 2;
+  string grpc_addr = 3;
+}
+
 message SnapshotItem {
   oneof item {
     Queue queue = 1;
     Message message = 2;
+
+    LeaderConfiguration leader_configuration = 3;
   }
 }
 
@@ -220,5 +234,7 @@ message RaftCommand {
     AckRequest ack = 9;
     NackRequest nack = 10;
     UpdatePriorityRequest updatePriority = 11;
+
+    LeaderConfigChange leaderConfigChange = 12;
   }
 }

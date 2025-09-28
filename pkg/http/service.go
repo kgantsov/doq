@@ -4,9 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"time"
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/danielgtaylor/huma/v2"
@@ -37,7 +35,6 @@ type Service struct {
 type Node interface {
 	Join(nodeID string, addr string) error
 	PrometheusRegistry() prometheus.Registerer
-	Leader() string
 	IsLeader() bool
 	GenerateID() uint64
 	CreateQueue(queueType, queueName string, settings entity.QueueSettings) error
@@ -70,25 +67,8 @@ func NewHttpService(config *config.Config, node Node, indexHtmlFS embed.FS, fron
 		router, huma.DefaultConfig("DOQ a distributed priority queue servie", "1.0.0"),
 	)
 
-	var netTransport = &http.Transport{
-		Dial: (&net.Dialer{
-			Timeout: 5 * time.Second,
-		}).Dial,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: 10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-
-	var httpClient = &http.Client{
-		Timeout:   time.Second * 10,
-		Transport: netTransport,
-	}
-
-	proxy := NewProxy(httpClient, config.Http.Port)
-
 	h := &Handler{
 		node:   node,
-		proxy:  proxy,
 		config: config,
 	}
 	h.ConfigureMiddleware(router)

@@ -14,14 +14,10 @@ import (
 type GRPCProxy struct {
 	client pb.DOQClient
 	leader string
-	port   int
 }
 
-func NewGRPCProxy(client pb.DOQClient, port int) *GRPCProxy {
-	return &GRPCProxy{
-		client: client,
-		port:   port,
-	}
+func NewGRPCProxy() *GRPCProxy {
+	return &GRPCProxy{}
 }
 
 func (p *GRPCProxy) initClient(leader string) error {
@@ -32,10 +28,6 @@ func (p *GRPCProxy) initClient(leader string) error {
 	p.leader = leader
 
 	host := leader
-
-	if p.port != 0 {
-		host = fmt.Sprintf("%s:%d", host, p.port)
-	}
 
 	conn, err := grpc.Dial(host, grpc.WithInsecure())
 	if err != nil {

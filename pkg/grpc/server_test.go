@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/url"
 	"testing"
 
 	"github.com/kgantsov/doq/pkg/config"
@@ -52,11 +51,6 @@ func (n *testNode) Restore(r io.Reader, maxPendingWrites int) error {
 	return nil
 }
 
-func (n *testNode) Leader() string {
-	u, _ := url.ParseRequestURI(fmt.Sprintf("http://%s", n.leader))
-
-	return fmt.Sprintf("http://%s:8000/API/v1/queues", u.Hostname())
-}
 func (n *testNode) IsLeader() bool {
 	return true
 }

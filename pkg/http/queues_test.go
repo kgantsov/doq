@@ -73,8 +73,7 @@ func TestCreateQueueProxy(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node:  newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
-		proxy: NewProxy(server.Client(), ""),
+		node: newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
 	}
 	h.RegisterRoutes(api)
 
@@ -102,48 +101,6 @@ func TestCreateQueueProxy(t *testing.T) {
 	assert.Equal(t, "delayed", output.Type)
 }
 
-func TestDeleteQueueProxy(t *testing.T) {
-	_, api := humatest.New(t)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/API/v1/queues/user_indexing_queue", r.URL.Path)
-		assert.Equal(t, "DELETE", r.Method)
-		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		assert.Equal(t, "application/json", r.Header.Get("Accept"))
-
-		response := DeleteQueueOutputBody{
-			Status: "DELETED",
-		}
-
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
-	}))
-	defer server.Close()
-
-	h := &Handler{
-		node:  newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
-		proxy: NewProxy(server.Client(), ""),
-	}
-	h.RegisterRoutes(api)
-
-	type ErrorOutput struct {
-		Title  string `json:"title"`
-		Status int    `json:"status"`
-		Detail string `json:"detail"`
-	}
-
-	h.node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
-
-	resp := api.Delete("/API/v1/queues/user_indexing_queue")
-
-	output := &DeleteQueueOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), output)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "DELETED", output.Status)
-}
-
 func TestGetQueues(t *testing.T) {
 	_, api := humatest.New(t)
 
@@ -153,8 +110,6 @@ func TestGetQueues(t *testing.T) {
 	h.RegisterRoutes(api)
 
 	h.node.CreateQueue("delayed", "test-queue-1", entity.QueueSettings{})
-	// h.node.CreateQueue("delayed", "test-queue-2")
-	// h.node.CreateQueue("delayed", "test-queue-66")
 
 	type ErrorOutput struct {
 		Title  string `json:"title"`

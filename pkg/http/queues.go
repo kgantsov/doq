@@ -13,19 +13,6 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 	queueType := input.Body.Type
 	queueSettings := input.Body.Settings
 
-	if !h.node.IsLeader() {
-		respBody, err := h.proxy.CreateQueue(ctx, h.node.Leader(), &input.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		res := &CreateQueueOutput{
-			Status: http.StatusOK,
-			Body:   *respBody,
-		}
-		return res, nil
-	}
-
 	err := h.node.CreateQueue(queueType, queueName, entity.QueueSettings{
 		Strategy:   queueSettings.Strategy,
 		MaxUnacked: queueSettings.MaxUnacked,
@@ -53,18 +40,6 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 
 func (h *Handler) DeleteQueue(ctx context.Context, input *DeleteQueueInput) (*DeleteQueueOutput, error) {
 	queueName := input.QueueName
-
-	if !h.node.IsLeader() {
-		respBody, err := h.proxy.DeleteQueue(ctx, h.node.Leader(), queueName)
-		if err != nil {
-			return nil, err
-		}
-		res := &DeleteQueueOutput{
-			Status: http.StatusOK,
-			Body:   *respBody,
-		}
-		return res, nil
-	}
 
 	err := h.node.DeleteQueue(queueName)
 

@@ -24,8 +24,9 @@ func TestProxyCreateQueue(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a new proxy.
-	proxy := NewGRPCProxy(client, 0)
+	proxy := NewGRPCProxy()
 	proxy.leader = "bufnet"
+	proxy.client = client
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
@@ -61,8 +62,9 @@ func TestProxyEnqueueDequeue(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a new proxy.
-	proxy := NewGRPCProxy(client, 0)
+	proxy := NewGRPCProxy()
 	proxy.leader = "bufnet"
+	proxy.client = client
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
@@ -113,8 +115,9 @@ func TestProxyDelete(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a new proxy.
-	proxy := NewGRPCProxy(client, 0)
+	proxy := NewGRPCProxy()
 	proxy.leader = "bufnet"
+	proxy.client = client
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
@@ -178,8 +181,9 @@ func TestProxyNackAck(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a new proxy.
-	proxy := NewGRPCProxy(client, 0)
+	proxy := NewGRPCProxy()
 	proxy.leader = "bufnet"
+	proxy.client = client
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
@@ -261,8 +265,9 @@ func TestProxyUpdatePriority(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a new proxy.
-	proxy := NewGRPCProxy(client, 0)
+	proxy := NewGRPCProxy()
 	proxy.leader = "bufnet"
+	proxy.client = client
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
