@@ -37,6 +37,7 @@ async def fixt_generate_queue(fixt_http_client):
         request_data = {
             "type": type,
             "name": name,
+            "settings": {}
         }
 
         response = await fixt_http_client.post(

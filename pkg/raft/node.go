@@ -2,7 +2,6 @@ package raft
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"sort"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/grpc"
 	"github.com/kgantsov/doq/pkg/logger"
 	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/queue"
@@ -44,6 +44,10 @@ type Node struct {
 	raftDir string
 
 	prometheusRegistry prometheus.Registerer
+
+	leaderConfig *LeaderConfig
+
+	proxy *grpc.GRPCProxy
 }
 
 func NewNode(db *badger.DB, raftDir string, cfg *config.Config, peers []string) *Node {
@@ -56,6 +60,14 @@ func NewNode(db *badger.DB, raftDir string, cfg *config.Config, peers []string) 
 		db:             db,
 		raftDir:        raftDir,
 		leaderChangeFn: func(bool) {},
+
+		leaderConfig: NewLeaderConfig(
+			cfg.Cluster.NodeID,
+			cfg.Raft.Address,
+			cfg.Grpc.Address,
+		),
+
+		proxy: grpc.NewGRPCProxy(),
 	}
 
 	if cfg.Prometheus.Enabled {
@@ -111,7 +123,7 @@ func (n *Node) Initialize() {
 	n.Raft = raftNode
 	n.QueueManager = queueManager
 
-	go n.monitorLeadership()
+	// go n.monitorLeadership()
 	go n.ListenToLeaderChanges()
 	go n.RunValueLogGC()
 
@@ -156,29 +168,16 @@ func (n *Node) InitIDGenerator() error {
 	return nil
 }
 
-func (n *Node) monitorLeadership() {
-	log.Debug().Msgf("Node %s Monitoring leadership for node %s", n.id, n.id)
-
-	for {
-		leaderAddr, _ := n.Raft.LeaderWithID()
-		if string(leaderAddr) != n.leader {
-			n.leader = string(leaderAddr)
-			log.Info().Msgf("Node %s leader is now %s", n.id, leaderAddr)
-		}
-		time.Sleep(1 * time.Second)
-	}
-}
-
 func (n *Node) ListenToLeaderChanges() {
 	for isLeader := range n.Raft.LeaderCh() {
+		if isLeader {
+			log.Info().Msgf("Node %s has become a leader", n.id)
+			n.NotifyLeaderConfiguration()
+		} else {
+			log.Info().Msgf("Node %s lost leadership", n.id)
+		}
 		n.leaderChangeFn(isLeader)
 	}
-}
-
-func (n *Node) Leader() string {
-	u, _ := url.ParseRequestURI(fmt.Sprintf("http://%s", n.leader))
-
-	return u.Hostname()
 }
 
 func (n *Node) IsLeader() bool {
@@ -263,6 +262,7 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 		NodeID:       nodeID,
 		db:           n.db,
 		config:       n.cfg,
+		leaderConfig: n.leaderConfig,
 	}
 
 	r, err := raft.NewRaft(config, fsm, logStore, stableStore, snapshots, transport)
@@ -281,23 +281,14 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 
 		servers = append(servers, raft.Server{
 			ID:      config.LocalID,
-			Address: raft.ServerAddress(bindAddr),
+			Address: transport.LocalAddr(),
 		})
 
 		log.Info().Msgf("BootstrapCluster %s joining peers: %v", nodeID, servers)
 
 		configuration := raft.Configuration{Servers: servers}
 		r.BootstrapCluster(configuration)
-		time.Sleep(2 * time.Second)
-
-		for isLeader := range r.LeaderCh() {
-			if isLeader {
-				log.Info().Msgf("Node %s has become a leader", nodeID)
-			} else {
-				log.Info().Msgf("Node %s lost leadership", nodeID)
-			}
-			break
-		}
+		// time.Sleep(2 * time.Second)
 	} else {
 		log.Info().Msgf("Already bootstraped %s %v", nodeID, configFuture.Configuration().Servers)
 	}

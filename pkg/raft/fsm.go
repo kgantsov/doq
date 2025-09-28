@@ -24,6 +24,8 @@ type FSM struct {
 	db           *badger.DB
 	config       *config.Config
 
+	leaderConfig *LeaderConfig
+
 	mu sync.Mutex
 }
 
@@ -47,6 +49,8 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 	}
 
 	switch command := c.Cmd.(type) {
+	case *pb.RaftCommand_LeaderConfigChange:
+		return f.applyLeaderConfigChange(command)
 	case *pb.RaftCommand_Enqueue:
 		return f.applyEnqueue(command)
 	case *pb.RaftCommand_Dequeue:
@@ -68,6 +72,22 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 	default:
 		return fmt.Errorf("unknown command: %s", c.Cmd)
 	}
+}
+
+func (f *FSM) applyLeaderConfigChange(payload *pb.RaftCommand_LeaderConfigChange) interface{} {
+	log.Info().Msgf(
+		"Leader config change: %s at %s (gRPC: %s)",
+		payload.LeaderConfigChange.NodeId,
+		payload.LeaderConfigChange.RaftAddr,
+		payload.LeaderConfigChange.GrpcAddr,
+	)
+
+	f.leaderConfig.SetLeaderConfig(
+		payload.LeaderConfigChange.NodeId,
+		payload.LeaderConfigChange.RaftAddr,
+		payload.LeaderConfigChange.GrpcAddr,
+	)
+	return nil
 }
 
 func (f *FSM) applyEnqueue(payload *pb.RaftCommand_Enqueue) *FSMResponse {

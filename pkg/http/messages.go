@@ -13,7 +13,6 @@ import (
 type (
 	Handler struct {
 		node   Node
-		proxy  *Proxy
 		config *config.Config
 	}
 )
@@ -31,9 +30,7 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 	}
 
 	log.Info().Msgf(
-		"Enqueue request %t: %s %d, %s, %s, %d, %s %v",
-		h.node.IsLeader(),
-		h.node.Leader(),
+		"Enqueue request %d, %s, %s, %d, %s %v",
 		id,
 		queueName,
 		group,
@@ -41,18 +38,6 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 		content,
 		metadata,
 	)
-	if !h.node.IsLeader() {
-		respBody, err := h.proxy.Enqueue(ctx, h.node.Leader(), queueName, &input.Body)
-		if err != nil {
-			return nil, err
-		}
-
-		res := &EnqueueOutput{
-			Status: http.StatusOK,
-			Body:   *respBody,
-		}
-		return res, nil
-	}
 
 	msg, err := h.node.Enqueue(queueName, id, group, priority, content, metadata)
 
@@ -77,18 +62,6 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOutput, error) {
 	queueName := input.QueueName
 
-	if !h.node.IsLeader() {
-		respBody, err := h.proxy.Dequeue(ctx, h.node.Leader(), queueName, input.Ack)
-		if err != nil {
-			return nil, err
-		}
-		res := &DequeueOutput{
-			Status: http.StatusOK,
-			Body:   *respBody,
-		}
-		return res, nil
-	}
-
 	msg, err := h.node.Dequeue(queueName, input.Ack)
 
 	if err != nil {
@@ -111,18 +84,6 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 
 func (h *Handler) Get(ctx context.Context, input *GetInput) (*GetOutput, error) {
 	queueName := input.QueueName
-
-	if !h.node.IsLeader() {
-		respBody, err := h.proxy.Get(ctx, h.node.Leader(), queueName, input.ID)
-		if err != nil {
-			return nil, err
-		}
-		res := &GetOutput{
-			Status: http.StatusOK,
-			Body:   *respBody,
-		}
-		return res, nil
-	}
 
 	msg, err := h.node.Get(queueName, input.ID)
 
@@ -147,17 +108,6 @@ func (h *Handler) Get(ctx context.Context, input *GetInput) (*GetOutput, error) 
 func (h *Handler) Delete(ctx context.Context, input *DeleteInput) (*DeleteOutput, error) {
 	queueName := input.QueueName
 
-	if !h.node.IsLeader() {
-		err := h.proxy.Delete(ctx, h.node.Leader(), queueName, input.ID)
-		if err != nil {
-			return nil, err
-		}
-		res := &DeleteOutput{
-			Status: http.StatusNoContent,
-		}
-		return res, nil
-	}
-
 	err := h.node.Delete(queueName, input.ID)
 
 	if err != nil {
@@ -172,18 +122,6 @@ func (h *Handler) Delete(ctx context.Context, input *DeleteInput) (*DeleteOutput
 
 func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) {
 	queueName := input.QueueName
-
-	if !h.node.IsLeader() {
-		respBody, err := h.proxy.Ack(ctx, h.node.Leader(), queueName, input.ID)
-		if err != nil {
-			return nil, err
-		}
-		res := &AckOutput{
-			Status: http.StatusOK,
-			Body:   *respBody,
-		}
-		return res, nil
-	}
 
 	err := h.node.Ack(queueName, input.ID)
 
@@ -206,18 +144,6 @@ func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, erro
 	queueName := input.QueueName
 	metadata := input.Body.Metadata
 
-	if !h.node.IsLeader() {
-		respBody, err := h.proxy.Nack(ctx, h.node.Leader(), queueName, input.ID, &input.Body)
-		if err != nil {
-			return nil, err
-		}
-		res := &NackOutput{
-			Status: http.StatusOK,
-			Body:   *respBody,
-		}
-		return res, nil
-	}
-
 	err := h.node.Nack(queueName, input.ID, input.Body.Priority, metadata)
 
 	if err != nil {
@@ -239,21 +165,6 @@ func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, erro
 func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput) (*UpdatePriorityOutput, error) {
 	queueName := input.QueueName
 	priority := input.Body.Priority
-
-	if !h.node.IsLeader() {
-		respBody, err := h.proxy.UpdatePriority(
-			ctx, h.node.Leader(), queueName, input.ID, &input.Body,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		res := &UpdatePriorityOutput{
-			Status: http.StatusOK,
-			Body:   *respBody,
-		}
-		return res, nil
-	}
 
 	err := h.node.UpdatePriority(queueName, input.ID, priority)
 
