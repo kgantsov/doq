@@ -91,7 +91,7 @@ func (n *Node) Initialize() {
 	for _, peer := range n.peers {
 		nodes = append(nodes, peer)
 	}
-	nodes = sort.StringSlice(nodes)
+	sort.Strings(nodes)
 
 	nodeID := n.id
 
