@@ -428,6 +428,7 @@ func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSet
 						pb.QueueSettings_Strategy_value[settings.Strategy],
 					),
 					MaxUnacked: uint32(settings.MaxUnacked),
+					AckTimeout: settings.AckTimeout,
 				},
 			},
 		)
@@ -444,6 +445,7 @@ func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSet
 						pb.QueueSettings_Strategy_value[settings.Strategy],
 					),
 					MaxUnacked: uint32(settings.MaxUnacked),
+					AckTimeout: settings.AckTimeout,
 				},
 			},
 		},

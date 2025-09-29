@@ -230,6 +230,7 @@ type QueueSettings struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Strategy      QueueSettings_Strategy `protobuf:"varint,1,opt,name=strategy,proto3,enum=queue.QueueSettings_Strategy" json:"strategy,omitempty"`
 	MaxUnacked    uint32                 `protobuf:"varint,2,opt,name=max_unacked,json=maxUnacked,proto3" json:"max_unacked,omitempty"`
+	AckTimeout    uint32                 `protobuf:"varint,3,opt,name=ack_timeout,json=ackTimeout,proto3" json:"ack_timeout,omitempty"` // in seconds
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -274,6 +275,13 @@ func (x *QueueSettings) GetStrategy() QueueSettings_Strategy {
 func (x *QueueSettings) GetMaxUnacked() uint32 {
 	if x != nil {
 		return x.MaxUnacked
+	}
+	return 0
+}
+
+func (x *QueueSettings) GetAckTimeout() uint32 {
+	if x != nil {
+		return x.AckTimeout
 	}
 	return 0
 }
@@ -2183,11 +2191,13 @@ const file_pkg_proto_doq_proto_rawDesc = "" +
 	"\x06number\x18\x01 \x01(\x05R\x06number\"A\n" +
 	"\x13GenerateIDsResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x10\n" +
-	"\x03ids\x18\x02 \x03(\x04R\x03ids\"\xb0\x01\n" +
+	"\x03ids\x18\x02 \x03(\x04R\x03ids\"\xd1\x01\n" +
 	"\rQueueSettings\x129\n" +
 	"\bstrategy\x18\x01 \x01(\x0e2\x1d.queue.QueueSettings.StrategyR\bstrategy\x12\x1f\n" +
 	"\vmax_unacked\x18\x02 \x01(\rR\n" +
-	"maxUnacked\"C\n" +
+	"maxUnacked\x12\x1f\n" +
+	"\vack_timeout\x18\x03 \x01(\rR\n" +
+	"ackTimeout\"C\n" +
 	"\bStrategy\x12\x18\n" +
 	"\x14STRATEGY_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vROUND_ROBIN\x10\x01\x12\f\n" +

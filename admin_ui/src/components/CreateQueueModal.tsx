@@ -25,6 +25,7 @@ const CreateQueueModal = ({
   const [type, setType] = useState(["delayed"]);
   const [strategy, setStrategy] = useState(["weighted"]);
   const [maxUnacked, setMaxUnacked] = useState(0);
+  const [ackTimeout, setAckTimeout] = useState(1800);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -41,6 +42,7 @@ const CreateQueueModal = ({
       setType(["delayed"]);
       setStrategy(["weighted"]);
       setMaxUnacked(0);
+      setAckTimeout(0);
     },
   });
 
@@ -55,6 +57,7 @@ const CreateQueueModal = ({
       type: type[0],
       maxUnacked: maxUnacked,
       strategy: strategy[0],
+      ackTimeout: ackTimeout,
     });
     onClose();
   };
@@ -93,6 +96,17 @@ const CreateQueueModal = ({
                   autoFocus
                 ></Input>
               </Field.Root>
+
+              <Field.Root invalid={isError}>
+                <Field.Label>Acknowledgement Timeout</Field.Label>
+                <Input
+                  onChange={(e) => setAckTimeout(Number(e.target.value))}
+                  value={ackTimeout}
+                  type="number"
+                  autoFocus
+                ></Input>
+              </Field.Root>
+
               <Field.Root invalid={isError}>
                 <Field.Label>Type</Field.Label>
 

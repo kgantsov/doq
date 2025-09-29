@@ -191,6 +191,7 @@ func TestNodeDeleteQueue(t *testing.T) {
 	err = n.CreateQueue("fair", "test_queue", entity.QueueSettings{
 		Strategy:   "ROUND_ROBIN",
 		MaxUnacked: 75,
+		AckTimeout: 300,
 	})
 	assert.Nil(t, err)
 
@@ -198,6 +199,7 @@ func TestNodeDeleteQueue(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, "ROUND_ROBIN", queue.Settings.Strategy)
 	assert.Equal(t, int(75), queue.Settings.MaxUnacked)
+	assert.Equal(t, uint32(300), queue.Settings.AckTimeout)
 
 	err = n.DeleteQueue("test_queue")
 	assert.Nil(t, err)

@@ -67,6 +67,7 @@ func (n *testNode) GetQueues() []*queue.QueueInfo {
 			Type: "delayed",    // Assuming all queues are of type "delayed" for this mock
 			Settings: entity.QueueSettings{
 				MaxUnacked: 8,
+				AckTimeout: 600,
 			},
 			Stats: &metrics.Stats{
 				EnqueueRPS: 3.1,
@@ -89,6 +90,7 @@ func (n *testNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 		Type: "delayed",    // Assuming all queues are of type "delayed" for this mock
 		Settings: entity.QueueSettings{
 			MaxUnacked: 8,
+			AckTimeout: 600,
 		},
 		Stats: &metrics.Stats{
 			EnqueueRPS: 3.1,
@@ -328,6 +330,7 @@ func TestCreateQueue(t *testing.T) {
 		Settings: &pb.QueueSettings{
 			Strategy:   pb.QueueSettings_WEIGHTED,
 			MaxUnacked: 10,
+			AckTimeout: 600,
 		},
 	}
 
@@ -354,7 +357,13 @@ func TestDeleteQueue(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a queue first
-	reqCreate := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	reqCreate := &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			AckTimeout: 600,
+		},
+	}
 	_, err = client.CreateQueue(ctx, reqCreate)
 	if err != nil {
 		t.Fatalf("CreateQueue failed: %v", err)
@@ -393,7 +402,11 @@ func TestEnqueue(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a queue first
-	reqCreate := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	reqCreate := &pb.CreateQueueRequest{
+		Name:     "test-queue",
+		Type:     "delayed",
+		Settings: &pb.QueueSettings{AckTimeout: 600},
+	}
 	_, err = client.CreateQueue(ctx, reqCreate)
 	if err != nil {
 		t.Fatalf("CreateQueue failed: %v", err)
@@ -443,7 +456,13 @@ func TestDequeue(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a queue and enqueue a message first
-	reqCreate := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	reqCreate := &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			AckTimeout: 600,
+		},
+	}
 	_, err = client.CreateQueue(ctx, reqCreate)
 	if err != nil {
 		t.Fatalf("CreateQueue failed: %v", err)
@@ -490,7 +509,13 @@ func TestGet(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a queue and enqueue a message first
-	reqCreate := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	reqCreate := &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			AckTimeout: 600,
+		},
+	}
 	_, err = client.CreateQueue(ctx, reqCreate)
 	if err != nil {
 		t.Fatalf("CreateQueue failed: %v", err)
@@ -544,7 +569,12 @@ func TestUpdatePriority(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a queue and enqueue a message first
-	reqCreate := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	reqCreate := &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			AckTimeout: 600,
+		}}
 	_, err = client.CreateQueue(ctx, reqCreate)
 	if err != nil {
 		t.Fatalf("CreateQueue failed: %v", err)
@@ -617,7 +647,13 @@ func TestAck(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a queue and enqueue a message first
-	reqCreate := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	reqCreate := &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			AckTimeout: 600,
+		},
+	}
 	_, err = client.CreateQueue(ctx, reqCreate)
 	if err != nil {
 		t.Fatalf("CreateQueue failed: %v", err)
@@ -666,7 +702,13 @@ func TestNack(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a queue and enqueue a message first
-	reqCreate := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	reqCreate := &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			AckTimeout: 600,
+		},
+	}
 	_, err = client.CreateQueue(ctx, reqCreate)
 	if err != nil {
 		t.Fatalf("CreateQueue failed: %v", err)
@@ -724,7 +766,13 @@ func TestEnqueuetDequeueStream(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a queue first
-	req := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	req := &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			AckTimeout: 600,
+		},
+	}
 	_, err = client.CreateQueue(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateQueue failed: %v", err)
@@ -804,7 +852,13 @@ func TestGetQueues(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a queue first
-	req := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	req := &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			AckTimeout: 600,
+		},
+	}
 	_, err = client.CreateQueue(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateQueue failed: %v", err)
@@ -840,7 +894,13 @@ func TestGetQueue(t *testing.T) {
 	client := pb.NewDOQClient(conn)
 
 	// Create a queue first
-	req := &pb.CreateQueueRequest{Name: "test-queue", Type: "delayed", Settings: &pb.QueueSettings{}}
+	req := &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			AckTimeout: 600,
+		},
+	}
 	_, err = client.CreateQueue(ctx, req)
 	if err != nil {
 		t.Fatalf("CreateQueue failed: %v", err)

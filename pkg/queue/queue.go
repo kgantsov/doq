@@ -171,7 +171,13 @@ func (q *Queue) Create(queueType, queueName string, settings entity.QueueSetting
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.config = &entity.QueueConfig{Name: queueName, Type: queueType}
+	if settings.AckTimeout == 0 {
+		settings.AckTimeout = uint32(q.cfg.Queue.DefaultAcknowledgementTimeout)
+	} else if settings.AckTimeout < 10 {
+		return errors.ErrInvalidAckTimeout
+	}
+
+	q.config = &entity.QueueConfig{Name: queueName, Type: queueType, Settings: settings}
 
 	err := q.store.CreateQueue(queueType, queueName, settings)
 	if err != nil {
@@ -288,7 +294,7 @@ func (q *Queue) Dequeue(ack bool) (*entity.Message, error) {
 			&memory.Item{
 				ID: queueItem.ID,
 				Priority: time.Now().UTC().Add(
-					time.Duration(q.cfg.Queue.AcknowledgementTimeout) * time.Second,
+					time.Duration(q.config.Settings.AckTimeout) * time.Second,
 				).Unix(),
 				Group: msg.Group,
 			},

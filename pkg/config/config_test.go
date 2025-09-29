@@ -39,7 +39,7 @@ func TestInitCobraCommand__DefaultValues(t *testing.T) {
 		assert.Equal(t, "", config.Cluster.ServiceName)
 		assert.Equal(t, "", config.Cluster.JoinAddr)
 		assert.Equal(t, int64(1), config.Queue.AcknowledgementCheckInterval)
-		assert.Equal(t, int64(60), config.Queue.AcknowledgementTimeout)
+		assert.Equal(t, int64(1800), config.Queue.DefaultAcknowledgementTimeout)
 		assert.Equal(t, 10, config.Queue.QueueStats.WindowSide)
 	})
 

@@ -38,9 +38,11 @@ const columns = [
     cell: (info) => {
       const type = info.getValue();
       return (
-        <Badge colorPalette={type === "delayed" ? "teal" : "cyan"}>
-          {type}
-        </Badge>
+        <Tooltip content="The type of the queue">
+          <Badge colorPalette={type === "delayed" ? "teal" : "cyan"}>
+            {type}
+          </Badge>
+        </Tooltip>
       );
     },
     header: "Type",
@@ -58,6 +60,11 @@ const columns = [
           {settings?.max_unacked && (
             <Tooltip content="The maximum number of unacknowledged messages">
               <Badge colorPalette={"purple"}>{settings?.max_unacked}</Badge>
+            </Tooltip>
+          )}
+          {settings?.ack_timeout && (
+            <Tooltip content="The acknowledgement timeout in seconds">
+              <Badge colorPalette={"orange"}>{settings?.ack_timeout}</Badge>
             </Tooltip>
           )}
         </Box>

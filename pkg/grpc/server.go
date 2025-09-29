@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/kgantsov/doq/pkg/config"
@@ -83,8 +84,9 @@ func (s *QueueServer) CreateQueue(
 		req.Type,
 		req.Name,
 		entity.QueueSettings{
-			Strategy:   req.Settings.Strategy.String(),
+			Strategy:   strings.ToUpper(req.Settings.Strategy.String()),
 			MaxUnacked: int(req.Settings.MaxUnacked),
+			AckTimeout: req.Settings.AckTimeout,
 		},
 	)
 	if err != nil {
@@ -128,6 +130,7 @@ func (s *QueueServer) GetQueues(
 			Settings: &pb.QueueSettings{
 				Strategy:   pb.QueueSettings_Strategy(pb.QueueSettings_Strategy_value[queue.Settings.Strategy]),
 				MaxUnacked: uint32(queue.Settings.MaxUnacked),
+				AckTimeout: queue.Settings.AckTimeout,
 			},
 			Stats: &pb.Stats{
 				EnqueueRPS: queue.Stats.EnqueueRPS,
@@ -161,6 +164,7 @@ func (s *QueueServer) GetQueue(
 		Settings: &pb.QueueSettings{
 			Strategy:   pb.QueueSettings_Strategy(pb.QueueSettings_Strategy_value[queue.Settings.Strategy]),
 			MaxUnacked: uint32(queue.Settings.MaxUnacked),
+			AckTimeout: queue.Settings.AckTimeout,
 		},
 		Stats: &pb.Stats{
 			EnqueueRPS: queue.Stats.EnqueueRPS,

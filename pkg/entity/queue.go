@@ -8,6 +8,7 @@ import (
 type QueueSettings struct {
 	Strategy   string `json:"strategy,omitempty"`
 	MaxUnacked int    `json:"max_unacked,omitempty"`
+	AckTimeout uint32 `json:"ack_timeout,omitempty"`
 }
 
 type QueueConfig struct {
@@ -30,6 +31,7 @@ func (qc *QueueConfig) ToProto() *pb.Queue {
 				pb.QueueSettings_Strategy_value[qc.Settings.Strategy],
 			),
 			MaxUnacked: uint32(qc.Settings.MaxUnacked),
+			AckTimeout: qc.Settings.AckTimeout,
 		},
 	}
 }
@@ -43,6 +45,7 @@ func QueueConfigFromBytes(data []byte) (*QueueConfig, error) {
 		Settings: QueueSettings{
 			Strategy:   qc.Settings.Strategy.String(),
 			MaxUnacked: int(qc.Settings.MaxUnacked),
+			AckTimeout: qc.Settings.AckTimeout,
 		},
 	}, err
 }

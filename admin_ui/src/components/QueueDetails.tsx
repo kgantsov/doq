@@ -134,7 +134,7 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
                 </Badge>
               </Tooltip>
 
-              {queue.settings?.strategy && (
+              {queue.settings?.strategy && queue.type === "fair" && (
                 <Tooltip content="The strategy used by the queue">
                   <Badge colorPalette={"blue"}>
                     Strategy: {queue.settings?.strategy}
@@ -145,6 +145,13 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
                 <Tooltip content="The maximum number of unacknowledged messages">
                   <Badge colorPalette={"purple"}>
                     Max Unacked: {queue.settings?.max_unacked}
+                  </Badge>
+                </Tooltip>
+              )}
+              {queue.settings?.ack_timeout && (
+                <Tooltip content="The acknowledgement timeout in seconds">
+                  <Badge colorPalette={"orange"}>
+                    Ack Timeout: {queue.settings?.ack_timeout}
                   </Badge>
                 </Tooltip>
               )}

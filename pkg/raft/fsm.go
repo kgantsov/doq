@@ -366,12 +366,14 @@ func (f *FSM) applyUpdatePriority(payload *pb.RaftCommand_UpdatePriority) *FSMRe
 }
 
 func (f *FSM) applyCreateQueue(payload *pb.RaftCommand_CreateQueue) *FSMResponse {
+	log.Info().Msgf("Creating queue: %s %d %s", payload.CreateQueue.Name, payload.CreateQueue.Settings.AckTimeout, payload.CreateQueue.Settings.Strategy.String())
 	_, err := f.queueManager.CreateQueue(
 		payload.CreateQueue.Type,
 		payload.CreateQueue.Name,
 		entity.QueueSettings{
 			Strategy:   payload.CreateQueue.Settings.Strategy.String(),
 			MaxUnacked: int(payload.CreateQueue.Settings.MaxUnacked),
+			AckTimeout: payload.CreateQueue.Settings.AckTimeout,
 		},
 	)
 	if err != nil {
@@ -459,6 +461,7 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 			q, err = f.queueManager.CreateQueue(v.Queue.Type, v.Queue.Name, entity.QueueSettings{
 				Strategy:   v.Queue.Settings.Strategy.String(),
 				MaxUnacked: int(v.Queue.Settings.MaxUnacked),
+				AckTimeout: v.Queue.Settings.AckTimeout,
 			})
 			if err != nil {
 				log.Warn().Msgf("Failed to create a queue: %v", err)

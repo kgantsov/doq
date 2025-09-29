@@ -4,6 +4,7 @@ export interface Queue {
   settings?: {
     max_unacked?: number;
     strategy?: string;
+    ack_timeout?: string;
   };
   enqueue_rps: number;
   dequeue_rps: number;

@@ -35,6 +35,7 @@ func TestProxyCreateQueue(t *testing.T) {
 		Settings: &pb.QueueSettings{
 			Strategy:   pb.QueueSettings_WEIGHTED,
 			MaxUnacked: 10,
+			AckTimeout: 600,
 		},
 	})
 	assert.Nil(t, err)
@@ -68,9 +69,13 @@ func TestProxyEnqueueDequeue(t *testing.T) {
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
-		Name:     "test_queue",
-		Type:     "delayed",
-		Settings: &pb.QueueSettings{},
+		Name: "test_queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			Strategy:   pb.QueueSettings_WEIGHTED,
+			MaxUnacked: 10,
+			AckTimeout: 600,
+		},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, true, respCreateQueue.Success)
@@ -121,9 +126,13 @@ func TestProxyDelete(t *testing.T) {
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
-		Name:     "test_queue",
-		Type:     "delayed",
-		Settings: &pb.QueueSettings{},
+		Name: "test_queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			Strategy:   pb.QueueSettings_WEIGHTED,
+			MaxUnacked: 10,
+			AckTimeout: 600,
+		},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, true, respCreateQueue.Success)
@@ -187,9 +196,13 @@ func TestProxyNackAck(t *testing.T) {
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
-		Name:     "test_queue",
-		Type:     "delayed",
-		Settings: &pb.QueueSettings{},
+		Name: "test_queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			Strategy:   pb.QueueSettings_WEIGHTED,
+			MaxUnacked: 10,
+			AckTimeout: 600,
+		},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, true, respCreateQueue.Success)
@@ -271,9 +284,13 @@ func TestProxyUpdatePriority(t *testing.T) {
 
 	// Send a request to the mock server.
 	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
-		Name:     "test_queue",
-		Type:     "delayed",
-		Settings: &pb.QueueSettings{},
+		Name: "test_queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			Strategy:   pb.QueueSettings_WEIGHTED,
+			MaxUnacked: 10,
+			AckTimeout: 600,
+		},
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, true, respCreateQueue.Success)

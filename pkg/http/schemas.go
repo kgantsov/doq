@@ -42,6 +42,7 @@ type RestoreOutput struct {
 type QueueSettings struct {
 	Strategy   string `json:"strategy,omitempty" enum:"round_robin,weighted" example:"round_robin" doc:"Strategy for message distribution among consumers"`
 	MaxUnacked int    `json:"max_unacked,omitempty" minimum:"1" example:"7" doc:"Maximum expected unacknowledged messages in the queue"`
+	AckTimeout uint32 `json:"ack_timeout,omitempty" minimum:"60" example:"600" doc:"Time in seconds to wait for an acknowledgment before re-enqueuing the message"`
 }
 
 type CreateQueueInputBody struct {

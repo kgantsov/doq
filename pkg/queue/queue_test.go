@@ -65,7 +65,17 @@ func TestQueue(t *testing.T) {
 				}},
 				nil,
 			)
-			pq.Create("delayed", "test_queue", entity.QueueSettings{})
+			err = pq.Create(
+				"delayed",
+				"test_queue",
+				entity.QueueSettings{
+					AckTimeout: 1,
+				},
+			)
+			assert.Error(t, err)
+
+			err = pq.Create("delayed", "test_queue", entity.QueueSettings{})
+			assert.Nil(t, err)
 
 			for i, m := range tt.messages {
 				pq.Enqueue(uint64(i+1), "default", m.Priority, m.Content, m.Metadata)
@@ -627,6 +637,7 @@ func TestFairDequeue(t *testing.T) {
 		entity.QueueSettings{
 			Strategy:   "weighted",
 			MaxUnacked: 11,
+			AckTimeout: 300,
 		},
 	)
 

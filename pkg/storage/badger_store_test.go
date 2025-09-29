@@ -201,6 +201,7 @@ func TestBadgerStorePersistSnapshot(t *testing.T) {
 				Settings: entity.QueueSettings{
 					Strategy:   "WEIGHTED",
 					MaxUnacked: 75,
+					AckTimeout: 300,
 				},
 			},
 			Messages: []struct {
@@ -247,6 +248,7 @@ func TestBadgerStorePersistSnapshot(t *testing.T) {
 				Settings: entity.QueueSettings{
 					Strategy:   "ROUND_ROBIN",
 					MaxUnacked: 0,
+					AckTimeout: 600,
 				},
 			},
 			Messages: []struct {
@@ -296,6 +298,7 @@ func TestBadgerStorePersistSnapshot(t *testing.T) {
 			line.Settings.Strategy,
 		)
 		assert.Equal(t, uint32(q.Queue.Settings.MaxUnacked), line.Settings.MaxUnacked)
+		assert.Equal(t, uint32(q.Queue.Settings.AckTimeout), line.Settings.AckTimeout)
 
 		// Read each message for the queue
 		for _, m := range q.Messages {

@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/kgantsov/doq/pkg/entity"
@@ -14,8 +15,9 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 	queueSettings := input.Body.Settings
 
 	err := h.node.CreateQueue(queueType, queueName, entity.QueueSettings{
-		Strategy:   queueSettings.Strategy,
+		Strategy:   strings.ToUpper(queueSettings.Strategy),
 		MaxUnacked: queueSettings.MaxUnacked,
+		AckTimeout: queueSettings.AckTimeout,
 	})
 
 	if err != nil {
@@ -29,8 +31,9 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 			Name:   queueName,
 			Type:   queueType,
 			Settings: QueueSettings{
-				Strategy:   queueSettings.Strategy,
+				Strategy:   strings.ToUpper(queueSettings.Strategy),
 				MaxUnacked: queueSettings.MaxUnacked,
+				AckTimeout: queueSettings.AckTimeout,
 			},
 		},
 	}
@@ -68,6 +71,7 @@ func (h *Handler) Queues(ctx context.Context, input *QueuesInput) (*QueuesOutput
 			Settings: QueueSettings{
 				Strategy:   queue.Settings.Strategy,
 				MaxUnacked: queue.Settings.MaxUnacked,
+				AckTimeout: queue.Settings.AckTimeout,
 			},
 			EnqueueRPS: queue.Stats.EnqueueRPS,
 			DequeueRPS: queue.Stats.DequeueRPS,
@@ -106,6 +110,7 @@ func (h *Handler) QueueInfo(ctx context.Context, input *QueueInfoInput) (*QueueI
 			Settings: QueueSettings{
 				Strategy:   queueInfo.Settings.Strategy,
 				MaxUnacked: queueInfo.Settings.MaxUnacked,
+				AckTimeout: queueInfo.Settings.AckTimeout,
 			},
 			EnqueueRPS: queueInfo.Stats.EnqueueRPS,
 			DequeueRPS: queueInfo.Stats.DequeueRPS,
