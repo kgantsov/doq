@@ -82,7 +82,7 @@ func (f *FSM) applyLeaderConfigChange(payload *pb.RaftCommand_LeaderConfigChange
 		payload.LeaderConfigChange.GrpcAddr,
 	)
 
-	f.leaderConfig.SetLeaderConfig(
+	f.leaderConfig.Set(
 		payload.LeaderConfigChange.NodeId,
 		payload.LeaderConfigChange.RaftAddr,
 		payload.LeaderConfigChange.GrpcAddr,
@@ -412,6 +412,7 @@ func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	return &FSMSnapshot{
 		NodeID:       f.NodeID,
 		queueManager: f.queueManager,
+		leaderConfig: f.leaderConfig,
 	}, nil
 }
 
@@ -441,6 +442,18 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 		linesTotal++
 
 		switch v := item.Item.(type) {
+		case *pb.SnapshotItem_LeaderConfiguration:
+			log.Debug().
+				Str("node_id", v.LeaderConfiguration.NodeId).
+				Str("raft_addr", v.LeaderConfiguration.RaftAddr).
+				Str("grpc_addr", v.LeaderConfiguration.GrpcAddr).
+				Msg("Restoring leader configuration")
+
+			f.leaderConfig.Set(
+				v.LeaderConfiguration.NodeId,
+				v.LeaderConfiguration.RaftAddr,
+				v.LeaderConfiguration.GrpcAddr,
+			)
 		case *pb.SnapshotItem_Queue:
 			log.Debug().Msgf("Restoring queue: %s", v.Queue.Name)
 			q, err = f.queueManager.CreateQueue(v.Queue.Type, v.Queue.Name, entity.QueueSettings{
@@ -480,9 +493,25 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 type FSMSnapshot struct {
 	NodeID       string
 	queueManager *queue.QueueManager
+	leaderConfig *LeaderConfig
 }
 
 func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
+	snapshotItem := &pb.SnapshotItem{
+		Item: &pb.SnapshotItem_LeaderConfiguration{
+			LeaderConfiguration: &pb.LeaderConfiguration{
+				NodeId:   f.leaderConfig.Id,
+				RaftAddr: f.leaderConfig.RaftAddr,
+				GrpcAddr: f.leaderConfig.GrpcAddr,
+			},
+		},
+	}
+	log.Info().Msgf("Writing queue snapshot item for queue %#v", snapshotItem)
+
+	if err := storage.WriteSnapshotItem(sink, snapshotItem); err != nil {
+		return fmt.Errorf("failed to write message snapshot item: %v", err)
+	}
+
 	if err := f.queueManager.PersistSnapshot(sink); err != nil {
 		log.Debug().Msg("Error copying logs to sink")
 		sink.Cancel()

@@ -99,6 +99,11 @@ func TestFSMPersistRestore(t *testing.T) {
 		NodeID:       "node-1",
 		db:           db,
 		config:       cfg,
+		leaderConfig: NewLeaderConfig(
+			"node-1",
+			"raft-addr-1",
+			"grpc-addr-1",
+		),
 	}
 
 	snap, err := fsm.Snapshot()
@@ -122,10 +127,20 @@ func TestFSMPersistRestore(t *testing.T) {
 		nil,
 	)
 
-	fsm = &FSM{queueManager: queueManager, NodeID: "node-1", db: db, config: cfg}
+	fsm = &FSM{
+		queueManager: queueManager,
+		NodeID:       "node-1",
+		db:           db,
+		config:       cfg,
+		leaderConfig: &LeaderConfig{},
+	}
 
 	err = fsm.Restore(sink)
 	assert.Nil(t, err)
+
+	assert.Equal(t, "node-1", fsm.leaderConfig.Id)
+	assert.Equal(t, "raft-addr-1", fsm.leaderConfig.RaftAddr)
+	assert.Equal(t, "grpc-addr-1", fsm.leaderConfig.GrpcAddr)
 
 	queue1, err = queueManager.GetQueue("queue_1")
 	assert.Nil(t, err)
@@ -219,6 +234,11 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 		NodeID:       "node-1",
 		db:           db,
 		config:       cfg,
+		leaderConfig: NewLeaderConfig(
+			"node-2",
+			"raft-addr-2",
+			"grpc-addr-2",
+		),
 	}
 
 	snap, err := fsm.Snapshot()
@@ -241,10 +261,28 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 		nil,
 	)
 
-	fsm = &FSM{queueManager: queueManager, NodeID: "node-1", db: db, config: cfg}
+	fsm = &FSM{
+		queueManager: queueManager,
+		NodeID:       "node-1",
+		db:           db,
+		config:       cfg,
+		leaderConfig: &LeaderConfig{
+			Id:       "node-1",
+			RaftAddr: "raft-addr-1",
+			GrpcAddr: "grpc-addr-1",
+		},
+	}
+
+	assert.Equal(t, "node-1", fsm.leaderConfig.Id)
+	assert.Equal(t, "raft-addr-1", fsm.leaderConfig.RaftAddr)
+	assert.Equal(t, "grpc-addr-1", fsm.leaderConfig.GrpcAddr)
 
 	err = fsm.Restore(sink)
 	assert.Nil(t, err)
+
+	assert.Equal(t, "node-2", fsm.leaderConfig.Id)
+	assert.Equal(t, "raft-addr-2", fsm.leaderConfig.RaftAddr)
+	assert.Equal(t, "grpc-addr-2", fsm.leaderConfig.GrpcAddr)
 
 	queue1, err = queueManager.GetQueue("queue_1")
 	assert.Nil(t, err)

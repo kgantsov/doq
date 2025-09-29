@@ -26,7 +26,7 @@ func NewLeaderConfig(nodeID, raftAddr, grpcAddr string) *LeaderConfig {
 	}
 }
 
-func (c *LeaderConfig) SetLeaderConfig(nodeID, raftAddr, grpcAddr string) error {
+func (c *LeaderConfig) Set(nodeID, raftAddr, grpcAddr string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
