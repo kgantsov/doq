@@ -222,6 +222,11 @@ func (n *Node) Join(nodeID, addr string) error {
 	return nil
 }
 
+func (n *Node) Leave(nodeID string) error {
+	removeFuture := n.Raft.RemoveServer(raft.ServerID(nodeID), 0, 0)
+	return removeFuture.Error()
+}
+
 func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueManager) (*raft.Raft, error) {
 	config := raft.DefaultConfig()
 	config.SnapshotInterval = 120 * time.Second

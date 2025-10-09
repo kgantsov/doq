@@ -14,3 +14,14 @@ func (h *Handler) Join(ctx context.Context, input *JoinInput) (*JoinOutput, erro
 
 	return res, nil
 }
+
+func (h *Handler) Leave(ctx context.Context, input *LeaveInput) (*LeaveOutput, error) {
+	if err := h.node.Leave(input.Body.ID); err != nil {
+		return &LeaveOutput{}, err
+	}
+
+	res := &LeaveOutput{}
+	res.Body.ID = input.Body.ID
+
+	return res, nil
+}

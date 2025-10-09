@@ -18,6 +18,20 @@ type JoinOutput struct {
 	Body JoinOutputBody
 }
 
+type LeaveInput struct {
+	Body struct {
+		ID string `json:"id" example:"node-0" doc:"ID of a node"`
+	}
+}
+
+type LeaveOutputBody struct {
+	ID string `json:"id" example:"node-0" doc:"ID of a node"`
+}
+
+type LeaveOutput struct {
+	Body LeaveOutputBody
+}
+
 type BackupInput struct {
 	Body struct {
 		Since uint64 `json:"since" example:"0" doc:"Minimum version of the log to include in the backup"`

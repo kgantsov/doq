@@ -34,6 +34,7 @@ type Service struct {
 
 type Node interface {
 	Join(nodeID string, addr string) error
+	Leave(nodeID string) error
 	PrometheusRegistry() prometheus.Registerer
 	IsLeader() bool
 	GenerateID() uint64
@@ -132,6 +133,18 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Tags:        []string{"Cluster"},
 		},
 		h.Join,
+	)
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "cluster-leave",
+			Method:      http.MethodPost,
+			Path:        "/cluster/leave",
+			Summary:     "Leave cluster",
+			Description: "An endpoint for leaving cluster used that by raft consensus protocol",
+			Tags:        []string{"Cluster"},
+		},
+		h.Leave,
 	)
 
 	huma.Register(
