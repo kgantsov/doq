@@ -32,6 +32,24 @@ type LeaveOutput struct {
 	Body LeaveOutputBody
 }
 
+type ServersInput struct {
+}
+
+type Server struct {
+	Id       string `json:"id" example:"node-0" doc:"ID of a node"`
+	Addr     string `json:"addr" example:"localhost:12001" doc:"IP address and a port of a service"`
+	IsLeader bool   `json:"is_leader" example:"true" doc:"Indicates if the server is leader or not"`
+	Suffrage string `json:"suffrage" example:"full" doc:"Determines whether the server gets a vote"`
+}
+
+type ServersOutputBody struct {
+	Servers []Server `json:"servers" doc:"List of servers"`
+}
+
+type ServersOutput struct {
+	Body ServersOutputBody
+}
+
 type BackupInput struct {
 	Body struct {
 		Since uint64 `json:"since" example:"0" doc:"Minimum version of the log to include in the backup"`

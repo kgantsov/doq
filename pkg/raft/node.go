@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/grpc"
 	"github.com/kgantsov/doq/pkg/logger"
 	"github.com/kgantsov/doq/pkg/metrics"
@@ -225,6 +226,26 @@ func (n *Node) Join(nodeID, addr string) error {
 func (n *Node) Leave(nodeID string) error {
 	removeFuture := n.Raft.RemoveServer(raft.ServerID(nodeID), 0, 0)
 	return removeFuture.Error()
+}
+
+func (n *Node) GetServers() ([]*entity.Server, error) {
+	future := n.Raft.GetConfiguration()
+	if err := future.Error(); err != nil {
+		return nil, err
+	}
+
+	var servers []*entity.Server
+
+	for _, server := range future.Configuration().Servers {
+		servers = append(servers, &entity.Server{
+			Id:       string(server.ID),
+			Addr:     string(server.Address),
+			IsLeader: n.Raft.Leader() == server.Address,
+			Suffrage: server.Suffrage.String(),
+		})
+	}
+
+	return servers, nil
 }
 
 func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueManager) (*raft.Raft, error) {

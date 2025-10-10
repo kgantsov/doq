@@ -409,6 +409,10 @@ func (n *testNode) Leave(nodeID string) error {
 	return nil
 }
 
+func (n *testNode) GetServers() ([]*entity.Server, error) {
+	return nil, nil
+}
+
 func (n *testNode) Backup(w io.Writer, since uint64) (uint64, error) {
 
 	return 0, nil

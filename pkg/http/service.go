@@ -35,6 +35,7 @@ type Service struct {
 type Node interface {
 	Join(nodeID string, addr string) error
 	Leave(nodeID string) error
+	GetServers() ([]*entity.Server, error)
 	PrometheusRegistry() prometheus.Registerer
 	IsLeader() bool
 	GenerateID() uint64
@@ -145,6 +146,18 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Tags:        []string{"Cluster"},
 		},
 		h.Leave,
+	)
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "cluster-servers",
+			Method:      http.MethodGet,
+			Path:        "/cluster/servers",
+			Summary:     "Get cluster servers",
+			Description: "An endpoint for getting cluster servers used that by raft consensus protocol",
+			Tags:        []string{"Cluster"},
+		},
+		h.Servers,
 	)
 
 	huma.Register(

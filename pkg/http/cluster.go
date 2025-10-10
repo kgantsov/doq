@@ -25,3 +25,28 @@ func (h *Handler) Leave(ctx context.Context, input *LeaveInput) (*LeaveOutput, e
 
 	return res, nil
 }
+
+func (h *Handler) Servers(ctx context.Context, input *ServersInput) (*ServersOutput, error) {
+	servers, err := h.node.GetServers()
+	if err != nil {
+		return &ServersOutput{}, err
+	}
+
+	responsServers := make([]Server, len(servers))
+	for i, server := range servers {
+		responsServers[i] = Server{
+			Id:       server.Id,
+			Addr:     server.Addr,
+			IsLeader: server.IsLeader,
+			Suffrage: server.Suffrage,
+		}
+	}
+
+	res := &ServersOutput{
+		Body: ServersOutputBody{
+			Servers: responsServers,
+		},
+	}
+
+	return res, nil
+}
