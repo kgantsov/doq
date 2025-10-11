@@ -103,7 +103,6 @@ const CreateQueueModal = ({
                   onChange={(e) => setAckTimeout(Number(e.target.value))}
                   value={ackTimeout}
                   type="number"
-                  autoFocus
                 ></Input>
               </Field.Root>
 
@@ -180,7 +179,6 @@ const CreateQueueModal = ({
                       onChange={(e) => setMaxUnacked(Number(e.target.value))}
                       value={maxUnacked}
                       type="number"
-                      autoFocus
                     ></Input>
                   </Field.Root>
                 </Fieldset.Root>

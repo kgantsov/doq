@@ -1,3 +1,11 @@
 header {
-  border-bottom: 1px solid var(--chakra-colors-border);
+    border-bottom: 1px solid var(--chakra-colors-border);
+}
+
+a.navigation.active {
+    font-weight: bold;
+}
+
+.servers table th:last-child {
+    width: 50px;
 }

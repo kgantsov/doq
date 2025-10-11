@@ -128,7 +128,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "cluster-join",
 			Method:      http.MethodPost,
-			Path:        "/cluster/join",
+			Path:        "/API/v1/cluster/join",
 			Summary:     "Join cluster",
 			Description: "An endpoint for joining cluster used that by raft consensus protocol",
 			Tags:        []string{"Cluster"},
@@ -140,7 +140,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "cluster-leave",
 			Method:      http.MethodPost,
-			Path:        "/cluster/leave",
+			Path:        "/API/v1/cluster/leave",
 			Summary:     "Leave cluster",
 			Description: "An endpoint for leaving cluster used that by raft consensus protocol",
 			Tags:        []string{"Cluster"},
@@ -152,7 +152,7 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		huma.Operation{
 			OperationID: "cluster-servers",
 			Method:      http.MethodGet,
-			Path:        "/cluster/servers",
+			Path:        "/API/v1/cluster/servers",
 			Summary:     "Get cluster servers",
 			Description: "An endpoint for getting cluster servers used that by raft consensus protocol",
 			Tags:        []string{"Cluster"},

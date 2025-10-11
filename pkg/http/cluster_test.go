@@ -24,7 +24,7 @@ func TestJoin(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	resp := api.Post("/cluster/join", map[string]any{
+	resp := api.Post("/API/v1/cluster/join", map[string]any{
 		"id":   "node-1",
 		"addr": "192.168.0.1",
 	})
