@@ -1,4 +1,4 @@
-package http
+package mocks
 
 import (
 	"io"
@@ -11,7 +11,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type testNode struct {
+type mockNode struct {
 	nextID   uint64
 	isLeader bool
 	leader   string
@@ -20,8 +20,8 @@ type testNode struct {
 	queues   map[string]*memory.DelayedQueue
 }
 
-func NewTestNode(leader string, isLeader bool) *testNode {
-	return &testNode{
+func NewMockNode(leader string, isLeader bool) *mockNode {
+	return &mockNode{
 		messages: make(map[uint64]*entity.Message),
 		acks:     make(map[uint64]*entity.Message),
 		queues:   make(map[string]*memory.DelayedQueue),
@@ -30,37 +30,37 @@ func NewTestNode(leader string, isLeader bool) *testNode {
 	}
 }
 
-func (n *testNode) Join(nodeID, addr string) error {
+func (n *mockNode) Join(nodeID, addr string) error {
 	return nil
 }
 
-func (n *testNode) Leave(nodeID string) error {
+func (n *mockNode) Leave(nodeID string) error {
 	return nil
 }
 
-func (n *testNode) GetServers() ([]*entity.Server, error) {
+func (n *mockNode) GetServers() ([]*entity.Server, error) {
 	return nil, nil
 }
 
-func (n *testNode) Backup(w io.Writer, since uint64) (uint64, error) {
+func (n *mockNode) Backup(w io.Writer, since uint64) (uint64, error) {
 
 	return 0, nil
 }
-func (n *testNode) Restore(r io.Reader, maxPendingWrites int) error {
+func (n *mockNode) Restore(r io.Reader, maxPendingWrites int) error {
 
 	return nil
 }
 
-func (n *testNode) IsLeader() bool {
+func (n *mockNode) IsLeader() bool {
 	return n.isLeader
 }
 
-func (n *testNode) GenerateID() uint64 {
+func (n *mockNode) GenerateID() uint64 {
 	n.nextID++
 	return n.nextID
 }
 
-func (n *testNode) GetQueues() []*queue.QueueInfo {
+func (n *mockNode) GetQueues() []*queue.QueueInfo {
 	queues := make([]*queue.QueueInfo, 0, len(n.queues))
 	for name, q := range n.queues {
 		queues = append(queues, &queue.QueueInfo{
@@ -81,7 +81,7 @@ func (n *testNode) GetQueues() []*queue.QueueInfo {
 	return queues
 }
 
-func (n *testNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
+func (n *mockNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 	q, ok := n.queues[queueName]
 	if !ok {
 		return nil, errors.ErrQueueNotFound
@@ -102,16 +102,16 @@ func (n *testNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 	}, nil
 }
 
-func (n *testNode) PrometheusRegistry() prometheus.Registerer {
+func (n *mockNode) PrometheusRegistry() prometheus.Registerer {
 	return nil
 }
 
-func (n *testNode) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
+func (n *mockNode) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
 	n.queues[queueName] = memory.NewDelayedQueue(true)
 	return nil
 }
 
-func (n *testNode) DeleteQueue(queueName string) error {
+func (n *mockNode) DeleteQueue(queueName string) error {
 	_, ok := n.queues[queueName]
 	if !ok {
 		return errors.ErrQueueNotFound
@@ -121,7 +121,7 @@ func (n *testNode) DeleteQueue(queueName string) error {
 	return nil
 }
 
-func (n *testNode) Enqueue(
+func (n *mockNode) Enqueue(
 	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
 ) (*entity.Message, error) {
 	q, ok := n.queues[queueName]
@@ -141,7 +141,7 @@ func (n *testNode) Enqueue(
 	return message, nil
 }
 
-func (n *testNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
+func (n *mockNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
 	q, ok := n.queues[QueueName]
 	if !ok {
 		return &entity.Message{}, errors.ErrQueueNotFound
@@ -164,7 +164,7 @@ func (n *testNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) 
 	return message, nil
 }
 
-func (n *testNode) Ack(QueueName string, id uint64) error {
+func (n *mockNode) Ack(QueueName string, id uint64) error {
 	_, ok := n.queues[QueueName]
 	if !ok {
 		return errors.ErrQueueNotFound
@@ -178,7 +178,7 @@ func (n *testNode) Ack(QueueName string, id uint64) error {
 	return nil
 }
 
-func (n *testNode) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
+func (n *mockNode) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
 	q, ok := n.queues[QueueName]
 	if !ok {
 		return errors.ErrQueueNotFound
@@ -202,7 +202,7 @@ func (n *testNode) Nack(QueueName string, id uint64, priority int64, metadata ma
 	return nil
 }
 
-func (n *testNode) Get(QueueName string, id uint64) (*entity.Message, error) {
+func (n *mockNode) Get(QueueName string, id uint64) (*entity.Message, error) {
 	for _, m := range n.messages {
 		if m.ID == id {
 			return m, nil
@@ -211,7 +211,7 @@ func (n *testNode) Get(QueueName string, id uint64) (*entity.Message, error) {
 	return nil, errors.ErrMessageNotFound
 }
 
-func (n *testNode) Delete(QueueName string, id uint64) error {
+func (n *mockNode) Delete(QueueName string, id uint64) error {
 	q, ok := n.queues[QueueName]
 	if !ok {
 		return errors.ErrQueueNotFound
@@ -230,7 +230,7 @@ func (n *testNode) Delete(QueueName string, id uint64) error {
 	return nil
 }
 
-func (n *testNode) UpdatePriority(queueName string, id uint64, priority int64) error {
+func (n *mockNode) UpdatePriority(queueName string, id uint64, priority int64) error {
 	q, ok := n.queues[queueName]
 	if !ok {
 		return errors.ErrQueueNotFound

@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +22,7 @@ func TestNew(t *testing.T) {
 		},
 	}
 
-	node := NewTestNode("", true)
+	node := mocks.NewMockNode("", true)
 	service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
 	node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
 

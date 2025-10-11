@@ -12,6 +12,7 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,7 +45,7 @@ func TestGenerateIDs(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node: NewTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		node: mocks.NewMockNode(strings.Replace(server.URL, "http://", "", 1), false),
 	}
 	h.RegisterRoutes(api)
 
@@ -81,7 +82,7 @@ func TestEnqueueDequeue(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: NewTestNode("", true),
+		node: mocks.NewMockNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -184,7 +185,7 @@ func TestEnqueueGet(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: NewTestNode("", true),
+		node: mocks.NewMockNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -242,7 +243,7 @@ func TestNack(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: NewTestNode("", true),
+		node: mocks.NewMockNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -320,7 +321,7 @@ func TestUpdatePriority(t *testing.T) {
 	// }
 
 	h := &Handler{
-		node: NewTestNode("", true),
+		node: mocks.NewMockNode("", true),
 	}
 	h.RegisterRoutes(api)
 

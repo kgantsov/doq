@@ -9,6 +9,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,7 +17,7 @@ func TestCreateDeleteQueue(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: NewTestNode("", true),
+		node: mocks.NewMockNode("", true),
 	}
 
 	h.RegisterRoutes(api)
@@ -73,7 +74,7 @@ func TestCreateQueueProxy(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node: NewTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		node: mocks.NewMockNode(strings.Replace(server.URL, "http://", "", 1), false),
 	}
 	h.RegisterRoutes(api)
 
@@ -105,7 +106,7 @@ func TestGetQueues(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: NewTestNode("", true),
+		node: mocks.NewMockNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -140,7 +141,7 @@ func TestGetQueue(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: NewTestNode("", true),
+		node: mocks.NewMockNode("", true),
 	}
 	h.RegisterRoutes(api)
 

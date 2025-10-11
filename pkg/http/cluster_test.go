@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
+	"github.com/kgantsov/doq/pkg/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,7 +14,7 @@ func TestJoin(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: NewTestNode("", true),
+		node: mocks.NewMockNode("", true),
 	}
 
 	h.RegisterRoutes(api)

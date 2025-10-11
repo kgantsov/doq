@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/kgantsov/doq/pkg/config"
-	"github.com/kgantsov/doq/pkg/http"
+	"github.com/kgantsov/doq/pkg/mocks"
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -30,7 +30,7 @@ func init() {
 		},
 	}
 
-	grpcServer, _ := NewGRPCServer(cfg, http.NewTestNode("", true), 0)
+	grpcServer, _ := NewGRPCServer(cfg, mocks.NewMockNode("", true), 0)
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
