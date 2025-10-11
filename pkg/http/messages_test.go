@@ -3,7 +3,6 @@ package http
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -13,11 +12,6 @@ import (
 	"github.com/bwmarrin/snowflake"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/kgantsov/doq/pkg/entity"
-	"github.com/kgantsov/doq/pkg/errors"
-	"github.com/kgantsov/doq/pkg/metrics"
-	"github.com/kgantsov/doq/pkg/queue"
-	"github.com/kgantsov/doq/pkg/queue/memory"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,7 +44,7 @@ func TestGenerateIDs(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node: newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		node: NewTestNode(strings.Replace(server.URL, "http://", "", 1), false),
 	}
 	h.RegisterRoutes(api)
 
@@ -87,7 +81,7 @@ func TestEnqueueDequeue(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: newTestNode("", true),
+		node: NewTestNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -190,7 +184,7 @@ func TestEnqueueGet(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: newTestNode("", true),
+		node: NewTestNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -248,7 +242,7 @@ func TestNack(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: newTestNode("", true),
+		node: NewTestNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -326,7 +320,7 @@ func TestUpdatePriority(t *testing.T) {
 	// }
 
 	h := &Handler{
-		node: newTestNode("", true),
+		node: NewTestNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -380,239 +374,4 @@ func TestUpdatePriority(t *testing.T) {
 	assert.Equal(t, "1", enqueueOutput.ID)
 	assert.Equal(t, int64(256), enqueueOutput.Priority)
 	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
-}
-
-type testNode struct {
-	nextID   uint64
-	isLeader bool
-	leader   string
-	messages map[uint64]*entity.Message
-	acks     map[uint64]*entity.Message
-	queues   map[string]*memory.DelayedQueue
-}
-
-func newTestNode(leader string, isLeader bool) *testNode {
-	return &testNode{
-		messages: make(map[uint64]*entity.Message),
-		acks:     make(map[uint64]*entity.Message),
-		queues:   make(map[string]*memory.DelayedQueue),
-		leader:   leader,
-		isLeader: isLeader,
-	}
-}
-
-func (n *testNode) Join(nodeID, addr string) error {
-	return nil
-}
-
-func (n *testNode) Leave(nodeID string) error {
-	return nil
-}
-
-func (n *testNode) GetServers() ([]*entity.Server, error) {
-	return nil, nil
-}
-
-func (n *testNode) Backup(w io.Writer, since uint64) (uint64, error) {
-
-	return 0, nil
-}
-func (n *testNode) Restore(r io.Reader, maxPendingWrites int) error {
-
-	return nil
-}
-
-func (n *testNode) IsLeader() bool {
-	return n.isLeader
-}
-
-func (n *testNode) GenerateID() uint64 {
-	n.nextID++
-	return n.nextID
-}
-
-func (n *testNode) GetQueues() []*queue.QueueInfo {
-	queues := make([]*queue.QueueInfo, 0, len(n.queues))
-	for name, q := range n.queues {
-		queues = append(queues, &queue.QueueInfo{
-			Name:    name,
-			Type:    "delayed",
-			Ready:   int64(q.Len()),
-			Unacked: 0,
-			Total:   int64(q.Len()),
-			Stats: &metrics.Stats{
-				EnqueueRPS: 1.6,
-				DequeueRPS: 1.1,
-				AckRPS:     1.1,
-				NackRPS:    0,
-			},
-		})
-	}
-
-	return queues
-}
-
-func (n *testNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
-	q, ok := n.queues[queueName]
-	if !ok {
-		return nil, errors.ErrQueueNotFound
-	}
-
-	return &queue.QueueInfo{
-		Name:    queueName,
-		Type:    "delayed",
-		Ready:   int64(q.Len()),
-		Unacked: 0,
-		Total:   int64(q.Len()),
-		Stats: &metrics.Stats{
-			EnqueueRPS: 1.6,
-			DequeueRPS: 1.1,
-			AckRPS:     1.1,
-			NackRPS:    0,
-		},
-	}, nil
-}
-
-func (n *testNode) PrometheusRegistry() prometheus.Registerer {
-	return nil
-}
-
-func (n *testNode) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
-	n.queues[queueName] = memory.NewDelayedQueue(true)
-	return nil
-}
-
-func (n *testNode) DeleteQueue(queueName string) error {
-	_, ok := n.queues[queueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	delete(n.queues, queueName)
-	return nil
-}
-
-func (n *testNode) Enqueue(
-	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
-) (*entity.Message, error) {
-	q, ok := n.queues[queueName]
-	if !ok {
-		return &entity.Message{}, errors.ErrQueueNotFound
-	}
-
-	n.nextID++
-	if id == 0 {
-		id = n.nextID
-	}
-	message := &entity.Message{
-		ID: id, Group: group, Priority: priority, Content: content, Metadata: metadata,
-	}
-	n.messages[message.ID] = message
-	q.Enqueue(group, &memory.Item{ID: message.ID, Priority: message.Priority})
-	return message, nil
-}
-
-func (n *testNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
-	q, ok := n.queues[QueueName]
-	if !ok {
-		return &entity.Message{}, errors.ErrQueueNotFound
-	}
-
-	if q.Len() == 0 {
-		return nil, errors.ErrEmptyQueue
-	}
-
-	item := q.Dequeue(false)
-
-	message := n.messages[item.ID]
-
-	if ack {
-		delete(n.messages, item.ID)
-	} else {
-		n.acks[item.ID] = message
-	}
-
-	return message, nil
-}
-
-func (n *testNode) Ack(QueueName string, id uint64) error {
-	_, ok := n.queues[QueueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	if _, ok := n.acks[id]; !ok {
-		return errors.ErrMessageNotFound
-	}
-	delete(n.acks, id)
-	delete(n.messages, id)
-	return nil
-}
-
-func (n *testNode) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
-	q, ok := n.queues[QueueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	message, ok := n.acks[id]
-	if !ok {
-		return errors.ErrMessageNotFound
-	}
-
-	if priority != 0 {
-		message.Priority = priority
-	}
-
-	message.Metadata = metadata
-	n.messages[message.ID] = message
-
-	q.Enqueue(message.Group, &memory.Item{ID: message.ID, Priority: message.Priority})
-
-	delete(n.acks, id)
-	return nil
-}
-
-func (n *testNode) Get(QueueName string, id uint64) (*entity.Message, error) {
-	for _, m := range n.messages {
-		if m.ID == id {
-			return m, nil
-		}
-	}
-	return nil, errors.ErrMessageNotFound
-}
-
-func (n *testNode) Delete(QueueName string, id uint64) error {
-	q, ok := n.queues[QueueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	msg, ok := n.messages[id]
-	if !ok {
-		return errors.ErrMessageNotFound
-	}
-
-	q.Delete(msg.Group, id)
-
-	delete(n.acks, id)
-	delete(n.messages, id)
-
-	return nil
-}
-
-func (n *testNode) UpdatePriority(queueName string, id uint64, priority int64) error {
-	q, ok := n.queues[queueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	message, ok := n.messages[id]
-	if !ok {
-		return errors.ErrMessageNotFound
-	}
-
-	message.Priority = priority
-	q.UpdatePriority(message.Group, id, priority)
-	return nil
 }

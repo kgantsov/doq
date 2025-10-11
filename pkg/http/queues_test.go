@@ -16,7 +16,7 @@ func TestCreateDeleteQueue(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: newTestNode("", true),
+		node: NewTestNode("", true),
 	}
 
 	h.RegisterRoutes(api)
@@ -73,7 +73,7 @@ func TestCreateQueueProxy(t *testing.T) {
 	defer server.Close()
 
 	h := &Handler{
-		node: newTestNode(strings.Replace(server.URL, "http://", "", 1), false),
+		node: NewTestNode(strings.Replace(server.URL, "http://", "", 1), false),
 	}
 	h.RegisterRoutes(api)
 
@@ -105,7 +105,7 @@ func TestGetQueues(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: newTestNode("", true),
+		node: NewTestNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -127,10 +127,10 @@ func TestGetQueues(t *testing.T) {
 	assert.Equal(t, 1, len(queuesOutput.Queues))
 	assert.Equal(t, "test-queue-1", queuesOutput.Queues[0].Name)
 	assert.Equal(t, "delayed", queuesOutput.Queues[0].Type)
-	assert.Equal(t, 1.6, queuesOutput.Queues[0].EnqueueRPS)
-	assert.Equal(t, 1.1, queuesOutput.Queues[0].DequeueRPS)
-	assert.Equal(t, 1.1, queuesOutput.Queues[0].AckRPS)
-	assert.Equal(t, float64(0), queuesOutput.Queues[0].NackRPS)
+	assert.Equal(t, 3.1, queuesOutput.Queues[0].EnqueueRPS)
+	assert.Equal(t, 2.5, queuesOutput.Queues[0].DequeueRPS)
+	assert.Equal(t, 1.2, queuesOutput.Queues[0].AckRPS)
+	assert.Equal(t, float64(2.3), queuesOutput.Queues[0].NackRPS)
 	assert.Equal(t, int64(0), queuesOutput.Queues[0].Ready)
 	assert.Equal(t, int64(0), queuesOutput.Queues[0].Unacked)
 	assert.Equal(t, int64(0), queuesOutput.Queues[0].Total)
@@ -140,7 +140,7 @@ func TestGetQueue(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: newTestNode("", true),
+		node: NewTestNode("", true),
 	}
 	h.RegisterRoutes(api)
 
@@ -162,10 +162,10 @@ func TestGetQueue(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "test-queue-1", queueOutput.Name)
 	assert.Equal(t, "delayed", queueOutput.Type)
-	assert.Equal(t, 1.6, queueOutput.EnqueueRPS)
-	assert.Equal(t, 1.1, queueOutput.DequeueRPS)
-	assert.Equal(t, 1.1, queueOutput.AckRPS)
-	assert.Equal(t, float64(0), queueOutput.NackRPS)
+	assert.Equal(t, 3.1, queueOutput.EnqueueRPS)
+	assert.Equal(t, 2.5, queueOutput.DequeueRPS)
+	assert.Equal(t, 1.2, queueOutput.AckRPS)
+	assert.Equal(t, float64(2.3), queueOutput.NackRPS)
 	assert.Equal(t, int64(0), queueOutput.Ready)
 	assert.Equal(t, int64(0), queueOutput.Unacked)
 	assert.Equal(t, int64(0), queueOutput.Total)

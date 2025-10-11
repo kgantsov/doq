@@ -13,7 +13,7 @@ func TestJoin(t *testing.T) {
 	_, api := humatest.New(t)
 
 	h := &Handler{
-		node: newTestNode("", true),
+		node: NewTestNode("", true),
 	}
 
 	h.RegisterRoutes(api)

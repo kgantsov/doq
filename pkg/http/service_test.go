@@ -21,7 +21,7 @@ func TestNew(t *testing.T) {
 		},
 	}
 
-	node := newTestNode("", true)
+	node := NewTestNode("", true)
 	service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
 	node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
 

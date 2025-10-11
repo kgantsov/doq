@@ -3,252 +3,17 @@ package grpc
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"testing"
 
 	"github.com/kgantsov/doq/pkg/config"
-	"github.com/kgantsov/doq/pkg/entity"
-	"github.com/kgantsov/doq/pkg/errors"
-	"github.com/kgantsov/doq/pkg/metrics"
+	"github.com/kgantsov/doq/pkg/http"
 	pb "github.com/kgantsov/doq/pkg/proto"
-	"github.com/kgantsov/doq/pkg/queue"
-	"github.com/kgantsov/doq/pkg/queue/memory"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 )
-
-type testNode struct {
-	nextID   uint64
-	leader   string
-	messages map[uint64]*entity.Message
-	acks     map[uint64]*entity.Message
-	queues   map[string]*memory.DelayedQueue
-}
-
-func newTestNode() *testNode {
-	return &testNode{
-		messages: make(map[uint64]*entity.Message),
-		acks:     make(map[uint64]*entity.Message),
-		queues:   make(map[string]*memory.DelayedQueue),
-	}
-}
-
-func (n *testNode) Join(nodeID, addr string) error {
-	return nil
-}
-
-func (n *testNode) Leave(nodeID string) error {
-	return nil
-}
-
-func (n *testNode) GetServers() ([]*entity.Server, error) {
-	return nil, nil
-}
-
-func (n *testNode) Backup(w io.Writer, since uint64) (uint64, error) {
-
-	return 0, nil
-}
-
-func (n *testNode) Restore(r io.Reader, maxPendingWrites int) error {
-
-	return nil
-}
-
-func (n *testNode) IsLeader() bool {
-	return true
-}
-
-func (n *testNode) GenerateID() uint64 {
-	n.nextID++
-	return n.nextID
-}
-
-func (n *testNode) GetQueues() []*queue.QueueInfo {
-	queues := []*queue.QueueInfo{
-		&queue.QueueInfo{
-			Name: "test-queue", // Mock queue name
-			Type: "delayed",    // Assuming all queues are of type "delayed" for this mock
-			Settings: entity.QueueSettings{
-				MaxUnacked: 8,
-				AckTimeout: 600,
-			},
-			Stats: &metrics.Stats{
-				EnqueueRPS: 3.1,
-				DequeueRPS: 2.5,
-				AckRPS:     1.2,
-				NackRPS:    2.3,
-			},
-			Ready:   512,
-			Unacked: 13,
-			Total:   1024,
-		},
-	}
-
-	return queues
-}
-
-func (n *testNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
-	return &queue.QueueInfo{
-		Name: "test-queue", // Mock queue name
-		Type: "delayed",    // Assuming all queues are of type "delayed" for this mock
-		Settings: entity.QueueSettings{
-			MaxUnacked: 8,
-			AckTimeout: 600,
-		},
-		Stats: &metrics.Stats{
-			EnqueueRPS: 3.1,
-			DequeueRPS: 2.5,
-			AckRPS:     1.2,
-			NackRPS:    2.3,
-		},
-		Ready:   512,
-		Unacked: 13,
-		Total:   1024,
-	}, nil
-
-}
-
-func (n *testNode) PrometheusRegistry() prometheus.Registerer {
-	return nil
-}
-
-func (n *testNode) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
-	n.queues[queueName] = memory.NewDelayedQueue(true)
-	return nil
-}
-
-func (n *testNode) DeleteQueue(queueName string) error {
-	_, ok := n.queues[queueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	delete(n.queues, queueName)
-	return nil
-}
-
-func (n *testNode) Enqueue(
-	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
-) (*entity.Message, error) {
-	q, ok := n.queues[queueName]
-	if !ok {
-		return &entity.Message{}, errors.ErrQueueNotFound
-	}
-
-	n.nextID++
-	message := &entity.Message{
-		ID: n.nextID, Group: group, Priority: priority, Content: content, Metadata: metadata,
-	}
-	n.messages[message.ID] = message
-	q.Enqueue(group, &memory.Item{ID: message.ID, Priority: message.Priority})
-	return message, nil
-}
-
-func (n *testNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
-	q, ok := n.queues[QueueName]
-	if !ok {
-		return &entity.Message{}, errors.ErrQueueNotFound
-	}
-
-	if q.Len() == 0 {
-		return nil, errors.ErrEmptyQueue
-	}
-
-	item := q.Dequeue(false)
-
-	message := n.messages[item.ID]
-
-	if ack {
-		delete(n.messages, item.ID)
-	} else {
-		n.acks[item.ID] = message
-	}
-
-	return message, nil
-}
-
-func (n *testNode) Ack(QueueName string, id uint64) error {
-	_, ok := n.queues[QueueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	if _, ok := n.acks[id]; !ok {
-		return errors.ErrMessageNotFound
-	}
-	delete(n.acks, id)
-	delete(n.messages, id)
-	return nil
-}
-
-func (n *testNode) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
-	q, ok := n.queues[QueueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	message, ok := n.acks[id]
-	if !ok {
-		return errors.ErrMessageNotFound
-	}
-
-	message.Metadata = metadata
-	n.messages[message.ID] = message
-
-	q.Enqueue(message.Group, &memory.Item{ID: message.ID, Priority: message.Priority})
-
-	delete(n.acks, id)
-	return nil
-}
-
-func (n *testNode) Get(QueueName string, id uint64) (*entity.Message, error) {
-	for _, m := range n.messages {
-		if m.ID == id {
-			return m, nil
-		}
-	}
-	return nil, errors.ErrMessageNotFound
-}
-
-func (n *testNode) Delete(QueueName string, id uint64) error {
-	q, ok := n.queues[QueueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	msg, ok := n.messages[id]
-	if !ok {
-		return errors.ErrMessageNotFound
-	}
-
-	q.Delete(msg.Group, id)
-
-	delete(n.acks, id)
-	delete(n.messages, id)
-
-	return nil
-}
-
-func (n *testNode) UpdatePriority(queueName string, id uint64, priority int64) error {
-	q, ok := n.queues[queueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	message, ok := n.messages[id]
-	if !ok {
-		return errors.ErrMessageNotFound
-	}
-
-	message.Priority = priority
-	q.UpdatePriority(message.Group, id, priority)
-	return nil
-}
 
 const bufSize = 1024 * 1024
 
@@ -265,7 +30,7 @@ func init() {
 		},
 	}
 
-	grpcServer, _ := NewGRPCServer(cfg, newTestNode(), 0)
+	grpcServer, _ := NewGRPCServer(cfg, http.NewTestNode("", true), 0)
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
@@ -877,12 +642,14 @@ func TestGetQueues(t *testing.T) {
 		t.Fatalf("GetQueues failed: %v", err)
 	}
 
+	fmt.Printf("=====> %+v", len(resp.Queues))
+
 	assert.NotEmpty(t, resp.Queues)
 	assert.Equal(t, "test-queue", resp.Queues[0].Name)
 	assert.Equal(t, "delayed", resp.Queues[0].Type)
-	assert.Equal(t, int64(512), resp.Queues[0].Ready)
-	assert.Equal(t, int64(13), resp.Queues[0].Unacked)
-	assert.Equal(t, int64(1024), resp.Queues[0].Total)
+	assert.Equal(t, int64(0), resp.Queues[0].Ready)
+	assert.Equal(t, int64(0), resp.Queues[0].Unacked)
+	assert.Equal(t, int64(0), resp.Queues[0].Total)
 	assert.Equal(t, float64(3.1), resp.Queues[0].Stats.EnqueueRPS)
 	assert.Equal(t, float64(2.5), resp.Queues[0].Stats.DequeueRPS)
 	assert.Equal(t, float64(1.2), resp.Queues[0].Stats.AckRPS)
@@ -921,9 +688,9 @@ func TestGetQueue(t *testing.T) {
 
 	assert.Equal(t, "test-queue", resp.Name)
 	assert.Equal(t, "delayed", resp.Type)
-	assert.Equal(t, int64(512), resp.Ready)
-	assert.Equal(t, int64(13), resp.Unacked)
-	assert.Equal(t, int64(1024), resp.Total)
+	assert.Equal(t, int64(0), resp.Ready)
+	assert.Equal(t, int64(0), resp.Unacked)
+	assert.Equal(t, int64(0), resp.Total)
 	assert.Equal(t, float64(3.1), resp.Stats.EnqueueRPS)
 	assert.Equal(t, float64(2.5), resp.Stats.DequeueRPS)
 	assert.Equal(t, float64(1.2), resp.Stats.AckRPS)
