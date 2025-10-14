@@ -49,21 +49,18 @@ func (n *Node) NotifyLeaderConfiguration() error {
 func (n *Node) Enqueue(
 	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
 ) (*entity.Message, error) {
+	req := &pb.EnqueueRequest{
+		Id:        id,
+		Group:     group,
+		Priority:  priority,
+		Content:   content,
+		Metadata:  metadata,
+		QueueName: queueName,
+	}
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		msg, err := n.proxy.Enqueue(
-			context.Background(),
-			leaderGrpcAddr,
-			&pb.EnqueueRequest{
-				Id:        id,
-				Group:     group,
-				Priority:  priority,
-				Content:   content,
-				Metadata:  metadata,
-				QueueName: queueName,
-			},
-		)
+		msg, err := n.proxy.Enqueue(context.Background(), leaderGrpcAddr, req)
 		if err != nil {
 			return nil, err
 		}
@@ -80,18 +77,7 @@ func (n *Node) Enqueue(
 		id = uint64(n.GenerateID())
 	}
 
-	cmd := &pb.RaftCommand{
-		Cmd: &pb.RaftCommand_Enqueue{
-			Enqueue: &pb.EnqueueRequest{
-				QueueName: queueName,
-				Id:        id,
-				Group:     group,
-				Priority:  priority,
-				Content:   content,
-				Metadata:  metadata,
-			},
-		},
-	}
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_Enqueue{Enqueue: req}}
 
 	data, err := proto.Marshal(cmd)
 	if err != nil {
@@ -118,20 +104,19 @@ func (n *Node) Enqueue(
 }
 
 func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
+	req := &pb.DequeueRequest{
+		QueueName: QueueName,
+		Ack:       ack,
+	}
+
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		msg, err := n.proxy.Dequeue(
-			context.Background(),
-			leaderGrpcAddr,
-			&pb.DequeueRequest{
-				QueueName: QueueName,
-				Ack:       ack,
-			},
-		)
+		msg, err := n.proxy.Dequeue(context.Background(), leaderGrpcAddr, req)
 		if err != nil {
 			return nil, err
 		}
+
 		return &entity.Message{
 			ID:       msg.Id,
 			Group:    msg.Group,
@@ -141,14 +126,7 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
 		}, nil
 	}
 
-	cmd := &pb.RaftCommand{
-		Cmd: &pb.RaftCommand_Dequeue{
-			Dequeue: &pb.DequeueRequest{
-				QueueName: QueueName,
-				Ack:       ack,
-			},
-		},
-	}
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_Dequeue{Dequeue: req}}
 	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return nil, err
@@ -174,17 +152,15 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
 }
 
 func (n *Node) Get(QueueName string, id uint64) (*entity.Message, error) {
+	req := &pb.GetRequest{
+		QueueName: QueueName,
+		Id:        id,
+	}
+
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		msg, err := n.proxy.Get(
-			context.Background(),
-			leaderGrpcAddr,
-			&pb.GetRequest{
-				QueueName: QueueName,
-				Id:        id,
-			},
-		)
+		msg, err := n.proxy.Get(context.Background(), leaderGrpcAddr, req)
 		if err != nil {
 			return nil, err
 		}
@@ -197,14 +173,7 @@ func (n *Node) Get(QueueName string, id uint64) (*entity.Message, error) {
 		}, nil
 	}
 
-	cmd := &pb.RaftCommand{
-		Cmd: &pb.RaftCommand_Get{
-			Get: &pb.GetRequest{
-				QueueName: QueueName,
-				Id:        id,
-			},
-		},
-	}
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_Get{Get: req}}
 	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return nil, err
@@ -230,28 +199,19 @@ func (n *Node) Get(QueueName string, id uint64) (*entity.Message, error) {
 }
 
 func (n *Node) Delete(QueueName string, id uint64) error {
+	req := &pb.DeleteRequest{
+		QueueName: QueueName,
+		Id:        id,
+	}
+
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		_, err := n.proxy.Delete(
-			context.Background(),
-			leaderGrpcAddr,
-			&pb.DeleteRequest{
-				QueueName: QueueName,
-				Id:        id,
-			},
-		)
+		_, err := n.proxy.Delete(context.Background(), leaderGrpcAddr, req)
 		return err
 	}
 
-	cmd := &pb.RaftCommand{
-		Cmd: &pb.RaftCommand_Delete{
-			Delete: &pb.DeleteRequest{
-				QueueName: QueueName,
-				Id:        id,
-			},
-		},
-	}
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_Delete{Delete: req}}
 
 	data, err := proto.Marshal(cmd)
 	if err != nil {
@@ -272,28 +232,19 @@ func (n *Node) Delete(QueueName string, id uint64) error {
 }
 
 func (n *Node) Ack(QueueName string, id uint64) error {
+	req := &pb.AckRequest{
+		QueueName: QueueName,
+		Id:        id,
+	}
+
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		_, err := n.proxy.Ack(
-			context.Background(),
-			leaderGrpcAddr,
-			&pb.AckRequest{
-				QueueName: QueueName,
-				Id:        id,
-			},
-		)
+		_, err := n.proxy.Ack(context.Background(), leaderGrpcAddr, req)
 		return err
 	}
 
-	cmd := &pb.RaftCommand{
-		Cmd: &pb.RaftCommand_Ack{
-			Ack: &pb.AckRequest{
-				QueueName: QueueName,
-				Id:        id,
-			},
-		},
-	}
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_Ack{Ack: req}}
 	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
@@ -313,30 +264,21 @@ func (n *Node) Ack(QueueName string, id uint64) error {
 }
 
 func (n *Node) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
+	req := &pb.NackRequest{
+		QueueName: QueueName,
+		Id:        id,
+		Priority:  priority,
+		Metadata:  metadata,
+	}
+
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		_, err := n.proxy.Nack(
-			context.Background(),
-			leaderGrpcAddr,
-			&pb.NackRequest{
-				QueueName: QueueName,
-				Id:        id,
-			},
-		)
+		_, err := n.proxy.Nack(context.Background(), leaderGrpcAddr, req)
 		return err
 	}
 
-	cmd := &pb.RaftCommand{
-		Cmd: &pb.RaftCommand_Nack{
-			Nack: &pb.NackRequest{
-				QueueName: QueueName,
-				Id:        id,
-				Priority:  priority,
-				Metadata:  metadata,
-			},
-		},
-	}
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_Nack{Nack: req}}
 	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
@@ -356,30 +298,20 @@ func (n *Node) Nack(QueueName string, id uint64, priority int64, metadata map[st
 }
 
 func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error {
+	req := &pb.UpdatePriorityRequest{
+		QueueName: queueName,
+		Id:        id,
+		Priority:  priority,
+	}
+
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		_, err := n.proxy.UpdatePriority(
-			context.Background(),
-			leaderGrpcAddr,
-			&pb.UpdatePriorityRequest{
-				QueueName: queueName,
-				Id:        id,
-				Priority:  priority,
-			},
-		)
+		_, err := n.proxy.UpdatePriority(context.Background(), leaderGrpcAddr, req)
 		return err
 	}
 
-	cmd := &pb.RaftCommand{
-		Cmd: &pb.RaftCommand_UpdatePriority{
-			UpdatePriority: &pb.UpdatePriorityRequest{
-				Id:        id,
-				QueueName: queueName,
-				Priority:  priority,
-			},
-		},
-	}
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_UpdatePriority{UpdatePriority: req}}
 	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
@@ -412,42 +344,26 @@ func (n *Node) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 }
 
 func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
+	req := &pb.CreateQueueRequest{
+		Name: queueName,
+		Type: queueType,
+		Settings: &pb.QueueSettings{
+			Strategy: pb.QueueSettings_Strategy(
+				pb.QueueSettings_Strategy_value[settings.Strategy],
+			),
+			MaxUnacked: uint32(settings.MaxUnacked),
+			AckTimeout: settings.AckTimeout,
+		},
+	}
+
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		_, err := n.proxy.CreateQueue(
-			context.Background(),
-			leaderGrpcAddr,
-			&pb.CreateQueueRequest{
-				Name: queueName,
-				Type: queueType,
-				Settings: &pb.QueueSettings{
-					Strategy: pb.QueueSettings_Strategy(
-						pb.QueueSettings_Strategy_value[settings.Strategy],
-					),
-					MaxUnacked: uint32(settings.MaxUnacked),
-					AckTimeout: settings.AckTimeout,
-				},
-			},
-		)
+		_, err := n.proxy.CreateQueue(context.Background(), leaderGrpcAddr, req)
 		return err
 	}
 
-	cmd := &pb.RaftCommand{
-		Cmd: &pb.RaftCommand_CreateQueue{
-			CreateQueue: &pb.CreateQueueRequest{
-				Type: queueType,
-				Name: queueName,
-				Settings: &pb.QueueSettings{
-					Strategy: pb.QueueSettings_Strategy(
-						pb.QueueSettings_Strategy_value[settings.Strategy],
-					),
-					MaxUnacked: uint32(settings.MaxUnacked),
-					AckTimeout: settings.AckTimeout,
-				},
-			},
-		},
-	}
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_CreateQueue{CreateQueue: req}}
 	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
@@ -467,40 +383,24 @@ func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSet
 }
 
 func (n *Node) UpdateQueue(queueName string, settings entity.QueueSettings) error {
+	req := &pb.UpdateQueueRequest{
+		Name: queueName,
+		Settings: &pb.QueueSettings{
+			Strategy: pb.QueueSettings_Strategy(
+				pb.QueueSettings_Strategy_value[settings.Strategy],
+			),
+			MaxUnacked: uint32(settings.MaxUnacked),
+			AckTimeout: settings.AckTimeout,
+		},
+	}
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		_, err := n.proxy.UpdateQueue(
-			context.Background(),
-			leaderGrpcAddr,
-			&pb.UpdateQueueRequest{
-				Name: queueName,
-				Settings: &pb.QueueSettings{
-					Strategy: pb.QueueSettings_Strategy(
-						pb.QueueSettings_Strategy_value[settings.Strategy],
-					),
-					MaxUnacked: uint32(settings.MaxUnacked),
-					AckTimeout: settings.AckTimeout,
-				},
-			},
-		)
+		_, err := n.proxy.UpdateQueue(context.Background(), leaderGrpcAddr, req)
 		return err
 	}
 
-	cmd := &pb.RaftCommand{
-		Cmd: &pb.RaftCommand_UpdateQueue{
-			UpdateQueue: &pb.UpdateQueueRequest{
-				Name: queueName,
-				Settings: &pb.QueueSettings{
-					Strategy: pb.QueueSettings_Strategy(
-						pb.QueueSettings_Strategy_value[settings.Strategy],
-					),
-					MaxUnacked: uint32(settings.MaxUnacked),
-					AckTimeout: settings.AckTimeout,
-				},
-			},
-		},
-	}
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_UpdateQueue{UpdateQueue: req}}
 	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
@@ -520,26 +420,18 @@ func (n *Node) UpdateQueue(queueName string, settings entity.QueueSettings) erro
 }
 
 func (n *Node) DeleteQueue(queueName string) error {
+	req := &pb.DeleteQueueRequest{
+		Name: queueName,
+	}
+
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		_, err := n.proxy.DeleteQueue(
-			context.Background(),
-			leaderGrpcAddr,
-			&pb.DeleteQueueRequest{
-				Name: queueName,
-			},
-		)
+		_, err := n.proxy.DeleteQueue(context.Background(), leaderGrpcAddr, req)
 		return err
 	}
 
-	cmd := &pb.RaftCommand{
-		Cmd: &pb.RaftCommand_DeleteQueue{
-			DeleteQueue: &pb.DeleteQueueRequest{
-				Name: queueName,
-			},
-		},
-	}
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_DeleteQueue{DeleteQueue: req}}
 	data, err := proto.Marshal(cmd)
 	if err != nil {
 		return err
