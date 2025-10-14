@@ -1,0 +1,12 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+ignore:
+  - "**/*_pb.go"
+  - "**/*_grpc.pb.go"
+  - "**/mock_*.go"
+  - "**/gen/**"
+  - "**/pb/**"
