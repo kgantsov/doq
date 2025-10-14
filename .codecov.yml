@@ -9,4 +9,4 @@ ignore:
   - "**/*_grpc.pb.go"
   - "**/mock_*.go"
   - "**/gen/**"
-  - "**/pb/**"
+  - "**/proto/**"
