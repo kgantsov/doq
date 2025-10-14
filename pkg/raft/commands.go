@@ -49,6 +49,10 @@ func (n *Node) NotifyLeaderConfiguration() error {
 func (n *Node) Enqueue(
 	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
 ) (*entity.Message, error) {
+	if id == 0 {
+		id = uint64(n.GenerateID())
+	}
+
 	req := &pb.EnqueueRequest{
 		Id:        id,
 		Group:     group,
@@ -57,6 +61,7 @@ func (n *Node) Enqueue(
 		Metadata:  metadata,
 		QueueName: queueName,
 	}
+
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
@@ -71,10 +76,6 @@ func (n *Node) Enqueue(
 			Content:  msg.Content,
 			Metadata: msg.Metadata,
 		}, nil
-	}
-
-	if id == 0 {
-		id = uint64(n.GenerateID())
 	}
 
 	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_Enqueue{Enqueue: req}}
@@ -344,6 +345,7 @@ func (n *Node) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 }
 
 func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
+
 	req := &pb.CreateQueueRequest{
 		Name: queueName,
 		Type: queueType,
