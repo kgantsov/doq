@@ -49,10 +49,6 @@ func (n *Node) NotifyLeaderConfiguration() error {
 func (n *Node) Enqueue(
 	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
 ) (*entity.Message, error) {
-	if id == 0 {
-		id = uint64(n.GenerateID())
-	}
-
 	req := &pb.EnqueueRequest{
 		Id:        id,
 		Group:     group,
@@ -76,6 +72,10 @@ func (n *Node) Enqueue(
 			Content:  msg.Content,
 			Metadata: msg.Metadata,
 		}, nil
+	}
+
+	if id == 0 {
+		req.Id = uint64(n.GenerateID())
 	}
 
 	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_Enqueue{Enqueue: req}}
