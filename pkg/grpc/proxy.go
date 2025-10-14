@@ -51,6 +51,17 @@ func (p *GRPCProxy) CreateQueue(ctx context.Context, host string, req *pb.Create
 	return p.client.CreateQueue(ctx, req)
 }
 
+func (p *GRPCProxy) UpdateQueue(ctx context.Context, host string, req *pb.UpdateQueueRequest) (*pb.UpdateQueueResponse, error) {
+	log.Debug().Msgf("PROXY UpdateQueue: %+v to the leader node: %s", req, host)
+
+	if p.leader != host || p.client == nil {
+		if err := p.initClient(host); err != nil {
+			return &pb.UpdateQueueResponse{Success: false}, err
+		}
+	}
+	return p.client.UpdateQueue(ctx, req)
+}
+
 func (p *GRPCProxy) DeleteQueue(ctx context.Context, host string, req *pb.DeleteQueueRequest) (*pb.DeleteQueueResponse, error) {
 	log.Debug().Msgf("PROXY DeleteQueue: %+v to the leader node: %s", req, host)
 

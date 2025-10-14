@@ -1,6 +1,7 @@
 package memory
 
 type MemoryQueue interface {
+	UpdateMaxUnacked(maxUnacked int) error
 	Enqueue(group string, item *Item)
 	Dequeue(ack bool) *Item
 	Get(group string, id uint64) *Item

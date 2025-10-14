@@ -7,6 +7,7 @@ option go_package = "github.com/kgantsov/doq/pkg/proto;proto";
 service DOQ {
     rpc GenerateIDs(GenerateIDsRequest) returns (GenerateIDsResponse);
     rpc CreateQueue(CreateQueueRequest) returns (CreateQueueResponse);
+    rpc UpdateQueue(UpdateQueueRequest) returns (UpdateQueueResponse);
     rpc DeleteQueue(DeleteQueueRequest) returns (DeleteQueueResponse);
     rpc GetQueue(GetQueueRequest) returns (GetQueueResponse);
     rpc GetQueues(GetQueuesRequest) returns (GetQueuesResponse);
@@ -89,6 +90,16 @@ message CreateQueueRequest {
 }
 
 message CreateQueueResponse {
+    bool success = 1;
+}
+
+message UpdateQueueRequest {
+    string name = 1;
+
+    QueueSettings settings = 2;
+}
+
+message UpdateQueueResponse {
     bool success = 1;
 }
 
@@ -224,18 +235,19 @@ message UpdatePriorityResponse {
 message RaftCommand {
   oneof cmd {
     CreateQueueRequest createQueue = 1;
-    DeleteQueueRequest deleteQueue = 2;
-    GetQueueRequest getQueue = 3;
-    GetQueuesRequest getQueues = 4;
+    UpdateQueueRequest updateQueue = 2;
+    DeleteQueueRequest deleteQueue = 3;
+    GetQueueRequest getQueue = 4;
+    GetQueuesRequest getQueues = 5;
 
-    EnqueueRequest enqueue = 5;
-    DequeueRequest dequeue = 6;
-    GetRequest get = 7;
-    DeleteRequest delete = 8;
-    AckRequest ack = 9;
-    NackRequest nack = 10;
-    UpdatePriorityRequest updatePriority = 11;
+    EnqueueRequest enqueue = 6;
+    DequeueRequest dequeue = 7;
+    GetRequest get = 8;
+    DeleteRequest delete = 9;
+    AckRequest ack = 10;
+    NackRequest nack = 11;
+    UpdatePriorityRequest updatePriority = 12;
 
-    LeaderConfigChange leaderConfigChange = 12;
+    LeaderConfigChange leaderConfigChange = 13;
   }
 }

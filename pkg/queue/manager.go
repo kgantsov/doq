@@ -54,7 +54,7 @@ func (qm *QueueManager) CreateQueue(queueType, queueName string, settings entity
 	}
 
 	q = NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
-	err := q.Create(queueType, queueName, settings)
+	err := q.CreateQueue(queueType, queueName, settings)
 
 	if err != nil {
 		return nil, err
@@ -63,6 +63,26 @@ func (qm *QueueManager) CreateQueue(queueType, queueName string, settings entity
 	qm.queues[queueName] = q
 
 	return q, nil
+}
+
+func (qm *QueueManager) UpdateQueue(queueName string, settings entity.QueueSettings) error {
+	qm.mu.Lock()
+	defer qm.mu.Unlock()
+
+	q, ok := qm.queues[queueName]
+	if !ok {
+		q = NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
+		q.Load(queueName)
+	}
+
+	err := q.UpdateQueue(settings)
+	if err != nil {
+		return err
+	}
+
+	qm.queues[queueName] = q
+
+	return nil
 }
 
 func (qm *QueueManager) DeleteQueue(queueName string) error {

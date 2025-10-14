@@ -17,6 +17,10 @@ func NewDelayedQueue(minFirst bool) *DelayedQueue {
 	}
 }
 
+func (pq *DelayedQueue) UpdateMaxUnacked(maxUnacked int) error {
+	return nil
+}
+
 func (pq *DelayedQueue) Enqueue(group string, item *Item) {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()

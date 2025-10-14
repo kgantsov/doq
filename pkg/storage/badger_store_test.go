@@ -10,6 +10,52 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestCreateUpdateQueue(t *testing.T) {
+	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	store := NewBadgerStore(db)
+
+	queueName := "new-queue"
+
+	err = store.CreateQueue(
+		"fair",
+		queueName,
+		entity.QueueSettings{
+			Strategy:   "WEIGHTED",
+			MaxUnacked: 75,
+			AckTimeout: 3600,
+		},
+	)
+	assert.NoError(t, err)
+
+	q, err := store.LoadQueue(queueName)
+	assert.NoError(t, err)
+	assert.Equal(t, queueName, q.Name)
+	assert.Equal(t, "fair", q.Type)
+	assert.Equal(t, "WEIGHTED", q.Settings.Strategy)
+	assert.Equal(t, 75, q.Settings.MaxUnacked)
+	assert.Equal(t, uint32(3600), q.Settings.AckTimeout)
+
+	err = store.UpdateQueue(q.Type, q.Name, entity.QueueSettings{
+		Strategy:   "WEIGHTED",
+		MaxUnacked: 100,
+		AckTimeout: 7200,
+	})
+	assert.NoError(t, err)
+
+	q, err = store.LoadQueue(queueName)
+	assert.NoError(t, err)
+	assert.Equal(t, queueName, q.Name)
+	assert.Equal(t, "fair", q.Type)
+	assert.Equal(t, "WEIGHTED", q.Settings.Strategy)
+	assert.Equal(t, 100, q.Settings.MaxUnacked)
+	assert.Equal(t, uint32(7200), q.Settings.AckTimeout)
+}
+
 func TestBadgerStore(t *testing.T) {
 	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
 	if err != nil {

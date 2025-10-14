@@ -79,7 +79,7 @@ type QueueSettings struct {
 
 type CreateQueueInputBody struct {
 	Name     string        `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
-	Type     string        `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+	Type     string        `json:"type" enum:"delayed,fair" example:"fair" doc:"Type of the queue"`
 	Settings QueueSettings `json:"settings" doc:"Configuration of the queue"`
 }
 
@@ -90,13 +90,33 @@ type CreateQueueInput struct {
 type CreateQueueOutputBody struct {
 	Status   string        `json:"status" example:"CREATED" doc:"Status of the create operation"`
 	Name     string        `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
-	Type     string        `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+	Type     string        `json:"type" enum:"delayed,fair" example:"fair" doc:"Type of the queue"`
 	Settings QueueSettings `json:"settings" doc:"Configuration of the queue"`
 }
 
 type CreateQueueOutput struct {
 	Status int
 	Body   CreateQueueOutputBody
+}
+
+type UpdateQueueInputBody struct {
+	Settings QueueSettings `json:"settings" doc:"Configuration of the queue"`
+}
+
+type UpdateQueueInput struct {
+	QueueName string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	Body      UpdateQueueInputBody
+}
+
+type UpdateQueueOutputBody struct {
+	Status   string        `json:"status" example:"UPDATED" doc:"Status of the create operation"`
+	Name     string        `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	Settings QueueSettings `json:"settings" doc:"Configuration of the queue"`
+}
+
+type UpdateQueueOutput struct {
+	Status int
+	Body   UpdateQueueOutputBody
 }
 
 type DeleteQueueInput struct {
@@ -250,7 +270,7 @@ type QueueInfoInput struct {
 
 type QueueInfoOutputBody struct {
 	Name       string        `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
-	Type       string        `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+	Type       string        `json:"type" enum:"delayed,fair" example:"fair" doc:"Type of the queue"`
 	Settings   QueueSettings `json:"settings" doc:"Configuration of the queue"`
 	EnqueueRPS float64       `json:"enqueue_rps" doc:"Rate of enqueued messages per second"`
 	DequeueRPS float64       `json:"dequeue_rps" doc:"Rate of dequeued messages per second"`
@@ -271,7 +291,7 @@ type QueuesInput struct {
 
 type QueueOutput struct {
 	Name       string        `json:"name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
-	Type       string        `json:"type" enum:"delayed,fair" example:"delayed" doc:"Type of the queue"`
+	Type       string        `json:"type" enum:"delayed,fair" example:"fair" doc:"Type of the queue"`
 	Settings   QueueSettings `json:"settings" doc:"Configuration of the queue"`
 	EnqueueRPS float64       `json:"enqueue_rps" doc:"Rate of enqueued messages per second"`
 	DequeueRPS float64       `json:"dequeue_rps" doc:"Rate of dequeued messages per second"`

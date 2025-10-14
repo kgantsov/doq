@@ -53,6 +53,68 @@ func TestCreateDeleteQueue(t *testing.T) {
 	assert.Equal(t, "DELETED", deleteQueueOutput.Status)
 }
 
+func TestUpdateQueue(t *testing.T) {
+	_, api := humatest.New(t)
+
+	h := &Handler{
+		node: mocks.NewMockNode("", true),
+	}
+
+	h.RegisterRoutes(api)
+
+	type ErrorOutput struct {
+		Title  string `json:"title"`
+		Status int    `json:"status"`
+		Detail string `json:"detail"`
+	}
+
+	resp := api.Post("/API/v1/queues", map[string]any{
+		"name": "my-queue",
+		"type": "fair",
+		"settings": map[string]any{
+			"strategy":    "weighted",
+			"max_unacked": 7,
+			"ack_timeout": 300,
+		},
+	})
+
+	createQueueOutput := &CreateQueueOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), createQueueOutput)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, "CREATED", createQueueOutput.Status)
+	assert.Equal(t, "my-queue", createQueueOutput.Name)
+	assert.Equal(t, "fair", createQueueOutput.Type)
+
+	resp = api.Put("/API/v1/queues/my-queue", map[string]any{
+		"settings": map[string]any{
+			"strategy":    "weighted",
+			"max_unacked": 75,
+			"ack_timeout": 600,
+		},
+	})
+
+	updateQueueOutput := &UpdateQueueOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), updateQueueOutput)
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, "UPDATED", updateQueueOutput.Status)
+	assert.Equal(t, "my-queue", updateQueueOutput.Name)
+	assert.Equal(t, "WEIGHTED", updateQueueOutput.Settings.Strategy)
+	assert.Equal(t, uint32(600), updateQueueOutput.Settings.AckTimeout)
+	assert.Equal(t, 75, updateQueueOutput.Settings.MaxUnacked)
+
+	resp = api.Delete("/API/v1/queues/my-queue")
+
+	deleteQueueOutput := &DeleteQueueOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), deleteQueueOutput)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, "DELETED", deleteQueueOutput.Status)
+}
+
 func TestCreateQueueProxy(t *testing.T) {
 	_, api := humatest.New(t)
 

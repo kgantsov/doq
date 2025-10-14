@@ -111,6 +111,15 @@ func (n *mockNode) CreateQueue(queueType, queueName string, settings entity.Queu
 	return nil
 }
 
+func (n *mockNode) UpdateQueue(queueName string, settings entity.QueueSettings) error {
+	_, ok := n.queues[queueName]
+	if !ok {
+		return errors.ErrQueueNotFound
+	}
+
+	return nil
+}
+
 func (n *mockNode) DeleteQueue(queueName string) error {
 	_, ok := n.queues[queueName]
 	if !ok {

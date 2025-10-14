@@ -98,6 +98,34 @@ func (s *QueueServer) CreateQueue(
 	return &pb.CreateQueueResponse{Success: true}, nil
 }
 
+// UpdateQueue updates a queue settings
+func (s *QueueServer) UpdateQueue(
+	ctx context.Context,
+	req *pb.UpdateQueueRequest,
+) (*pb.UpdateQueueResponse, error) {
+	if req.Settings == nil {
+		return &pb.UpdateQueueResponse{Success: false}, fmt.Errorf(
+			"queue settings are required",
+		)
+	}
+
+	err := s.node.UpdateQueue(
+		req.Name,
+		entity.QueueSettings{
+			Strategy:   strings.ToUpper(req.Settings.Strategy.String()),
+			MaxUnacked: int(req.Settings.MaxUnacked),
+			AckTimeout: req.Settings.AckTimeout,
+		},
+	)
+	if err != nil {
+		return &pb.UpdateQueueResponse{Success: false}, fmt.Errorf(
+			"failed to update a queue %s", req.Name,
+		)
+	}
+
+	return &pb.UpdateQueueResponse{Success: true}, nil
+}
+
 // DeleteQueue deletes a queue with all messages
 func (s *QueueServer) DeleteQueue(
 	ctx context.Context,

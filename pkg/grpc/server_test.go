@@ -116,6 +116,48 @@ func TestCreateQueue(t *testing.T) {
 	assert.True(t, resp.Success, "Queue creation should succeed")
 }
 
+func TestUpdateQueue(t *testing.T) {
+	ctx := context.Background()
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	// Create a queue first
+	reqCreate := &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "delayed",
+		Settings: &pb.QueueSettings{
+			AckTimeout: 600,
+		},
+	}
+	_, err = client.CreateQueue(ctx, reqCreate)
+	if err != nil {
+		t.Fatalf("CreateQueue failed: %v", err)
+	}
+
+	// Update the queue settings
+	reqUpdate := &pb.UpdateQueueRequest{
+		Name: "test-queue",
+		Settings: &pb.QueueSettings{
+			MaxUnacked: 10,
+			AckTimeout: 1200,
+		},
+	}
+	resp, err := client.UpdateQueue(ctx, reqUpdate)
+	if err != nil {
+		t.Fatalf("UpdateQueue failed: %v", err)
+	}
+
+	// Use testify's assert to check the response
+	assert.True(t, resp.Success, "Queue update should succeed")
+}
+
 // Test for DeleteQueue function
 func TestDeleteQueue(t *testing.T) {
 	ctx := context.Background()

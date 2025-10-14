@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	DOQ_GenerateIDs_FullMethodName    = "/queue.DOQ/GenerateIDs"
 	DOQ_CreateQueue_FullMethodName    = "/queue.DOQ/CreateQueue"
+	DOQ_UpdateQueue_FullMethodName    = "/queue.DOQ/UpdateQueue"
 	DOQ_DeleteQueue_FullMethodName    = "/queue.DOQ/DeleteQueue"
 	DOQ_GetQueue_FullMethodName       = "/queue.DOQ/GetQueue"
 	DOQ_GetQueues_FullMethodName      = "/queue.DOQ/GetQueues"
@@ -41,6 +42,7 @@ const (
 type DOQClient interface {
 	GenerateIDs(ctx context.Context, in *GenerateIDsRequest, opts ...grpc.CallOption) (*GenerateIDsResponse, error)
 	CreateQueue(ctx context.Context, in *CreateQueueRequest, opts ...grpc.CallOption) (*CreateQueueResponse, error)
+	UpdateQueue(ctx context.Context, in *UpdateQueueRequest, opts ...grpc.CallOption) (*UpdateQueueResponse, error)
 	DeleteQueue(ctx context.Context, in *DeleteQueueRequest, opts ...grpc.CallOption) (*DeleteQueueResponse, error)
 	GetQueue(ctx context.Context, in *GetQueueRequest, opts ...grpc.CallOption) (*GetQueueResponse, error)
 	GetQueues(ctx context.Context, in *GetQueuesRequest, opts ...grpc.CallOption) (*GetQueuesResponse, error)
@@ -77,6 +79,16 @@ func (c *dOQClient) CreateQueue(ctx context.Context, in *CreateQueueRequest, opt
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateQueueResponse)
 	err := c.cc.Invoke(ctx, DOQ_CreateQueue_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *dOQClient) UpdateQueue(ctx context.Context, in *UpdateQueueRequest, opts ...grpc.CallOption) (*UpdateQueueResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateQueueResponse)
+	err := c.cc.Invoke(ctx, DOQ_UpdateQueue_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -215,6 +227,7 @@ func (c *dOQClient) UpdatePriority(ctx context.Context, in *UpdatePriorityReques
 type DOQServer interface {
 	GenerateIDs(context.Context, *GenerateIDsRequest) (*GenerateIDsResponse, error)
 	CreateQueue(context.Context, *CreateQueueRequest) (*CreateQueueResponse, error)
+	UpdateQueue(context.Context, *UpdateQueueRequest) (*UpdateQueueResponse, error)
 	DeleteQueue(context.Context, *DeleteQueueRequest) (*DeleteQueueResponse, error)
 	GetQueue(context.Context, *GetQueueRequest) (*GetQueueResponse, error)
 	GetQueues(context.Context, *GetQueuesRequest) (*GetQueuesResponse, error)
@@ -242,6 +255,9 @@ func (UnimplementedDOQServer) GenerateIDs(context.Context, *GenerateIDsRequest) 
 }
 func (UnimplementedDOQServer) CreateQueue(context.Context, *CreateQueueRequest) (*CreateQueueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateQueue not implemented")
+}
+func (UnimplementedDOQServer) UpdateQueue(context.Context, *UpdateQueueRequest) (*UpdateQueueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateQueue not implemented")
 }
 func (UnimplementedDOQServer) DeleteQueue(context.Context, *DeleteQueueRequest) (*DeleteQueueResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteQueue not implemented")
@@ -332,6 +348,24 @@ func _DOQ_CreateQueue_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(DOQServer).CreateQueue(ctx, req.(*CreateQueueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DOQ_UpdateQueue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateQueueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DOQServer).UpdateQueue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DOQ_UpdateQueue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DOQServer).UpdateQueue(ctx, req.(*UpdateQueueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -544,6 +578,10 @@ var DOQ_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateQueue",
 			Handler:    _DOQ_CreateQueue_Handler,
+		},
+		{
+			MethodName: "UpdateQueue",
+			Handler:    _DOQ_UpdateQueue_Handler,
 		},
 		{
 			MethodName: "DeleteQueue",

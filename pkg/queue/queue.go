@@ -167,7 +167,7 @@ func (q *Queue) StopAckQueueMonitoring() {
 	close(q.ackQueueMonitoringChan)
 }
 
-func (q *Queue) Create(queueType, queueName string, settings entity.QueueSettings) error {
+func (q *Queue) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -185,6 +185,30 @@ func (q *Queue) Create(queueType, queueName string, settings entity.QueueSetting
 	}
 
 	return q.Init(queueType, queueName, settings)
+}
+
+func (q *Queue) UpdateQueue(settings entity.QueueSettings) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if q.config.Settings.Strategy != settings.Strategy {
+		return errors.ErrInvalidQueueSettings
+	}
+
+	if settings.AckTimeout == 0 {
+		settings.AckTimeout = uint32(q.cfg.Queue.DefaultAcknowledgementTimeout)
+	} else if settings.AckTimeout < 10 {
+		return errors.ErrInvalidAckTimeout
+	}
+
+	q.config.Settings = settings
+
+	err := q.store.UpdateQueue(q.config.Type, q.config.Name, settings)
+	if err != nil {
+		return err
+	}
+
+	return q.queue.UpdateMaxUnacked(q.config.Settings.MaxUnacked)
 }
 
 func (q *Queue) DeleteQueue() error {

@@ -41,6 +41,36 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 	return res, nil
 }
 
+func (h *Handler) UpdateQueue(ctx context.Context, input *UpdateQueueInput) (*UpdateQueueOutput, error) {
+	queueName := input.QueueName
+	queueSettings := input.Body.Settings
+
+	err := h.node.UpdateQueue(queueName, entity.QueueSettings{
+		Strategy:   strings.ToUpper(queueSettings.Strategy),
+		MaxUnacked: queueSettings.MaxUnacked,
+		AckTimeout: queueSettings.AckTimeout,
+	})
+
+	if err != nil {
+		return nil, huma.Error409Conflict("Failed to update a queue", err)
+	}
+
+	res := &UpdateQueueOutput{
+		Status: http.StatusOK,
+		Body: UpdateQueueOutputBody{
+			Status: "UPDATED",
+			Name:   queueName,
+			Settings: QueueSettings{
+				Strategy:   strings.ToUpper(queueSettings.Strategy),
+				MaxUnacked: queueSettings.MaxUnacked,
+				AckTimeout: queueSettings.AckTimeout,
+			},
+		},
+	}
+
+	return res, nil
+}
+
 func (h *Handler) DeleteQueue(ctx context.Context, input *DeleteQueueInput) (*DeleteQueueOutput, error) {
 	queueName := input.QueueName
 

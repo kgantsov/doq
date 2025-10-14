@@ -40,6 +40,7 @@ type Node interface {
 	IsLeader() bool
 	GenerateID() uint64
 	CreateQueue(queueType, queueName string, settings entity.QueueSettings) error
+	UpdateQueue(queueName string, settings entity.QueueSettings) error
 	DeleteQueue(queueName string) error
 	GetQueues() []*queue.QueueInfo
 	GetQueueInfo(queueName string) (*queue.QueueInfo, error)
@@ -215,6 +216,20 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 		},
 		h.CreateQueue,
 	)
+
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "update-queue",
+			Method:      http.MethodPut,
+			Path:        "/API/v1/queues/{queue_name}",
+			Summary:     "Update a queue",
+			Description: "Update a queue",
+			Tags:        []string{"Queues"},
+		},
+		h.UpdateQueue,
+	)
+
 	huma.Register(
 		api,
 		huma.Operation{

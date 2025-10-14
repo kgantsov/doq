@@ -91,6 +91,18 @@ func NewFairRoundRobinQueue(maxUnacked int) *FairRoundRobinQueue {
 	}
 }
 
+func (fq *FairRoundRobinQueue) UpdateMaxUnacked(maxUnacked int) error {
+	fq.mu.Lock()
+	defer fq.mu.Unlock()
+
+	if maxUnacked == 0 {
+		// default to max int
+		maxUnacked = math.MaxInt64
+	}
+	fq.maxUnacked = maxUnacked
+	return nil
+}
+
 // Enqueue adds a message to the queue
 func (fq *FairRoundRobinQueue) Enqueue(group string, item *Item) {
 	fq.mu.Lock()

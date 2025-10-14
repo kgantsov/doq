@@ -7,3 +7,4 @@ var ErrEmptyQueue = fmt.Errorf("queue is empty")
 var ErrMessageNotFound = fmt.Errorf("message not found")
 
 var ErrInvalidAckTimeout = fmt.Errorf("invalid ack timeout")
+var ErrInvalidQueueSettings = fmt.Errorf("invalid queue settings")

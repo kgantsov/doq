@@ -153,7 +153,7 @@ func TestNodeSingleNode(t *testing.T) {
 	assert.Equal(t, 0, len(queues))
 }
 
-func TestNodeDeleteQueue(t *testing.T) {
+func TestNodeUpdateDeleteQueue(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "db*")
 	defer os.RemoveAll(tmpDir)
 
@@ -189,7 +189,7 @@ func TestNodeDeleteQueue(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	err = n.CreateQueue("fair", "test_queue", entity.QueueSettings{
-		Strategy:   "ROUND_ROBIN",
+		Strategy:   "WEIGHTED",
 		MaxUnacked: 75,
 		AckTimeout: 300,
 	})
@@ -197,9 +197,22 @@ func TestNodeDeleteQueue(t *testing.T) {
 
 	queue, err := n.GetQueueInfo("test_queue")
 	assert.Nil(t, err)
-	assert.Equal(t, "ROUND_ROBIN", queue.Settings.Strategy)
+	assert.Equal(t, "WEIGHTED", queue.Settings.Strategy)
 	assert.Equal(t, int(75), queue.Settings.MaxUnacked)
 	assert.Equal(t, uint32(300), queue.Settings.AckTimeout)
+
+	err = n.UpdateQueue("test_queue", entity.QueueSettings{
+		Strategy:   "WEIGHTED",
+		MaxUnacked: 100,
+		AckTimeout: 600,
+	})
+	assert.Nil(t, err)
+
+	queue, err = n.GetQueueInfo("test_queue")
+	assert.Nil(t, err)
+	assert.Equal(t, "WEIGHTED", queue.Settings.Strategy)
+	assert.Equal(t, int(100), queue.Settings.MaxUnacked)
+	assert.Equal(t, uint32(600), queue.Settings.AckTimeout)
 
 	err = n.DeleteQueue("test_queue")
 	assert.Nil(t, err)

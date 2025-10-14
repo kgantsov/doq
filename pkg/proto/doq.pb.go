@@ -684,6 +684,102 @@ func (x *CreateQueueResponse) GetSuccess() bool {
 	return false
 }
 
+type UpdateQueueRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Settings      *QueueSettings         `protobuf:"bytes,2,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateQueueRequest) Reset() {
+	*x = UpdateQueueRequest{}
+	mi := &file_pkg_proto_doq_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateQueueRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateQueueRequest) ProtoMessage() {}
+
+func (x *UpdateQueueRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_proto_doq_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateQueueRequest.ProtoReflect.Descriptor instead.
+func (*UpdateQueueRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *UpdateQueueRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateQueueRequest) GetSettings() *QueueSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+type UpdateQueueResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateQueueResponse) Reset() {
+	*x = UpdateQueueResponse{}
+	mi := &file_pkg_proto_doq_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateQueueResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateQueueResponse) ProtoMessage() {}
+
+func (x *UpdateQueueResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_proto_doq_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateQueueResponse.ProtoReflect.Descriptor instead.
+func (*UpdateQueueResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UpdateQueueResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 type DeleteQueueRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
@@ -693,7 +789,7 @@ type DeleteQueueRequest struct {
 
 func (x *DeleteQueueRequest) Reset() {
 	*x = DeleteQueueRequest{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[10]
+	mi := &file_pkg_proto_doq_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -705,7 +801,7 @@ func (x *DeleteQueueRequest) String() string {
 func (*DeleteQueueRequest) ProtoMessage() {}
 
 func (x *DeleteQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[10]
+	mi := &file_pkg_proto_doq_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -718,7 +814,7 @@ func (x *DeleteQueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteQueueRequest.ProtoReflect.Descriptor instead.
 func (*DeleteQueueRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{10}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *DeleteQueueRequest) GetName() string {
@@ -737,7 +833,7 @@ type DeleteQueueResponse struct {
 
 func (x *DeleteQueueResponse) Reset() {
 	*x = DeleteQueueResponse{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[11]
+	mi := &file_pkg_proto_doq_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -749,7 +845,7 @@ func (x *DeleteQueueResponse) String() string {
 func (*DeleteQueueResponse) ProtoMessage() {}
 
 func (x *DeleteQueueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[11]
+	mi := &file_pkg_proto_doq_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -762,7 +858,7 @@ func (x *DeleteQueueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteQueueResponse.ProtoReflect.Descriptor instead.
 func (*DeleteQueueResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{11}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *DeleteQueueResponse) GetSuccess() bool {
@@ -781,7 +877,7 @@ type GetQueueRequest struct {
 
 func (x *GetQueueRequest) Reset() {
 	*x = GetQueueRequest{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[12]
+	mi := &file_pkg_proto_doq_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -793,7 +889,7 @@ func (x *GetQueueRequest) String() string {
 func (*GetQueueRequest) ProtoMessage() {}
 
 func (x *GetQueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[12]
+	mi := &file_pkg_proto_doq_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -806,7 +902,7 @@ func (x *GetQueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetQueueRequest.ProtoReflect.Descriptor instead.
 func (*GetQueueRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{12}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GetQueueRequest) GetName() string {
@@ -828,7 +924,7 @@ type Stats struct {
 
 func (x *Stats) Reset() {
 	*x = Stats{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[13]
+	mi := &file_pkg_proto_doq_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -840,7 +936,7 @@ func (x *Stats) String() string {
 func (*Stats) ProtoMessage() {}
 
 func (x *Stats) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[13]
+	mi := &file_pkg_proto_doq_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -853,7 +949,7 @@ func (x *Stats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Stats.ProtoReflect.Descriptor instead.
 func (*Stats) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{13}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *Stats) GetEnqueueRPS() float64 {
@@ -899,7 +995,7 @@ type GetQueueResponse struct {
 
 func (x *GetQueueResponse) Reset() {
 	*x = GetQueueResponse{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[14]
+	mi := &file_pkg_proto_doq_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -911,7 +1007,7 @@ func (x *GetQueueResponse) String() string {
 func (*GetQueueResponse) ProtoMessage() {}
 
 func (x *GetQueueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[14]
+	mi := &file_pkg_proto_doq_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -924,7 +1020,7 @@ func (x *GetQueueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetQueueResponse.ProtoReflect.Descriptor instead.
 func (*GetQueueResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{14}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetQueueResponse) GetName() string {
@@ -985,7 +1081,7 @@ type GetQueuesRequest struct {
 
 func (x *GetQueuesRequest) Reset() {
 	*x = GetQueuesRequest{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[15]
+	mi := &file_pkg_proto_doq_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -997,7 +1093,7 @@ func (x *GetQueuesRequest) String() string {
 func (*GetQueuesRequest) ProtoMessage() {}
 
 func (x *GetQueuesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[15]
+	mi := &file_pkg_proto_doq_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1010,7 +1106,7 @@ func (x *GetQueuesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetQueuesRequest.ProtoReflect.Descriptor instead.
 func (*GetQueuesRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{15}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetQueuesRequest) GetType() string {
@@ -1029,7 +1125,7 @@ type GetQueuesResponse struct {
 
 func (x *GetQueuesResponse) Reset() {
 	*x = GetQueuesResponse{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[16]
+	mi := &file_pkg_proto_doq_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1041,7 +1137,7 @@ func (x *GetQueuesResponse) String() string {
 func (*GetQueuesResponse) ProtoMessage() {}
 
 func (x *GetQueuesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[16]
+	mi := &file_pkg_proto_doq_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1054,7 +1150,7 @@ func (x *GetQueuesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetQueuesResponse.ProtoReflect.Descriptor instead.
 func (*GetQueuesResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{16}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetQueuesResponse) GetQueues() []*GetQueueResponse {
@@ -1078,7 +1174,7 @@ type EnqueueRequest struct {
 
 func (x *EnqueueRequest) Reset() {
 	*x = EnqueueRequest{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[17]
+	mi := &file_pkg_proto_doq_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1090,7 +1186,7 @@ func (x *EnqueueRequest) String() string {
 func (*EnqueueRequest) ProtoMessage() {}
 
 func (x *EnqueueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[17]
+	mi := &file_pkg_proto_doq_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1103,7 +1199,7 @@ func (x *EnqueueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnqueueRequest.ProtoReflect.Descriptor instead.
 func (*EnqueueRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{17}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *EnqueueRequest) GetQueueName() string {
@@ -1163,7 +1259,7 @@ type EnqueueResponse struct {
 
 func (x *EnqueueResponse) Reset() {
 	*x = EnqueueResponse{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[18]
+	mi := &file_pkg_proto_doq_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1175,7 +1271,7 @@ func (x *EnqueueResponse) String() string {
 func (*EnqueueResponse) ProtoMessage() {}
 
 func (x *EnqueueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[18]
+	mi := &file_pkg_proto_doq_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1188,7 +1284,7 @@ func (x *EnqueueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnqueueResponse.ProtoReflect.Descriptor instead.
 func (*EnqueueResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{18}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *EnqueueResponse) GetSuccess() bool {
@@ -1250,7 +1346,7 @@ type DequeueRequest struct {
 
 func (x *DequeueRequest) Reset() {
 	*x = DequeueRequest{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[19]
+	mi := &file_pkg_proto_doq_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1262,7 +1358,7 @@ func (x *DequeueRequest) String() string {
 func (*DequeueRequest) ProtoMessage() {}
 
 func (x *DequeueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[19]
+	mi := &file_pkg_proto_doq_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1275,7 +1371,7 @@ func (x *DequeueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DequeueRequest.ProtoReflect.Descriptor instead.
 func (*DequeueRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{19}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *DequeueRequest) GetQueueName() string {
@@ -1307,7 +1403,7 @@ type DequeueResponse struct {
 
 func (x *DequeueResponse) Reset() {
 	*x = DequeueResponse{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[20]
+	mi := &file_pkg_proto_doq_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1319,7 +1415,7 @@ func (x *DequeueResponse) String() string {
 func (*DequeueResponse) ProtoMessage() {}
 
 func (x *DequeueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[20]
+	mi := &file_pkg_proto_doq_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1332,7 +1428,7 @@ func (x *DequeueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DequeueResponse.ProtoReflect.Descriptor instead.
 func (*DequeueResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{20}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *DequeueResponse) GetSuccess() bool {
@@ -1394,7 +1490,7 @@ type GetRequest struct {
 
 func (x *GetRequest) Reset() {
 	*x = GetRequest{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[21]
+	mi := &file_pkg_proto_doq_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1406,7 +1502,7 @@ func (x *GetRequest) String() string {
 func (*GetRequest) ProtoMessage() {}
 
 func (x *GetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[21]
+	mi := &file_pkg_proto_doq_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1419,7 +1515,7 @@ func (x *GetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRequest.ProtoReflect.Descriptor instead.
 func (*GetRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{21}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GetRequest) GetQueueName() string {
@@ -1451,7 +1547,7 @@ type GetResponse struct {
 
 func (x *GetResponse) Reset() {
 	*x = GetResponse{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[22]
+	mi := &file_pkg_proto_doq_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1463,7 +1559,7 @@ func (x *GetResponse) String() string {
 func (*GetResponse) ProtoMessage() {}
 
 func (x *GetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[22]
+	mi := &file_pkg_proto_doq_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1476,7 +1572,7 @@ func (x *GetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetResponse.ProtoReflect.Descriptor instead.
 func (*GetResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{22}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetResponse) GetSuccess() bool {
@@ -1538,7 +1634,7 @@ type DeleteRequest struct {
 
 func (x *DeleteRequest) Reset() {
 	*x = DeleteRequest{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[23]
+	mi := &file_pkg_proto_doq_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1550,7 +1646,7 @@ func (x *DeleteRequest) String() string {
 func (*DeleteRequest) ProtoMessage() {}
 
 func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[23]
+	mi := &file_pkg_proto_doq_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1563,7 +1659,7 @@ func (x *DeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteRequest.ProtoReflect.Descriptor instead.
 func (*DeleteRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{23}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *DeleteRequest) GetQueueName() string {
@@ -1589,7 +1685,7 @@ type DeleteResponse struct {
 
 func (x *DeleteResponse) Reset() {
 	*x = DeleteResponse{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[24]
+	mi := &file_pkg_proto_doq_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1601,7 +1697,7 @@ func (x *DeleteResponse) String() string {
 func (*DeleteResponse) ProtoMessage() {}
 
 func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[24]
+	mi := &file_pkg_proto_doq_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1614,7 +1710,7 @@ func (x *DeleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteResponse.ProtoReflect.Descriptor instead.
 func (*DeleteResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{24}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *DeleteResponse) GetSuccess() bool {
@@ -1634,7 +1730,7 @@ type AckRequest struct {
 
 func (x *AckRequest) Reset() {
 	*x = AckRequest{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[25]
+	mi := &file_pkg_proto_doq_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1646,7 +1742,7 @@ func (x *AckRequest) String() string {
 func (*AckRequest) ProtoMessage() {}
 
 func (x *AckRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[25]
+	mi := &file_pkg_proto_doq_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1659,7 +1755,7 @@ func (x *AckRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckRequest.ProtoReflect.Descriptor instead.
 func (*AckRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{25}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *AckRequest) GetQueueName() string {
@@ -1685,7 +1781,7 @@ type AckResponse struct {
 
 func (x *AckResponse) Reset() {
 	*x = AckResponse{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[26]
+	mi := &file_pkg_proto_doq_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1697,7 +1793,7 @@ func (x *AckResponse) String() string {
 func (*AckResponse) ProtoMessage() {}
 
 func (x *AckResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[26]
+	mi := &file_pkg_proto_doq_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1710,7 +1806,7 @@ func (x *AckResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckResponse.ProtoReflect.Descriptor instead.
 func (*AckResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{26}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *AckResponse) GetSuccess() bool {
@@ -1732,7 +1828,7 @@ type NackRequest struct {
 
 func (x *NackRequest) Reset() {
 	*x = NackRequest{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[27]
+	mi := &file_pkg_proto_doq_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1744,7 +1840,7 @@ func (x *NackRequest) String() string {
 func (*NackRequest) ProtoMessage() {}
 
 func (x *NackRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[27]
+	mi := &file_pkg_proto_doq_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1757,7 +1853,7 @@ func (x *NackRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NackRequest.ProtoReflect.Descriptor instead.
 func (*NackRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{27}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *NackRequest) GetQueueName() string {
@@ -1797,7 +1893,7 @@ type NackResponse struct {
 
 func (x *NackResponse) Reset() {
 	*x = NackResponse{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[28]
+	mi := &file_pkg_proto_doq_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1809,7 +1905,7 @@ func (x *NackResponse) String() string {
 func (*NackResponse) ProtoMessage() {}
 
 func (x *NackResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[28]
+	mi := &file_pkg_proto_doq_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1822,7 +1918,7 @@ func (x *NackResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NackResponse.ProtoReflect.Descriptor instead.
 func (*NackResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{28}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *NackResponse) GetSuccess() bool {
@@ -1843,7 +1939,7 @@ type UpdatePriorityRequest struct {
 
 func (x *UpdatePriorityRequest) Reset() {
 	*x = UpdatePriorityRequest{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[29]
+	mi := &file_pkg_proto_doq_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1855,7 +1951,7 @@ func (x *UpdatePriorityRequest) String() string {
 func (*UpdatePriorityRequest) ProtoMessage() {}
 
 func (x *UpdatePriorityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[29]
+	mi := &file_pkg_proto_doq_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1868,7 +1964,7 @@ func (x *UpdatePriorityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePriorityRequest.ProtoReflect.Descriptor instead.
 func (*UpdatePriorityRequest) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{29}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *UpdatePriorityRequest) GetQueueName() string {
@@ -1901,7 +1997,7 @@ type UpdatePriorityResponse struct {
 
 func (x *UpdatePriorityResponse) Reset() {
 	*x = UpdatePriorityResponse{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[30]
+	mi := &file_pkg_proto_doq_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1913,7 +2009,7 @@ func (x *UpdatePriorityResponse) String() string {
 func (*UpdatePriorityResponse) ProtoMessage() {}
 
 func (x *UpdatePriorityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[30]
+	mi := &file_pkg_proto_doq_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1926,7 +2022,7 @@ func (x *UpdatePriorityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatePriorityResponse.ProtoReflect.Descriptor instead.
 func (*UpdatePriorityResponse) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{30}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *UpdatePriorityResponse) GetSuccess() bool {
@@ -1941,6 +2037,7 @@ type RaftCommand struct {
 	// Types that are valid to be assigned to Cmd:
 	//
 	//	*RaftCommand_CreateQueue
+	//	*RaftCommand_UpdateQueue
 	//	*RaftCommand_DeleteQueue
 	//	*RaftCommand_GetQueue
 	//	*RaftCommand_GetQueues
@@ -1959,7 +2056,7 @@ type RaftCommand struct {
 
 func (x *RaftCommand) Reset() {
 	*x = RaftCommand{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[31]
+	mi := &file_pkg_proto_doq_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1971,7 +2068,7 @@ func (x *RaftCommand) String() string {
 func (*RaftCommand) ProtoMessage() {}
 
 func (x *RaftCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[31]
+	mi := &file_pkg_proto_doq_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1984,7 +2081,7 @@ func (x *RaftCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RaftCommand.ProtoReflect.Descriptor instead.
 func (*RaftCommand) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{31}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *RaftCommand) GetCmd() isRaftCommand_Cmd {
@@ -1998,6 +2095,15 @@ func (x *RaftCommand) GetCreateQueue() *CreateQueueRequest {
 	if x != nil {
 		if x, ok := x.Cmd.(*RaftCommand_CreateQueue); ok {
 			return x.CreateQueue
+		}
+	}
+	return nil
+}
+
+func (x *RaftCommand) GetUpdateQueue() *UpdateQueueRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_UpdateQueue); ok {
+			return x.UpdateQueue
 		}
 	}
 	return nil
@@ -2110,51 +2216,57 @@ type RaftCommand_CreateQueue struct {
 	CreateQueue *CreateQueueRequest `protobuf:"bytes,1,opt,name=createQueue,proto3,oneof"`
 }
 
+type RaftCommand_UpdateQueue struct {
+	UpdateQueue *UpdateQueueRequest `protobuf:"bytes,2,opt,name=updateQueue,proto3,oneof"`
+}
+
 type RaftCommand_DeleteQueue struct {
-	DeleteQueue *DeleteQueueRequest `protobuf:"bytes,2,opt,name=deleteQueue,proto3,oneof"`
+	DeleteQueue *DeleteQueueRequest `protobuf:"bytes,3,opt,name=deleteQueue,proto3,oneof"`
 }
 
 type RaftCommand_GetQueue struct {
-	GetQueue *GetQueueRequest `protobuf:"bytes,3,opt,name=getQueue,proto3,oneof"`
+	GetQueue *GetQueueRequest `protobuf:"bytes,4,opt,name=getQueue,proto3,oneof"`
 }
 
 type RaftCommand_GetQueues struct {
-	GetQueues *GetQueuesRequest `protobuf:"bytes,4,opt,name=getQueues,proto3,oneof"`
+	GetQueues *GetQueuesRequest `protobuf:"bytes,5,opt,name=getQueues,proto3,oneof"`
 }
 
 type RaftCommand_Enqueue struct {
-	Enqueue *EnqueueRequest `protobuf:"bytes,5,opt,name=enqueue,proto3,oneof"`
+	Enqueue *EnqueueRequest `protobuf:"bytes,6,opt,name=enqueue,proto3,oneof"`
 }
 
 type RaftCommand_Dequeue struct {
-	Dequeue *DequeueRequest `protobuf:"bytes,6,opt,name=dequeue,proto3,oneof"`
+	Dequeue *DequeueRequest `protobuf:"bytes,7,opt,name=dequeue,proto3,oneof"`
 }
 
 type RaftCommand_Get struct {
-	Get *GetRequest `protobuf:"bytes,7,opt,name=get,proto3,oneof"`
+	Get *GetRequest `protobuf:"bytes,8,opt,name=get,proto3,oneof"`
 }
 
 type RaftCommand_Delete struct {
-	Delete *DeleteRequest `protobuf:"bytes,8,opt,name=delete,proto3,oneof"`
+	Delete *DeleteRequest `protobuf:"bytes,9,opt,name=delete,proto3,oneof"`
 }
 
 type RaftCommand_Ack struct {
-	Ack *AckRequest `protobuf:"bytes,9,opt,name=ack,proto3,oneof"`
+	Ack *AckRequest `protobuf:"bytes,10,opt,name=ack,proto3,oneof"`
 }
 
 type RaftCommand_Nack struct {
-	Nack *NackRequest `protobuf:"bytes,10,opt,name=nack,proto3,oneof"`
+	Nack *NackRequest `protobuf:"bytes,11,opt,name=nack,proto3,oneof"`
 }
 
 type RaftCommand_UpdatePriority struct {
-	UpdatePriority *UpdatePriorityRequest `protobuf:"bytes,11,opt,name=updatePriority,proto3,oneof"`
+	UpdatePriority *UpdatePriorityRequest `protobuf:"bytes,12,opt,name=updatePriority,proto3,oneof"`
 }
 
 type RaftCommand_LeaderConfigChange struct {
-	LeaderConfigChange *LeaderConfigChange `protobuf:"bytes,12,opt,name=leaderConfigChange,proto3,oneof"`
+	LeaderConfigChange *LeaderConfigChange `protobuf:"bytes,13,opt,name=leaderConfigChange,proto3,oneof"`
 }
 
 func (*RaftCommand_CreateQueue) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_UpdateQueue) isRaftCommand_Cmd() {}
 
 func (*RaftCommand_DeleteQueue) isRaftCommand_Cmd() {}
 
@@ -2229,6 +2341,11 @@ const file_pkg_proto_doq_proto_rawDesc = "" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x120\n" +
 	"\bsettings\x18\x03 \x01(\v2\x14.queue.QueueSettingsR\bsettings\"/\n" +
 	"\x13CreateQueueResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"Z\n" +
+	"\x12UpdateQueueRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x120\n" +
+	"\bsettings\x18\x02 \x01(\v2\x14.queue.QueueSettingsR\bsettings\"/\n" +
+	"\x13UpdateQueueResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\"(\n" +
 	"\x12DeleteQueueRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"/\n" +
@@ -2333,25 +2450,27 @@ const file_pkg_proto_doq_proto_rawDesc = "" +
 	"\x02id\x18\x02 \x01(\x04R\x02id\x12\x1a\n" +
 	"\bpriority\x18\x03 \x01(\x03R\bpriority\"2\n" +
 	"\x16UpdatePriorityResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xa4\x05\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xe3\x05\n" +
 	"\vRaftCommand\x12=\n" +
 	"\vcreateQueue\x18\x01 \x01(\v2\x19.queue.CreateQueueRequestH\x00R\vcreateQueue\x12=\n" +
-	"\vdeleteQueue\x18\x02 \x01(\v2\x19.queue.DeleteQueueRequestH\x00R\vdeleteQueue\x124\n" +
-	"\bgetQueue\x18\x03 \x01(\v2\x16.queue.GetQueueRequestH\x00R\bgetQueue\x127\n" +
-	"\tgetQueues\x18\x04 \x01(\v2\x17.queue.GetQueuesRequestH\x00R\tgetQueues\x121\n" +
-	"\aenqueue\x18\x05 \x01(\v2\x15.queue.EnqueueRequestH\x00R\aenqueue\x121\n" +
-	"\adequeue\x18\x06 \x01(\v2\x15.queue.DequeueRequestH\x00R\adequeue\x12%\n" +
-	"\x03get\x18\a \x01(\v2\x11.queue.GetRequestH\x00R\x03get\x12.\n" +
-	"\x06delete\x18\b \x01(\v2\x14.queue.DeleteRequestH\x00R\x06delete\x12%\n" +
-	"\x03ack\x18\t \x01(\v2\x11.queue.AckRequestH\x00R\x03ack\x12(\n" +
-	"\x04nack\x18\n" +
-	" \x01(\v2\x12.queue.NackRequestH\x00R\x04nack\x12F\n" +
-	"\x0eupdatePriority\x18\v \x01(\v2\x1c.queue.UpdatePriorityRequestH\x00R\x0eupdatePriority\x12K\n" +
-	"\x12leaderConfigChange\x18\f \x01(\v2\x19.queue.LeaderConfigChangeH\x00R\x12leaderConfigChangeB\x05\n" +
-	"\x03cmd2\xef\x06\n" +
+	"\vupdateQueue\x18\x02 \x01(\v2\x19.queue.UpdateQueueRequestH\x00R\vupdateQueue\x12=\n" +
+	"\vdeleteQueue\x18\x03 \x01(\v2\x19.queue.DeleteQueueRequestH\x00R\vdeleteQueue\x124\n" +
+	"\bgetQueue\x18\x04 \x01(\v2\x16.queue.GetQueueRequestH\x00R\bgetQueue\x127\n" +
+	"\tgetQueues\x18\x05 \x01(\v2\x17.queue.GetQueuesRequestH\x00R\tgetQueues\x121\n" +
+	"\aenqueue\x18\x06 \x01(\v2\x15.queue.EnqueueRequestH\x00R\aenqueue\x121\n" +
+	"\adequeue\x18\a \x01(\v2\x15.queue.DequeueRequestH\x00R\adequeue\x12%\n" +
+	"\x03get\x18\b \x01(\v2\x11.queue.GetRequestH\x00R\x03get\x12.\n" +
+	"\x06delete\x18\t \x01(\v2\x14.queue.DeleteRequestH\x00R\x06delete\x12%\n" +
+	"\x03ack\x18\n" +
+	" \x01(\v2\x11.queue.AckRequestH\x00R\x03ack\x12(\n" +
+	"\x04nack\x18\v \x01(\v2\x12.queue.NackRequestH\x00R\x04nack\x12F\n" +
+	"\x0eupdatePriority\x18\f \x01(\v2\x1c.queue.UpdatePriorityRequestH\x00R\x0eupdatePriority\x12K\n" +
+	"\x12leaderConfigChange\x18\r \x01(\v2\x19.queue.LeaderConfigChangeH\x00R\x12leaderConfigChangeB\x05\n" +
+	"\x03cmd2\xb5\a\n" +
 	"\x03DOQ\x12D\n" +
 	"\vGenerateIDs\x12\x19.queue.GenerateIDsRequest\x1a\x1a.queue.GenerateIDsResponse\x12D\n" +
 	"\vCreateQueue\x12\x19.queue.CreateQueueRequest\x1a\x1a.queue.CreateQueueResponse\x12D\n" +
+	"\vUpdateQueue\x12\x19.queue.UpdateQueueRequest\x1a\x1a.queue.UpdateQueueResponse\x12D\n" +
 	"\vDeleteQueue\x12\x19.queue.DeleteQueueRequest\x1a\x1a.queue.DeleteQueueResponse\x12;\n" +
 	"\bGetQueue\x12\x16.queue.GetQueueRequest\x1a\x17.queue.GetQueueResponse\x12>\n" +
 	"\tGetQueues\x12\x17.queue.GetQueuesRequest\x1a\x18.queue.GetQueuesResponse\x12:\n" +
@@ -2378,7 +2497,7 @@ func file_pkg_proto_doq_proto_rawDescGZIP() []byte {
 }
 
 var file_pkg_proto_doq_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pkg_proto_doq_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_pkg_proto_doq_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
 var file_pkg_proto_doq_proto_goTypes = []any{
 	(QueueSettings_Strategy)(0),    // 0: queue.QueueSettings.Strategy
 	(*LeaderConfigChange)(nil),     // 1: queue.LeaderConfigChange
@@ -2391,96 +2510,102 @@ var file_pkg_proto_doq_proto_goTypes = []any{
 	(*SnapshotItem)(nil),           // 8: queue.SnapshotItem
 	(*CreateQueueRequest)(nil),     // 9: queue.CreateQueueRequest
 	(*CreateQueueResponse)(nil),    // 10: queue.CreateQueueResponse
-	(*DeleteQueueRequest)(nil),     // 11: queue.DeleteQueueRequest
-	(*DeleteQueueResponse)(nil),    // 12: queue.DeleteQueueResponse
-	(*GetQueueRequest)(nil),        // 13: queue.GetQueueRequest
-	(*Stats)(nil),                  // 14: queue.Stats
-	(*GetQueueResponse)(nil),       // 15: queue.GetQueueResponse
-	(*GetQueuesRequest)(nil),       // 16: queue.GetQueuesRequest
-	(*GetQueuesResponse)(nil),      // 17: queue.GetQueuesResponse
-	(*EnqueueRequest)(nil),         // 18: queue.EnqueueRequest
-	(*EnqueueResponse)(nil),        // 19: queue.EnqueueResponse
-	(*DequeueRequest)(nil),         // 20: queue.DequeueRequest
-	(*DequeueResponse)(nil),        // 21: queue.DequeueResponse
-	(*GetRequest)(nil),             // 22: queue.GetRequest
-	(*GetResponse)(nil),            // 23: queue.GetResponse
-	(*DeleteRequest)(nil),          // 24: queue.DeleteRequest
-	(*DeleteResponse)(nil),         // 25: queue.DeleteResponse
-	(*AckRequest)(nil),             // 26: queue.AckRequest
-	(*AckResponse)(nil),            // 27: queue.AckResponse
-	(*NackRequest)(nil),            // 28: queue.NackRequest
-	(*NackResponse)(nil),           // 29: queue.NackResponse
-	(*UpdatePriorityRequest)(nil),  // 30: queue.UpdatePriorityRequest
-	(*UpdatePriorityResponse)(nil), // 31: queue.UpdatePriorityResponse
-	(*RaftCommand)(nil),            // 32: queue.RaftCommand
-	nil,                            // 33: queue.Message.MetadataEntry
-	nil,                            // 34: queue.EnqueueRequest.MetadataEntry
-	nil,                            // 35: queue.EnqueueResponse.MetadataEntry
-	nil,                            // 36: queue.DequeueResponse.MetadataEntry
-	nil,                            // 37: queue.GetResponse.MetadataEntry
-	nil,                            // 38: queue.NackRequest.MetadataEntry
+	(*UpdateQueueRequest)(nil),     // 11: queue.UpdateQueueRequest
+	(*UpdateQueueResponse)(nil),    // 12: queue.UpdateQueueResponse
+	(*DeleteQueueRequest)(nil),     // 13: queue.DeleteQueueRequest
+	(*DeleteQueueResponse)(nil),    // 14: queue.DeleteQueueResponse
+	(*GetQueueRequest)(nil),        // 15: queue.GetQueueRequest
+	(*Stats)(nil),                  // 16: queue.Stats
+	(*GetQueueResponse)(nil),       // 17: queue.GetQueueResponse
+	(*GetQueuesRequest)(nil),       // 18: queue.GetQueuesRequest
+	(*GetQueuesResponse)(nil),      // 19: queue.GetQueuesResponse
+	(*EnqueueRequest)(nil),         // 20: queue.EnqueueRequest
+	(*EnqueueResponse)(nil),        // 21: queue.EnqueueResponse
+	(*DequeueRequest)(nil),         // 22: queue.DequeueRequest
+	(*DequeueResponse)(nil),        // 23: queue.DequeueResponse
+	(*GetRequest)(nil),             // 24: queue.GetRequest
+	(*GetResponse)(nil),            // 25: queue.GetResponse
+	(*DeleteRequest)(nil),          // 26: queue.DeleteRequest
+	(*DeleteResponse)(nil),         // 27: queue.DeleteResponse
+	(*AckRequest)(nil),             // 28: queue.AckRequest
+	(*AckResponse)(nil),            // 29: queue.AckResponse
+	(*NackRequest)(nil),            // 30: queue.NackRequest
+	(*NackResponse)(nil),           // 31: queue.NackResponse
+	(*UpdatePriorityRequest)(nil),  // 32: queue.UpdatePriorityRequest
+	(*UpdatePriorityResponse)(nil), // 33: queue.UpdatePriorityResponse
+	(*RaftCommand)(nil),            // 34: queue.RaftCommand
+	nil,                            // 35: queue.Message.MetadataEntry
+	nil,                            // 36: queue.EnqueueRequest.MetadataEntry
+	nil,                            // 37: queue.EnqueueResponse.MetadataEntry
+	nil,                            // 38: queue.DequeueResponse.MetadataEntry
+	nil,                            // 39: queue.GetResponse.MetadataEntry
+	nil,                            // 40: queue.NackRequest.MetadataEntry
 }
 var file_pkg_proto_doq_proto_depIdxs = []int32{
 	0,  // 0: queue.QueueSettings.strategy:type_name -> queue.QueueSettings.Strategy
 	4,  // 1: queue.Queue.settings:type_name -> queue.QueueSettings
-	33, // 2: queue.Message.metadata:type_name -> queue.Message.MetadataEntry
+	35, // 2: queue.Message.metadata:type_name -> queue.Message.MetadataEntry
 	5,  // 3: queue.SnapshotItem.queue:type_name -> queue.Queue
 	6,  // 4: queue.SnapshotItem.message:type_name -> queue.Message
 	7,  // 5: queue.SnapshotItem.leader_configuration:type_name -> queue.LeaderConfiguration
 	4,  // 6: queue.CreateQueueRequest.settings:type_name -> queue.QueueSettings
-	4,  // 7: queue.GetQueueResponse.settings:type_name -> queue.QueueSettings
-	14, // 8: queue.GetQueueResponse.stats:type_name -> queue.Stats
-	15, // 9: queue.GetQueuesResponse.queues:type_name -> queue.GetQueueResponse
-	34, // 10: queue.EnqueueRequest.metadata:type_name -> queue.EnqueueRequest.MetadataEntry
-	35, // 11: queue.EnqueueResponse.metadata:type_name -> queue.EnqueueResponse.MetadataEntry
-	36, // 12: queue.DequeueResponse.metadata:type_name -> queue.DequeueResponse.MetadataEntry
-	37, // 13: queue.GetResponse.metadata:type_name -> queue.GetResponse.MetadataEntry
-	38, // 14: queue.NackRequest.metadata:type_name -> queue.NackRequest.MetadataEntry
-	9,  // 15: queue.RaftCommand.createQueue:type_name -> queue.CreateQueueRequest
-	11, // 16: queue.RaftCommand.deleteQueue:type_name -> queue.DeleteQueueRequest
-	13, // 17: queue.RaftCommand.getQueue:type_name -> queue.GetQueueRequest
-	16, // 18: queue.RaftCommand.getQueues:type_name -> queue.GetQueuesRequest
-	18, // 19: queue.RaftCommand.enqueue:type_name -> queue.EnqueueRequest
-	20, // 20: queue.RaftCommand.dequeue:type_name -> queue.DequeueRequest
-	22, // 21: queue.RaftCommand.get:type_name -> queue.GetRequest
-	24, // 22: queue.RaftCommand.delete:type_name -> queue.DeleteRequest
-	26, // 23: queue.RaftCommand.ack:type_name -> queue.AckRequest
-	28, // 24: queue.RaftCommand.nack:type_name -> queue.NackRequest
-	30, // 25: queue.RaftCommand.updatePriority:type_name -> queue.UpdatePriorityRequest
-	1,  // 26: queue.RaftCommand.leaderConfigChange:type_name -> queue.LeaderConfigChange
-	2,  // 27: queue.DOQ.GenerateIDs:input_type -> queue.GenerateIDsRequest
-	9,  // 28: queue.DOQ.CreateQueue:input_type -> queue.CreateQueueRequest
-	11, // 29: queue.DOQ.DeleteQueue:input_type -> queue.DeleteQueueRequest
-	13, // 30: queue.DOQ.GetQueue:input_type -> queue.GetQueueRequest
-	16, // 31: queue.DOQ.GetQueues:input_type -> queue.GetQueuesRequest
-	18, // 32: queue.DOQ.Enqueue:input_type -> queue.EnqueueRequest
-	18, // 33: queue.DOQ.EnqueueStream:input_type -> queue.EnqueueRequest
-	20, // 34: queue.DOQ.Dequeue:input_type -> queue.DequeueRequest
-	20, // 35: queue.DOQ.DequeueStream:input_type -> queue.DequeueRequest
-	22, // 36: queue.DOQ.Get:input_type -> queue.GetRequest
-	24, // 37: queue.DOQ.Delete:input_type -> queue.DeleteRequest
-	26, // 38: queue.DOQ.Ack:input_type -> queue.AckRequest
-	28, // 39: queue.DOQ.Nack:input_type -> queue.NackRequest
-	30, // 40: queue.DOQ.UpdatePriority:input_type -> queue.UpdatePriorityRequest
-	3,  // 41: queue.DOQ.GenerateIDs:output_type -> queue.GenerateIDsResponse
-	10, // 42: queue.DOQ.CreateQueue:output_type -> queue.CreateQueueResponse
-	12, // 43: queue.DOQ.DeleteQueue:output_type -> queue.DeleteQueueResponse
-	15, // 44: queue.DOQ.GetQueue:output_type -> queue.GetQueueResponse
-	17, // 45: queue.DOQ.GetQueues:output_type -> queue.GetQueuesResponse
-	19, // 46: queue.DOQ.Enqueue:output_type -> queue.EnqueueResponse
-	19, // 47: queue.DOQ.EnqueueStream:output_type -> queue.EnqueueResponse
-	21, // 48: queue.DOQ.Dequeue:output_type -> queue.DequeueResponse
-	21, // 49: queue.DOQ.DequeueStream:output_type -> queue.DequeueResponse
-	23, // 50: queue.DOQ.Get:output_type -> queue.GetResponse
-	25, // 51: queue.DOQ.Delete:output_type -> queue.DeleteResponse
-	27, // 52: queue.DOQ.Ack:output_type -> queue.AckResponse
-	29, // 53: queue.DOQ.Nack:output_type -> queue.NackResponse
-	31, // 54: queue.DOQ.UpdatePriority:output_type -> queue.UpdatePriorityResponse
-	41, // [41:55] is the sub-list for method output_type
-	27, // [27:41] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	4,  // 7: queue.UpdateQueueRequest.settings:type_name -> queue.QueueSettings
+	4,  // 8: queue.GetQueueResponse.settings:type_name -> queue.QueueSettings
+	16, // 9: queue.GetQueueResponse.stats:type_name -> queue.Stats
+	17, // 10: queue.GetQueuesResponse.queues:type_name -> queue.GetQueueResponse
+	36, // 11: queue.EnqueueRequest.metadata:type_name -> queue.EnqueueRequest.MetadataEntry
+	37, // 12: queue.EnqueueResponse.metadata:type_name -> queue.EnqueueResponse.MetadataEntry
+	38, // 13: queue.DequeueResponse.metadata:type_name -> queue.DequeueResponse.MetadataEntry
+	39, // 14: queue.GetResponse.metadata:type_name -> queue.GetResponse.MetadataEntry
+	40, // 15: queue.NackRequest.metadata:type_name -> queue.NackRequest.MetadataEntry
+	9,  // 16: queue.RaftCommand.createQueue:type_name -> queue.CreateQueueRequest
+	11, // 17: queue.RaftCommand.updateQueue:type_name -> queue.UpdateQueueRequest
+	13, // 18: queue.RaftCommand.deleteQueue:type_name -> queue.DeleteQueueRequest
+	15, // 19: queue.RaftCommand.getQueue:type_name -> queue.GetQueueRequest
+	18, // 20: queue.RaftCommand.getQueues:type_name -> queue.GetQueuesRequest
+	20, // 21: queue.RaftCommand.enqueue:type_name -> queue.EnqueueRequest
+	22, // 22: queue.RaftCommand.dequeue:type_name -> queue.DequeueRequest
+	24, // 23: queue.RaftCommand.get:type_name -> queue.GetRequest
+	26, // 24: queue.RaftCommand.delete:type_name -> queue.DeleteRequest
+	28, // 25: queue.RaftCommand.ack:type_name -> queue.AckRequest
+	30, // 26: queue.RaftCommand.nack:type_name -> queue.NackRequest
+	32, // 27: queue.RaftCommand.updatePriority:type_name -> queue.UpdatePriorityRequest
+	1,  // 28: queue.RaftCommand.leaderConfigChange:type_name -> queue.LeaderConfigChange
+	2,  // 29: queue.DOQ.GenerateIDs:input_type -> queue.GenerateIDsRequest
+	9,  // 30: queue.DOQ.CreateQueue:input_type -> queue.CreateQueueRequest
+	11, // 31: queue.DOQ.UpdateQueue:input_type -> queue.UpdateQueueRequest
+	13, // 32: queue.DOQ.DeleteQueue:input_type -> queue.DeleteQueueRequest
+	15, // 33: queue.DOQ.GetQueue:input_type -> queue.GetQueueRequest
+	18, // 34: queue.DOQ.GetQueues:input_type -> queue.GetQueuesRequest
+	20, // 35: queue.DOQ.Enqueue:input_type -> queue.EnqueueRequest
+	20, // 36: queue.DOQ.EnqueueStream:input_type -> queue.EnqueueRequest
+	22, // 37: queue.DOQ.Dequeue:input_type -> queue.DequeueRequest
+	22, // 38: queue.DOQ.DequeueStream:input_type -> queue.DequeueRequest
+	24, // 39: queue.DOQ.Get:input_type -> queue.GetRequest
+	26, // 40: queue.DOQ.Delete:input_type -> queue.DeleteRequest
+	28, // 41: queue.DOQ.Ack:input_type -> queue.AckRequest
+	30, // 42: queue.DOQ.Nack:input_type -> queue.NackRequest
+	32, // 43: queue.DOQ.UpdatePriority:input_type -> queue.UpdatePriorityRequest
+	3,  // 44: queue.DOQ.GenerateIDs:output_type -> queue.GenerateIDsResponse
+	10, // 45: queue.DOQ.CreateQueue:output_type -> queue.CreateQueueResponse
+	12, // 46: queue.DOQ.UpdateQueue:output_type -> queue.UpdateQueueResponse
+	14, // 47: queue.DOQ.DeleteQueue:output_type -> queue.DeleteQueueResponse
+	17, // 48: queue.DOQ.GetQueue:output_type -> queue.GetQueueResponse
+	19, // 49: queue.DOQ.GetQueues:output_type -> queue.GetQueuesResponse
+	21, // 50: queue.DOQ.Enqueue:output_type -> queue.EnqueueResponse
+	21, // 51: queue.DOQ.EnqueueStream:output_type -> queue.EnqueueResponse
+	23, // 52: queue.DOQ.Dequeue:output_type -> queue.DequeueResponse
+	23, // 53: queue.DOQ.DequeueStream:output_type -> queue.DequeueResponse
+	25, // 54: queue.DOQ.Get:output_type -> queue.GetResponse
+	27, // 55: queue.DOQ.Delete:output_type -> queue.DeleteResponse
+	29, // 56: queue.DOQ.Ack:output_type -> queue.AckResponse
+	31, // 57: queue.DOQ.Nack:output_type -> queue.NackResponse
+	33, // 58: queue.DOQ.UpdatePriority:output_type -> queue.UpdatePriorityResponse
+	44, // [44:59] is the sub-list for method output_type
+	29, // [29:44] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_doq_proto_init() }
@@ -2493,8 +2618,9 @@ func file_pkg_proto_doq_proto_init() {
 		(*SnapshotItem_Message)(nil),
 		(*SnapshotItem_LeaderConfiguration)(nil),
 	}
-	file_pkg_proto_doq_proto_msgTypes[31].OneofWrappers = []any{
+	file_pkg_proto_doq_proto_msgTypes[33].OneofWrappers = []any{
 		(*RaftCommand_CreateQueue)(nil),
+		(*RaftCommand_UpdateQueue)(nil),
 		(*RaftCommand_DeleteQueue)(nil),
 		(*RaftCommand_GetQueue)(nil),
 		(*RaftCommand_GetQueues)(nil),
@@ -2513,7 +2639,7 @@ func file_pkg_proto_doq_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_doq_proto_rawDesc), len(file_pkg_proto_doq_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   38,
+			NumMessages:   40,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

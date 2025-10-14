@@ -48,6 +48,57 @@ func TestProxyCreateQueue(t *testing.T) {
 	assert.Equal(t, true, respDeleteQueue.Success)
 }
 
+func TestProxyUpdateQueue(t *testing.T) {
+	ctx := context.Background()
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+
+	// Create a gRPC client
+	client := pb.NewDOQClient(conn)
+
+	// Create a new proxy.
+	proxy := NewGRPCProxy()
+	proxy.leader = "bufnet"
+	proxy.client = client
+
+	// Send a request to the mock server.
+	respCreateQueue, err := proxy.CreateQueue(context.Background(), "bufnet", &pb.CreateQueueRequest{
+		Name: "test-queue",
+		Type: "fair",
+		Settings: &pb.QueueSettings{
+			Strategy:   pb.QueueSettings_WEIGHTED,
+			MaxUnacked: 10,
+			AckTimeout: 600,
+		},
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, true, respCreateQueue.Success)
+
+	// Update the queue settings.
+	respUpdateQueue, err := proxy.UpdateQueue(context.Background(), "bufnet", &pb.UpdateQueueRequest{
+		Name: "test-queue",
+		Settings: &pb.QueueSettings{
+			Strategy:   pb.QueueSettings_WEIGHTED,
+			MaxUnacked: 20,
+			AckTimeout: 1200,
+		},
+	})
+
+	assert.Nil(t, err)
+	assert.Equal(t, true, respUpdateQueue.Success)
+
+	respDeleteQueue, err := proxy.DeleteQueue(context.Background(), "bufnet", &pb.DeleteQueueRequest{
+		Name: "test-queue",
+	})
+	assert.Nil(t, err)
+	assert.Equal(t, true, respDeleteQueue.Success)
+}
+
 func TestProxyEnqueueDequeue(t *testing.T) {
 	// Create a connection to the test gRPC server
 	ctx := context.Background()

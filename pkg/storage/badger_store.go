@@ -47,6 +47,22 @@ func (s *BadgerStore) CreateQueue(queueType, queueName string, settings entity.Q
 	return nil
 }
 
+func (s *BadgerStore) UpdateQueue(queueType, queueName string, settings entity.QueueSettings) error {
+	err := s.db.Update(func(txn *badger.Txn) error {
+		config := &entity.QueueConfig{Name: queueName, Type: queueType, Settings: settings}
+
+		data, err := config.ToBytes()
+		if err != nil {
+			return err
+		}
+		return txn.Set(s.GetQueueKey(queueName), data)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *BadgerStore) DeleteQueue(queueName string) error {
 	err := s.db.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions

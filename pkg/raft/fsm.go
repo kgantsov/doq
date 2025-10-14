@@ -67,6 +67,8 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 		return f.applyUpdatePriority(command)
 	case *pb.RaftCommand_CreateQueue:
 		return f.applyCreateQueue(command)
+	case *pb.RaftCommand_UpdateQueue:
+		return f.applyUpdateQueue(command)
 	case *pb.RaftCommand_DeleteQueue:
 		return f.applyDeleteQueue(command)
 	default:
@@ -386,6 +388,31 @@ func (f *FSM) applyCreateQueue(payload *pb.RaftCommand_CreateQueue) *FSMResponse
 	log.Debug().Msgf("Node %s Created a queue: %s", f.NodeID, payload.CreateQueue.Name)
 	return &FSMResponse{
 		QueueName: payload.CreateQueue.Name,
+		error:     nil,
+	}
+}
+
+func (f *FSM) applyUpdateQueue(payload *pb.RaftCommand_UpdateQueue) *FSMResponse {
+	log.Info().Msgf("Updating queue: %s %d %s", payload.UpdateQueue.Name, payload.UpdateQueue.Settings.AckTimeout, payload.UpdateQueue.Settings.Strategy.String())
+	err := f.queueManager.UpdateQueue(
+		payload.UpdateQueue.Name,
+		entity.QueueSettings{
+			Strategy:   payload.UpdateQueue.Settings.Strategy.String(),
+			MaxUnacked: int(payload.UpdateQueue.Settings.MaxUnacked),
+			AckTimeout: payload.UpdateQueue.Settings.AckTimeout,
+		},
+	)
+	if err != nil {
+		return &FSMResponse{
+			QueueName: payload.UpdateQueue.Name,
+			error:     fmt.Errorf("Failed to update a queue: %s", payload.UpdateQueue.Name),
+		}
+	}
+
+	log.Debug().Msgf("Node %s Updated a queue: %s", f.NodeID, payload.UpdateQueue.Name)
+
+	return &FSMResponse{
+		QueueName: payload.UpdateQueue.Name,
 		error:     nil,
 	}
 }

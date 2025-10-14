@@ -48,6 +48,18 @@ func NewFairWeightedQueue(maxUnacked int) *FairWeightedQueue {
 	}
 }
 
+func (q *FairWeightedQueue) UpdateMaxUnacked(maxUnacked int) error {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	if maxUnacked == 0 {
+		// default to max int
+		maxUnacked = math.MaxInt64
+	}
+	q.maxUnacked = maxUnacked
+	return nil
+}
+
 func (q *FairWeightedQueue) Enqueue(group string, item *Item) {
 	q.mu.Lock()
 	defer q.mu.Unlock()

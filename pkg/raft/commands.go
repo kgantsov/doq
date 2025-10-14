@@ -415,8 +415,6 @@ func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSet
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
 
-		log.Info().Msgf("Known leader gRPC address: %v", leaderGrpcAddr)
-
 		_, err := n.proxy.CreateQueue(
 			context.Background(),
 			leaderGrpcAddr,
@@ -467,6 +465,60 @@ func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSet
 
 	return nil
 }
+
+func (n *Node) UpdateQueue(queueName string, settings entity.QueueSettings) error {
+	if n.Raft.State() != raft.Leader {
+		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+
+		_, err := n.proxy.UpdateQueue(
+			context.Background(),
+			leaderGrpcAddr,
+			&pb.UpdateQueueRequest{
+				Name: queueName,
+				Settings: &pb.QueueSettings{
+					Strategy: pb.QueueSettings_Strategy(
+						pb.QueueSettings_Strategy_value[settings.Strategy],
+					),
+					MaxUnacked: uint32(settings.MaxUnacked),
+					AckTimeout: settings.AckTimeout,
+				},
+			},
+		)
+		return err
+	}
+
+	cmd := &pb.RaftCommand{
+		Cmd: &pb.RaftCommand_UpdateQueue{
+			UpdateQueue: &pb.UpdateQueueRequest{
+				Name: queueName,
+				Settings: &pb.QueueSettings{
+					Strategy: pb.QueueSettings_Strategy(
+						pb.QueueSettings_Strategy_value[settings.Strategy],
+					),
+					MaxUnacked: uint32(settings.MaxUnacked),
+					AckTimeout: settings.AckTimeout,
+				},
+			},
+		},
+	}
+	data, err := proto.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
+	if f.Error() != nil {
+		return f.Error()
+	}
+
+	r := f.Response().(*FSMResponse)
+	if r.error != nil {
+		return r.error
+	}
+
+	return nil
+}
+
 func (n *Node) DeleteQueue(queueName string) error {
 	if n.Raft.State() != raft.Leader {
 		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
