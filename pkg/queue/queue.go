@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
@@ -462,6 +463,6 @@ func (q *Queue) Len() int {
 	return int(q.queue.Len())
 }
 
-func (q *Queue) PersistSnapshot(sink raft.SnapshotSink) error {
-	return q.store.PersistSnapshot(q.config, sink)
+func (q *Queue) PersistSnapshot(sink raft.SnapshotSink, txn *badger.Txn) error {
+	return q.store.PersistSnapshot(q.config, sink, txn)
 }

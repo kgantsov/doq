@@ -87,29 +87,20 @@ func Run(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	opts := config.BadgerOptions()
-
-	db, err := badger.Open(opts)
+	db, err := badger.Open(config.BadgerOptions("store"))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
 	defer db.Close()
 
-	go func() {
-		ticker := time.NewTicker(time.Duration(config.Storage.GCInterval) * time.Second)
-		defer ticker.Stop()
+	raftDB, err := badger.Open(config.BadgerOptions("raft_stable_store"))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	defer raftDB.Close()
 
-		log.Info().Msg("Started running value GC")
-
-		for range ticker.C {
-			log.Debug().Msg("Running value GC")
-		again:
-			err := db.RunValueLogGC(config.Storage.GCDiscardRatio)
-			if err == nil {
-				goto again
-			}
-		}
-	}()
+	go RunValueLogGC(config, db)
+	go RunValueLogGC(config, raftDB)
 
 	log.Info().Msgf(
 		"Starting node (%s) %s with HTTP on %s and Raft on %s %+v",
@@ -121,6 +112,7 @@ func Run(cmd *cobra.Command, args []string) {
 	)
 	node := raft.NewNode(
 		db,
+		raftDB,
 		filepath.Join(config.Storage.DataDir, config.Cluster.NodeID, "raft"),
 		config,
 		hosts,
@@ -171,6 +163,22 @@ func Run(cmd *cobra.Command, args []string) {
 	}
 }
 
+func RunValueLogGC(config *config.Config, db *badger.DB) {
+	ticker := time.NewTicker(time.Duration(config.Storage.GCInterval) * time.Second)
+	defer ticker.Stop()
+
+	log.Info().Msg("Started running value GC")
+
+	for range ticker.C {
+		log.Debug().Msg("Running value GC")
+	again:
+		err := db.RunValueLogGC(config.Storage.GCDiscardRatio)
+		if err == nil {
+			goto again
+		}
+	}
+}
+
 func NewCmdRestore() *cobra.Command {
 	var fullBackup string
 	var incrementalBackups []string
@@ -200,7 +208,7 @@ func NewCmdRestore() *cobra.Command {
 				)
 			}
 
-			opts := config.BadgerOptions()
+			opts := config.BadgerOptions("store")
 
 			db, err := badger.Open(opts)
 			if err != nil {

@@ -19,8 +19,9 @@ import (
 	"github.com/kgantsov/doq/pkg/logger"
 	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/queue"
-	raftstore "github.com/kgantsov/doq/pkg/raft/store"
+
 	"github.com/kgantsov/doq/pkg/storage"
+	raftstore "github.com/kgantsov/raft-badgerstore"
 	"github.com/rs/zerolog/log"
 )
 
@@ -42,6 +43,7 @@ type Node struct {
 	peers []string
 
 	db      *badger.DB
+	raftDB  *badger.DB
 	raftDir string
 
 	prometheusRegistry prometheus.Registerer
@@ -51,7 +53,7 @@ type Node struct {
 	proxy *grpc.GRPCProxy
 }
 
-func NewNode(db *badger.DB, raftDir string, cfg *config.Config, peers []string) *Node {
+func NewNode(db *badger.DB, raftDB *badger.DB, raftDir string, cfg *config.Config, peers []string) *Node {
 	node := &Node{
 		cfg:            cfg,
 		id:             cfg.Cluster.NodeID,
@@ -59,6 +61,7 @@ func NewNode(db *badger.DB, raftDir string, cfg *config.Config, peers []string) 
 		raftAddr:       cfg.Raft.Address,
 		peers:          peers,
 		db:             db,
+		raftDB:         raftDB,
 		raftDir:        raftDir,
 		leaderChangeFn: func(bool) {},
 

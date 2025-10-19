@@ -14,14 +14,20 @@ import (
 )
 
 func TestNodeSingleNode(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "db*")
-	defer os.RemoveAll(tmpDir)
+	tmpStoreDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpStoreDir)
 
 	tmpRaftDir, _ := os.MkdirTemp("", "raft*")
 	defer os.RemoveAll(tmpRaftDir)
 
-	opts := badger.DefaultOptions(tmpDir)
-	db, err := badger.Open(opts)
+	tmpStableStoreDir, _ := os.MkdirTemp("", "stable_store*")
+	defer os.RemoveAll(tmpStableStoreDir)
+
+	db, err := badger.Open(badger.DefaultOptions(tmpStoreDir))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	raftDB, err := badger.Open(badger.DefaultOptions(tmpStableStoreDir))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
@@ -42,7 +48,7 @@ func TestNodeSingleNode(t *testing.T) {
 		},
 	}
 
-	n := NewNode(db, tmpRaftDir, cfg, []string{})
+	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -154,14 +160,20 @@ func TestNodeSingleNode(t *testing.T) {
 }
 
 func TestNodeUpdateDeleteQueue(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "db*")
-	defer os.RemoveAll(tmpDir)
+	tmpStoreDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpStoreDir)
 
 	tmpRaftDir, _ := os.MkdirTemp("", "raft*")
 	defer os.RemoveAll(tmpRaftDir)
 
-	opts := badger.DefaultOptions(tmpDir)
-	db, err := badger.Open(opts)
+	tmpStableStoreDir, _ := os.MkdirTemp("", "stable_store*")
+	defer os.RemoveAll(tmpStableStoreDir)
+
+	db, err := badger.Open(badger.DefaultOptions(tmpStoreDir))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	raftDB, err := badger.Open(badger.DefaultOptions(tmpStableStoreDir))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
@@ -182,7 +194,7 @@ func TestNodeUpdateDeleteQueue(t *testing.T) {
 		},
 	}
 
-	n := NewNode(db, tmpRaftDir, cfg, []string{})
+	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -226,14 +238,20 @@ func TestNodeUpdateDeleteQueue(t *testing.T) {
 }
 
 func TestNodeSingleNodeAck(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "db*")
-	defer os.RemoveAll(tmpDir)
+	tmpStoreDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpStoreDir)
 
 	tmpRaftDir, _ := os.MkdirTemp("", "raft*")
 	defer os.RemoveAll(tmpRaftDir)
 
-	opts := badger.DefaultOptions(tmpDir)
-	db, err := badger.Open(opts)
+	tmpStableStoreDir, _ := os.MkdirTemp("", "stable_store*")
+	defer os.RemoveAll(tmpStableStoreDir)
+
+	db, err := badger.Open(badger.DefaultOptions(tmpStoreDir))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	raftDB, err := badger.Open(badger.DefaultOptions(tmpStableStoreDir))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
@@ -254,7 +272,7 @@ func TestNodeSingleNodeAck(t *testing.T) {
 		},
 	}
 
-	n := NewNode(db, tmpRaftDir, cfg, []string{})
+	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -286,14 +304,20 @@ func TestNodeSingleNodeAck(t *testing.T) {
 }
 
 func TestNodeSingleNodeNack(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "db*")
-	defer os.RemoveAll(tmpDir)
+	tmpStoreDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpStoreDir)
 
 	tmpRaftDir, _ := os.MkdirTemp("", "raft*")
 	defer os.RemoveAll(tmpRaftDir)
 
-	opts := badger.DefaultOptions(tmpDir)
-	db, err := badger.Open(opts)
+	tmpStableStoreDir, _ := os.MkdirTemp("", "stable_store*")
+	defer os.RemoveAll(tmpStableStoreDir)
+
+	db, err := badger.Open(badger.DefaultOptions(tmpStoreDir))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	raftDB, err := badger.Open(badger.DefaultOptions(tmpStableStoreDir))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
@@ -314,7 +338,7 @@ func TestNodeSingleNodeNack(t *testing.T) {
 		},
 	}
 
-	n := NewNode(db, tmpRaftDir, cfg, []string{})
+	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -350,14 +374,20 @@ func TestNodeSingleNodeNack(t *testing.T) {
 }
 
 func TestNodeSingleNodeUpdatePriority(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "db*")
-	defer os.RemoveAll(tmpDir)
+	tmpStoreDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpStoreDir)
 
 	tmpRaftDir, _ := os.MkdirTemp("", "raft*")
 	defer os.RemoveAll(tmpRaftDir)
 
-	opts := badger.DefaultOptions(tmpDir)
-	db, err := badger.Open(opts)
+	tmpStableStoreDir, _ := os.MkdirTemp("", "stable_store*")
+	defer os.RemoveAll(tmpStableStoreDir)
+
+	db, err := badger.Open(badger.DefaultOptions(tmpStoreDir))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	raftDB, err := badger.Open(badger.DefaultOptions(tmpStableStoreDir))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
@@ -378,7 +408,7 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 		},
 	}
 
-	n := NewNode(db, tmpRaftDir, cfg, []string{})
+	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -435,14 +465,20 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 }
 
 func TestBackupRestore(t *testing.T) {
-	tmpDir, _ := os.MkdirTemp("", "db*")
-	defer os.RemoveAll(tmpDir)
+	tmpStoreDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpStoreDir)
 
 	tmpRaftDir, _ := os.MkdirTemp("", "raft*")
 	defer os.RemoveAll(tmpRaftDir)
 
-	opts := badger.DefaultOptions(tmpDir)
-	db, err := badger.Open(opts)
+	tmpStableStoreDir, _ := os.MkdirTemp("", "stable_store*")
+	defer os.RemoveAll(tmpStableStoreDir)
+
+	db, err := badger.Open(badger.DefaultOptions(tmpStoreDir))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	raftDB, err := badger.Open(badger.DefaultOptions(tmpStableStoreDir))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
@@ -463,7 +499,7 @@ func TestBackupRestore(t *testing.T) {
 		},
 	}
 
-	n := NewNode(db, tmpRaftDir, cfg, []string{})
+	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
 	// Simple way to ensure there is a leader.
@@ -499,14 +535,20 @@ func TestBackupRestore(t *testing.T) {
 
 	db.Close()
 
-	tmpDir1, _ := os.MkdirTemp("", "db*")
-	defer os.RemoveAll(tmpDir1)
+	tmpStoreDir1, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpStoreDir1)
 
 	tmpRaftDir1, _ := os.MkdirTemp("", "raft*")
 	defer os.RemoveAll(tmpRaftDir1)
 
-	opts1 := badger.DefaultOptions(tmpDir1)
-	db1, err := badger.Open(opts1)
+	tmpStableStoreDir1, _ := os.MkdirTemp("", "stable_store*")
+	defer os.RemoveAll(tmpStableStoreDir1)
+
+	db1, err := badger.Open(badger.DefaultOptions(tmpStoreDir1))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	raftDB1, err := badger.Open(badger.DefaultOptions(tmpStableStoreDir1))
 	if err != nil {
 		log.Fatal().Msg(err.Error())
 	}
@@ -527,7 +569,7 @@ func TestBackupRestore(t *testing.T) {
 		},
 	}
 
-	n1 := NewNode(db1, tmpRaftDir1, cfg1, []string{})
+	n1 := NewNode(db1, raftDB1, tmpRaftDir1, cfg1, []string{})
 
 	err = n1.Restore(sink, 10)
 	assert.Nil(t, err)

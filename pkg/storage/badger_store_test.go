@@ -320,12 +320,14 @@ func TestBadgerStorePersistSnapshot(t *testing.T) {
 
 	sink := &MockSink{}
 
+	txn := db.NewTransaction(false)
+
 	// Persist snapshot for each queue
 	// This simulates the process of saving the state of each queue and its messages
 	// to a snapshot sink, which could be used for recovery or replication.
 	// In a real-world scenario, this would be part of a Raft snapshot process.
 	for _, q := range queues {
-		err = store.PersistSnapshot(q.Queue, sink)
+		err = store.PersistSnapshot(q.Queue, sink, txn)
 		assert.NoError(t, err)
 	}
 

@@ -65,7 +65,7 @@ func TestBadgerOptions(t *testing.T) {
 		},
 	}
 
-	opts := config.BadgerOptions()
+	opts := config.BadgerOptions("store")
 
 	assert.Equal(t, "data/store", opts.Dir)
 	assert.Equal(t, 3, opts.ZSTDCompressionLevel)

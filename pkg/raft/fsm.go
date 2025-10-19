@@ -438,10 +438,17 @@ func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	log.Info().Msgf("Node %s Snapshot() called", f.NodeID)
+
+	// Create a read-only transaction that captures DB state as of now.
+	// This transaction will provide a consistent view even while writes continue.
+	txn := f.db.NewTransaction(false)
+
 	return &FSMSnapshot{
 		NodeID:       f.NodeID,
 		queueManager: f.queueManager,
 		leaderConfig: f.leaderConfig,
+		txn:          txn,
 	}, nil
 }
 
@@ -524,9 +531,13 @@ type FSMSnapshot struct {
 	NodeID       string
 	queueManager *queue.QueueManager
 	leaderConfig *LeaderConfig
+	txn          *badger.Txn
 }
 
 func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
+	log.Warn().Msg("Persisting snapshot")
+	defer log.Warn().Msg("Persisted snapshot")
+
 	snapshotItem := &pb.SnapshotItem{
 		Item: &pb.SnapshotItem_LeaderConfiguration{
 			LeaderConfiguration: &pb.LeaderConfiguration{
@@ -536,13 +547,12 @@ func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
 			},
 		},
 	}
-	log.Info().Msgf("Writing queue snapshot item for queue %#v", snapshotItem)
 
 	if err := storage.WriteSnapshotItem(sink, snapshotItem); err != nil {
 		return fmt.Errorf("failed to write message snapshot item: %v", err)
 	}
 
-	if err := f.queueManager.PersistSnapshot(sink); err != nil {
+	if err := f.queueManager.PersistSnapshot(sink, f.txn); err != nil {
 		log.Debug().Msg("Error copying logs to sink")
 		sink.Cancel()
 		return err

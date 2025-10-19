@@ -11,10 +11,6 @@ type Message struct {
 	Priority int64
 	Content  string
 	Metadata map[string]string
-
-	QueueName     string        `json:"QueueName,omitempty"`
-	QueueType     string        `json:"QueueType,omitempty"`
-	QueueSettings QueueSettings `json:"QueueSettings,omitempty"`
 }
 
 func (m *Message) ToBytes() ([]byte, error) {

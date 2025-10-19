@@ -4,6 +4,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
@@ -30,12 +31,13 @@ func NewQueueManager(store storage.Store, cfg *config.Config, metrics *metrics.P
 	}
 }
 
-func (qm *QueueManager) PersistSnapshot(sink raft.SnapshotSink) error {
+func (qm *QueueManager) PersistSnapshot(sink raft.SnapshotSink, txn *badger.Txn) error {
 	qm.mu.Lock()
-	defer qm.mu.Unlock()
+	queues := qm.queues
+	qm.mu.Unlock()
 
-	for _, queue := range qm.queues {
-		err := queue.PersistSnapshot(sink)
+	for _, queue := range queues {
+		err := queue.PersistSnapshot(sink, txn)
 		if err != nil {
 			return err
 		}

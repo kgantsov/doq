@@ -214,9 +214,9 @@ func (config *Config) ConfigureLogger() {
 	}
 }
 
-func (config *Config) BadgerOptions() badger.Options {
+func (config *Config) BadgerOptions(name string) badger.Options {
 	opts := badger.DefaultOptions(
-		filepath.Join(config.Storage.DataDir, config.Cluster.NodeID, "store"),
+		filepath.Join(config.Storage.DataDir, config.Cluster.NodeID, name),
 	)
 
 	if config.Storage.Compression != "" {

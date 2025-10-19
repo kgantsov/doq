@@ -8,7 +8,6 @@ import (
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
 	pb "github.com/kgantsov/doq/pkg/proto"
-	"github.com/rs/zerolog/log"
 )
 
 type BadgerStore struct {
@@ -312,48 +311,47 @@ func (s *BadgerStore) UpdateMessage(
 	})
 }
 
-func (s *BadgerStore) PersistSnapshot(queueConfig *entity.QueueConfig, sink raft.SnapshotSink) error {
-	return s.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
+func (s *BadgerStore) PersistSnapshot(
+	queueConfig *entity.QueueConfig, sink raft.SnapshotSink, txn *badger.Txn,
+) error {
+	it := txn.NewIterator(badger.DefaultIteratorOptions)
+	defer it.Close()
 
-		snapshotItem := &pb.SnapshotItem{
-			Item: &pb.SnapshotItem_Queue{
-				Queue: queueConfig.ToProto(),
-			},
-		}
-		log.Info().Msgf("Writing queue snapshot item for queue %#v", snapshotItem)
+	snapshotItem := &pb.SnapshotItem{
+		Item: &pb.SnapshotItem_Queue{
+			Queue: queueConfig.ToProto(),
+		},
+	}
 
-		if err := WriteSnapshotItem(sink, snapshotItem); err != nil {
-			return fmt.Errorf("failed to write message snapshot item: %v", err)
-		}
+	if err := WriteSnapshotItem(sink, snapshotItem); err != nil {
+		return fmt.Errorf("failed to write message snapshot item: %v", err)
+	}
 
-		prefix := s.getMessagesPrefix(queueConfig.Name)
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
+	prefix := s.getMessagesPrefix(queueConfig.Name)
+	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		item := it.Item()
 
-			err := item.Value(func(val []byte) error {
-				msg, err := entity.MessageProtoFromBytes(val)
-				if err != nil {
-					return err
-				}
-
-				snapshotItem := &pb.SnapshotItem{
-					Item: &pb.SnapshotItem_Message{Message: msg},
-				}
-				if err := WriteSnapshotItem(sink, snapshotItem); err != nil {
-					return fmt.Errorf("failed to write message snapshot item: %v", err)
-				}
-
-				return nil
-			})
+		err := item.Value(func(val []byte) error {
+			msg, err := entity.MessageProtoFromBytes(val)
 			if err != nil {
 				return err
 			}
-		}
 
-		return nil
-	})
+			snapshotItem := &pb.SnapshotItem{
+				Item: &pb.SnapshotItem_Message{Message: msg},
+			}
+			if err := WriteSnapshotItem(sink, snapshotItem); err != nil {
+				return fmt.Errorf("failed to write message snapshot item: %v", err)
+			}
+
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *BadgerStore) LoadQueue(queueName string) (*entity.QueueConfig, error) {
