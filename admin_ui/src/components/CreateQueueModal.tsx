@@ -42,7 +42,7 @@ const CreateQueueModal = ({
       setType(["delayed"]);
       setStrategy(["weighted"]);
       setMaxUnacked(0);
-      setAckTimeout(0);
+      setAckTimeout(1800);
     },
   });
 
