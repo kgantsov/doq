@@ -50,9 +50,10 @@ const columns = [
   columnHelper.accessor("settings", {
     cell: (info) => {
       const settings = info.getValue();
+      const type = info.row.original.type;
       return (
         <Box margin={1} display="inline-flex" gap={1}>
-          {settings?.strategy && (
+          {settings?.strategy && type === "fair" && (
             <Tooltip content="The strategy used by the queue">
               <Badge colorPalette={"blue"}>{settings?.strategy}</Badge>
             </Tooltip>
