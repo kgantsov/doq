@@ -561,4 +561,6 @@ func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
 	return nil
 }
 
-func (f *FSMSnapshot) Release() {}
+func (f *FSMSnapshot) Release() {
+	f.txn.Discard()
+}
