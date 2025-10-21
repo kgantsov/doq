@@ -190,7 +190,11 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 
 	idGenerator, _ := snowflake.NewNode(1)
 
-	queue1, err := queueManager.CreateQueue("fair", "queue_1", entity.QueueSettings{})
+	queue1, err := queueManager.CreateQueue("fair", "queue_1", entity.QueueSettings{
+		Strategy:   "ROUND_ROBIN",
+		MaxUnacked: 40,
+		AckTimeout: 3600,
+	})
 	assert.Nil(t, err)
 
 	q1m1, err := queue1.Enqueue(

@@ -172,6 +172,22 @@ func (q *Queue) CreateQueue(queueType, queueName string, settings entity.QueueSe
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
+	if queueType == "delayed" {
+		if settings.Strategy == "WEIGHTED" || settings.Strategy == "ROUND_ROBIN" {
+			return errors.ErrInvalidStrategy
+		}
+		if settings.AckTimeout != 0 {
+			return errors.ErrInvalidAckTimeout
+		}
+		if settings.MaxUnacked != 0 {
+			return errors.ErrInvalidMaxUnacked
+		}
+	} else if queueType == "fair" {
+		if settings.Strategy == "STRATEGY_UNSPECIFIED" {
+			return errors.ErrInvalidStrategy
+		}
+	}
+
 	if settings.AckTimeout == 0 {
 		settings.AckTimeout = uint32(q.cfg.Queue.DefaultAcknowledgementTimeout)
 	} else if settings.AckTimeout < 10 {

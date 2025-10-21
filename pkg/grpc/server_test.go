@@ -83,7 +83,54 @@ func TestGenerateIDs(t *testing.T) {
 }
 
 func TestCreateQueue(t *testing.T) {
-	// Create a connection to the test gRPC server
+	tests := []struct {
+		name          string
+		queueName     string
+		queueType     string
+		queueSettings *pb.QueueSettings
+		error         error
+	}{
+		{
+			name:          "Delayed Queue Nil Settings",
+			queueName:     "test-queue",
+			queueType:     "delayed",
+			queueSettings: nil,
+			error:         fmt.Errorf("rpc error: code = Unknown desc = invalid settings provided"),
+		},
+		{
+			name:          "Delayed Queue Empty Settings",
+			queueName:     "test-queue",
+			queueType:     "delayed",
+			queueSettings: &pb.QueueSettings{},
+			error:         nil,
+		},
+		{
+			name:          "Fair Queue Nil Settings",
+			queueName:     "test-queue",
+			queueType:     "fair",
+			queueSettings: nil,
+			error:         fmt.Errorf("rpc error: code = Unknown desc = invalid settings provided"),
+		},
+		{
+			name:          "Fair Queue Empty Settings",
+			queueName:     "test-queue",
+			queueType:     "fair",
+			queueSettings: &pb.QueueSettings{},
+			error:         nil,
+		},
+		{
+			name:      "Fair Queue With Settings",
+			queueName: "test-queue",
+			queueType: "fair",
+			queueSettings: &pb.QueueSettings{
+				Strategy:   pb.QueueSettings_WEIGHTED,
+				MaxUnacked: 40,
+				AckTimeout: 3600,
+			},
+			error: nil,
+		},
+	}
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -93,27 +140,27 @@ func TestCreateQueue(t *testing.T) {
 	}
 	defer conn.Close()
 
-	// Create a gRPC client
 	client := pb.NewDOQClient(conn)
 
-	// Test case 1: Create a queue successfully
-	req := &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "fair",
-		Settings: &pb.QueueSettings{
-			Strategy:   pb.QueueSettings_WEIGHTED,
-			MaxUnacked: 10,
-			AckTimeout: 600,
-		},
-	}
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &pb.CreateQueueRequest{
+				Name:     fmt.Sprintf("%s-%d", tt.queueName, i),
+				Type:     tt.queueType,
+				Settings: tt.queueSettings,
+			}
 
-	resp, err := client.CreateQueue(ctx, req)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
+			resp, err := client.CreateQueue(ctx, req)
+			if tt.error != nil {
+				assert.Equal(t, tt.error.Error(), err.Error())
+			} else {
+				assert.True(t, resp.Success, "Queue creation should succeed")
 
-	// Use testify's assert to check the response
-	assert.True(t, resp.Success, "Queue creation should succeed")
+				_, err = client.DeleteQueue(ctx, &pb.DeleteQueueRequest{Name: req.Name})
+				assert.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestUpdateQueue(t *testing.T) {

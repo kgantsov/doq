@@ -70,14 +70,7 @@ func (s *QueueServer) CreateQueue(
 	req *pb.CreateQueueRequest,
 ) (*pb.CreateQueueResponse, error) {
 	if req.Settings == nil {
-		req.Settings = &pb.QueueSettings{
-			Strategy:   pb.QueueSettings_ROUND_ROBIN,
-			MaxUnacked: 0,
-		}
-	}
-
-	if req.Settings.Strategy == pb.QueueSettings_STRATEGY_UNSPECIFIED {
-		req.Settings.Strategy = pb.QueueSettings_ROUND_ROBIN
+		return &pb.CreateQueueResponse{Success: false}, fmt.Errorf("invalid settings provided")
 	}
 
 	err := s.node.CreateQueue(
