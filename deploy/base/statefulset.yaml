@@ -66,14 +66,22 @@ spec:
             periodSeconds: 5
             successThreshold: 1
             timeoutSeconds: 2
+      securityContext:
+        fsGroup: 10001
+        runAsUser: 10001
+        runAsGroup: 10001
+
+  updateStrategy:
+    type: OnDelete
 
   volumeClaimTemplates:
-  - kind: PersistentVolumeClaim
-    metadata:
-      name: data
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      resources:
-        requests:
-          storage: 5Gi
-      volumeMode: Filesystem
+    - kind: PersistentVolumeClaim
+      metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: standard
+        resources:
+          requests:
+            storage: 5Gi
+        volumeMode: Filesystem
