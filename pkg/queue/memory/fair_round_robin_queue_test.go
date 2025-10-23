@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -205,6 +207,42 @@ func TestFairRoundRobinQueue1(t *testing.T) {
 	assert.Nil(t, fq.Dequeue(true))
 }
 
+func TestFairRoundRobinQueueWithSubgroups(t *testing.T) {
+	fq := NewFairRoundRobinQueue(9)
+
+	fq.Enqueue("customer-1.project-1.user-1", &Item{ID: 1, Priority: 10})
+	fq.Enqueue("customer-1.project-1.user-1", &Item{ID: 2, Priority: 10})
+	fq.Enqueue("customer-1.project-1.user-2", &Item{ID: 3, Priority: 10})
+	fq.Enqueue("customer-1.project-2.user-1", &Item{ID: 4, Priority: 10})
+	fq.Enqueue("customer-1.project-2.user-1", &Item{ID: 5, Priority: 10})
+	fq.Enqueue("customer-1.project-2.user-2", &Item{ID: 6, Priority: 10})
+	fq.Enqueue("customer-1.project-3.user-1", &Item{ID: 7, Priority: 10})
+	fq.Enqueue("customer-1.project-3.user-2", &Item{ID: 8, Priority: 10})
+	fq.Enqueue("customer-2", &Item{ID: 9, Priority: 10})
+	fq.Enqueue("customer-3.project-1", &Item{ID: 10, Priority: 10})
+	fq.Enqueue("customer-3.project-1", &Item{ID: 11, Priority: 10})
+	fq.Enqueue("customer-3.project-2", &Item{ID: 12, Priority: 10})
+	fq.Enqueue("customer-4.project-1.user-1", &Item{ID: 13, Priority: 10})
+	fq.Enqueue("customer-4.project-1.user-2", &Item{ID: 14, Priority: 10})
+	fq.Enqueue("customer-4.project-2.user-2", &Item{ID: 15, Priority: 10})
+
+	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(9), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(10), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(13), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(12), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(15), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(7), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(11), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(14), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(3), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(6), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(8), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(2), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
+}
+
 func TestFairRoundRobinQueueMaxUnacked(t *testing.T) {
 	queue := NewFairRoundRobinQueue(2)
 
@@ -236,18 +274,32 @@ func TestFairRoundRobinQueueMaxUnacked(t *testing.T) {
 func BenchmarkFairRoundRobinQueueEnqueue(b *testing.B) {
 	fq := NewFairRoundRobinQueue(8)
 
+	customers := make([]string, 1000)
+	for i := 0; i < 1000; i++ {
+		customers[i] = fmt.Sprintf("customer-%d", i)
+	}
+
+	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing
+
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
-		fq.Enqueue("customer1", &Item{ID: uint64(i), Priority: 10})
+		customer := customers[rand.Intn(len(customers))]
+		fq.Enqueue(customer, &Item{ID: uint64(i), Priority: 10})
 	}
 }
 
 func BenchmarkFairRoundRobinQueueDequeue(b *testing.B) {
 	fq := NewFairRoundRobinQueue(8)
 
+	customers := make([]string, 1000)
+	for i := 0; i < 1000; i++ {
+		customers[i] = fmt.Sprintf("customer-%d", i)
+	}
+
 	// Pre-fill the queue with items to ensure there’s something to dequeue
 	for i := 0; i < b.N; i++ {
-		fq.Enqueue("customer1", &Item{ID: uint64(i), Priority: 10})
+		customer := customers[rand.Intn(len(customers))]
+		fq.Enqueue(customer, &Item{ID: uint64(i), Priority: 10})
 	}
 
 	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing

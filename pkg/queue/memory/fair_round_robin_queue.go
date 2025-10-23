@@ -3,91 +3,52 @@ package memory
 import (
 	"container/heap"
 	"math"
+	"strings"
 	"sync"
 )
 
-type LinkedListNode struct {
-	group string
-	queue *PriorityMemoryQueue
-	prev  *LinkedListNode
-	next  *LinkedListNode
+// GroupNode represents a node in the hierarchical group tree
+type GroupNode struct {
+	name         string
+	children     map[string]*GroupNode
+	childrenList *LinkedList
+	currentChild *LinkedListNode
+	queue        *PriorityMemoryQueue
+	parent       *GroupNode
+	messageCount uint64
 }
 
-func NewLinkedListNode(group string, queue *PriorityMemoryQueue) *LinkedListNode {
-	node := new(LinkedListNode)
-	node.group = group
-	node.queue = queue
-
-	return node
-}
-
-func (n *LinkedListNode) Queue() *PriorityMemoryQueue {
-	return n.queue
-}
-
-type LinkedList struct {
-	head  *LinkedListNode
-	tail  *LinkedListNode
-	total uint64
-}
-
-func (l *LinkedList) Append(node *LinkedListNode) {
-	if l.head == nil {
-		l.head = node
-		l.tail = l.head
-	} else {
-		l.tail.next = node
-		node.prev = l.tail
-		l.tail = l.tail.next
+func NewGroupNode(name string, parent *GroupNode) *GroupNode {
+	return &GroupNode{
+		name:         name,
+		children:     make(map[string]*GroupNode),
+		childrenList: &LinkedList{},
+		queue:        NewPriorityMemoryQueue(true),
+		parent:       parent,
+		messageCount: 0,
 	}
-
-	l.total++
-}
-
-func (l *LinkedList) Remove(node *LinkedListNode) {
-	if node.prev != nil {
-		node.prev.next = node.next
-	} else {
-		l.head = node.next
-	}
-
-	if node.next != nil {
-		node.next.prev = node.prev
-	} else {
-		l.tail = node.prev
-	}
-
-	l.total--
-}
-
-func (l *LinkedList) Len() uint64 {
-	return l.total
 }
 
 // FairRoundRobinQueue is a fair queue that balances between different groups
 type FairRoundRobinQueue struct {
-	queues      map[string]*LinkedListNode
-	roundRobin  *LinkedList
-	currentNone *LinkedListNode
-	mu          sync.RWMutex
-
+	root           *GroupNode
+	mu             sync.RWMutex
 	maxUnacked     int
 	unackedByGroup map[string]int
 	totalMessages  uint64
+	groupKeyToLeaf map[string]*GroupNode
 }
 
-// FairQueue creates a new FairQueue
+// NewFairRoundRobinQueue creates a new FairQueue
 func NewFairRoundRobinQueue(maxUnacked int) *FairRoundRobinQueue {
 	if maxUnacked == 0 {
-		// default to max int
 		maxUnacked = math.MaxInt64
 	}
 	return &FairRoundRobinQueue{
-		queues:         make(map[string]*LinkedListNode),
-		roundRobin:     &LinkedList{},
+		root:           NewGroupNode("root", nil),
 		unackedByGroup: make(map[string]int),
 		maxUnacked:     maxUnacked,
-		currentNone:    nil,
+		groupKeyToLeaf: make(map[string]*GroupNode),
 	}
 }
 
@@ -96,11 +57,14 @@ func (fq *FairRoundRobinQueue) UpdateMaxUnacked(maxUnacked int) error {
 	defer fq.mu.Unlock()
 
 	if maxUnacked == 0 {
-		// default to max int
 		maxUnacked = math.MaxInt64
 	}
 	fq.maxUnacked = maxUnacked
 	return nil
+}
+
+func makeGroupKey(groups []string) string {
+	return strings.Join(groups, ".")
 }
 
 // Enqueue adds a message to the queue
@@ -108,15 +72,136 @@ func (fq *FairRoundRobinQueue) Enqueue(group string, item *Item) {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
-	// Add the message to the respective goups's queue
-	if _, exists := fq.queues[group]; !exists {
-		// Add group to round robin if not exists
-		node := NewLinkedListNode(group, NewPriorityMemoryQueue(true))
-		fq.queues[group] = node
-		fq.roundRobin.Append(node)
+	if group == "" {
+		group = "default"
 	}
-	heap.Push(fq.queues[group].Queue(), item)
+
+	groups := strings.Split(group, ".")
+
+	item.Group = group
+
+	// Navigate/create the tree structure
+	current := fq.root
+	for _, groupName := range groups {
+		if _, exists := current.children[groupName]; !exists {
+			// Create new child node
+			child := NewGroupNode(groupName, current)
+			current.children[groupName] = child
+
+			// Add to linked list for round-robin
+			node := NewLinkedListNode(groupName, nil)
+			node.queue = nil // This is not a leaf node initially
+			current.childrenList.Append(node)
+		}
+		current = current.children[groupName]
+	}
+
+	// Current is now the leaf node - add message to its queue
+	heap.Push(current.queue, item)
+
+	// Update message counts up the tree
+	node := current
+	for node != nil {
+		node.messageCount++
+		node = node.parent
+	}
+
+	fq.groupKeyToLeaf[group] = current
 	fq.totalMessages++
+}
+
+// dequeueFromNode recursively dequeues from a node using round-robin
+func (fq *FairRoundRobinQueue) dequeueFromNode(node *GroupNode) *Item {
+	// Base case: leaf node with messages
+	if len(node.children) == 0 {
+		if node.queue.Len() > 0 {
+			return heap.Pop(node.queue).(*Item)
+		}
+		return nil
+	}
+
+	// Recursive case: internal node - do round-robin on children
+	if node.childrenList.Len() == 0 {
+		return nil
+	}
+
+	// Initialize current child if needed
+	if node.currentChild == nil {
+		node.currentChild = node.childrenList.head
+	}
+
+	startNode := node.currentChild
+	visited := 0
+	maxVisits := int(node.childrenList.Len())
+
+	for visited < maxVisits {
+		childName := node.currentChild.group
+		childNode := node.children[childName]
+
+		// Check unacked limit for this group
+		groupKey := fq.getGroupKeyForNode(childNode)
+		if fq.unackedByGroup[groupKey] < fq.maxUnacked {
+			// Try to dequeue from this child
+			item := fq.dequeueFromNode(childNode)
+			if item != nil {
+				// Move to next child for next dequeue
+				node.currentChild = node.currentChild.next
+				if node.currentChild == nil {
+					node.currentChild = node.childrenList.head
+				}
+
+				// Clean up empty children
+				if childNode.messageCount == 0 {
+					fq.removeEmptyChild(node, childName)
+				}
+
+				return item
+			}
+		}
+
+		// Move to next child
+		node.currentChild = node.currentChild.next
+		if node.currentChild == nil {
+			node.currentChild = node.childrenList.head
+		}
+
+		visited++
+		if node.currentChild == startNode {
+			break
+		}
+	}
+
+	return nil
+}
+
+func (fq *FairRoundRobinQueue) getGroupKeyForNode(node *GroupNode) string {
+	path := []string{}
+	current := node
+	for current != nil && current.parent != nil {
+		path = append([]string{current.name}, path...)
+		current = current.parent
+	}
+	return makeGroupKey(path)
+}
+
+func (fq *FairRoundRobinQueue) removeEmptyChild(parent *GroupNode, childName string) {
+	// Find and remove from linked list
+	current := parent.childrenList.head
+	for current != nil {
+		if current.group == childName {
+			parent.childrenList.Remove(current)
+			break
+		}
+		current = current.next
+	}
+
+	// Remove from children map
+	delete(parent.children, childName)
+
+	// Reset current child if it was the removed one
+	if parent.currentChild != nil && parent.currentChild.group == childName {
+		parent.currentChild = parent.childrenList.head
+	}
 }
 
 // Dequeue removes and returns the next message in a fair way
@@ -124,47 +209,18 @@ func (fq *FairRoundRobinQueue) Dequeue(ack bool) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
-	// No groups in the queue
-	if fq.roundRobin.Len() == 0 {
+	item := fq.dequeueFromNode(fq.root)
+	if item == nil {
 		return nil
 	}
 
-	if fq.currentNone == nil {
-		fq.currentNone = fq.roundRobin.head
-	}
-
-	if fq.currentNone.Queue().Len() == 0 {
-		return nil
-	}
-
-	if fq.unackedByGroup[fq.currentNone.group] >= fq.maxUnacked {
-		// If the current group has too many unacked messages, move to the next group
-		fq.currentNone = fq.currentNone.next
-		if fq.currentNone == nil {
-			fq.currentNone = fq.roundRobin.head // Wrap around to the start
+	// Update message counts up the tree
+	if leaf, exists := fq.groupKeyToLeaf[item.Group]; exists {
+		node := leaf
+		for node != nil {
+			node.messageCount--
+			node = node.parent
 		}
-		if fq.currentNone.Queue().Len() == 0 {
-			return nil // No messages in the next group either
-		}
-
-		if fq.unackedByGroup[fq.currentNone.group] >= fq.maxUnacked {
-			// If the next group also has too many unacked messages, we can't dequeue
-			return nil
-		}
-	}
-
-	// Get the message from the group's queue
-	item := heap.Pop(fq.currentNone.Queue()).(*Item)
-
-	// If the group's queue is empty, remove the group from the round-robin list
-	if fq.currentNone.Queue().Len() == 0 {
-		next := fq.currentNone.next
-		fq.roundRobin.Remove(fq.currentNone)
-		delete(fq.queues, fq.currentNone.group)
-		fq.currentNone = next
-	} else {
-		// Move to the next group for the next Dequeue operation
-		fq.currentNone = fq.currentNone.next
 	}
 
 	if !ack {
@@ -179,42 +235,44 @@ func (fq *FairRoundRobinQueue) Get(group string, id uint64) *Item {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
 
-	if _, exists := fq.queues[group]; !exists {
-		return nil
+	if leaf, exists := fq.groupKeyToLeaf[group]; exists {
+		return leaf.queue.Get(id)
 	}
-
-	return fq.queues[group].Queue().Get(id)
+	return nil
 }
 
 func (fq *FairRoundRobinQueue) Delete(group string, id uint64) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
-	if _, exists := fq.queues[group]; !exists {
-		return nil
+	if leaf, exists := fq.groupKeyToLeaf[group]; exists {
+		item := leaf.queue.Delete(id)
+		if item != nil {
+			// Update message counts up the tree
+			node := leaf
+			for node != nil {
+				node.messageCount--
+				node = node.parent
+			}
+			fq.totalMessages--
+		}
+		return item
 	}
-
-	item := fq.queues[group].Queue().Delete(id)
-	fq.totalMessages--
-
-	return item
+	return nil
 }
 
 func (fq *FairRoundRobinQueue) UpdatePriority(group string, id uint64, priority int64) {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
-	if _, exists := fq.queues[group]; !exists {
-		return
+	if leaf, exists := fq.groupKeyToLeaf[group]; exists {
+		leaf.queue.UpdatePriority(id, priority)
 	}
-
-	fq.queues[group].Queue().UpdatePriority(id, priority)
 }
 
 func (fq *FairRoundRobinQueue) Len() uint64 {
 	fq.mu.RLock()
 	defer fq.mu.RUnlock()
-
 	return fq.totalMessages
 }
 
