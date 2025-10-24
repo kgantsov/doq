@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"io"
+	"sync"
 
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
@@ -18,6 +19,8 @@ type mockNode struct {
 	messages map[uint64]*entity.Message
 	acks     map[uint64]*entity.Message
 	queues   map[string]*memory.DelayedQueue
+
+	mu sync.Mutex
 }
 
 func NewMockNode(leader string, isLeader bool) *mockNode {
@@ -27,6 +30,7 @@ func NewMockNode(leader string, isLeader bool) *mockNode {
 		queues:   make(map[string]*memory.DelayedQueue),
 		leader:   leader,
 		isLeader: isLeader,
+		mu:       sync.Mutex{},
 	}
 }
 
@@ -82,6 +86,9 @@ func (n *mockNode) GetQueues() []*queue.QueueInfo {
 }
 
 func (n *mockNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	q, ok := n.queues[queueName]
 	if !ok {
 		return nil, errors.ErrQueueNotFound
@@ -107,11 +114,17 @@ func (n *mockNode) PrometheusRegistry() prometheus.Registerer {
 }
 
 func (n *mockNode) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	n.queues[queueName] = memory.NewDelayedQueue(true)
 	return nil
 }
 
 func (n *mockNode) UpdateQueue(queueName string, settings entity.QueueSettings) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	_, ok := n.queues[queueName]
 	if !ok {
 		return errors.ErrQueueNotFound
@@ -121,6 +134,9 @@ func (n *mockNode) UpdateQueue(queueName string, settings entity.QueueSettings) 
 }
 
 func (n *mockNode) DeleteQueue(queueName string) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	_, ok := n.queues[queueName]
 	if !ok {
 		return errors.ErrQueueNotFound
@@ -133,6 +149,9 @@ func (n *mockNode) DeleteQueue(queueName string) error {
 func (n *mockNode) Enqueue(
 	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
 ) (*entity.Message, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	q, ok := n.queues[queueName]
 	if !ok {
 		return &entity.Message{}, errors.ErrQueueNotFound
@@ -151,6 +170,9 @@ func (n *mockNode) Enqueue(
 }
 
 func (n *mockNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	q, ok := n.queues[QueueName]
 	if !ok {
 		return &entity.Message{}, errors.ErrQueueNotFound
@@ -174,6 +196,9 @@ func (n *mockNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) 
 }
 
 func (n *mockNode) Ack(QueueName string, id uint64) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	_, ok := n.queues[QueueName]
 	if !ok {
 		return errors.ErrQueueNotFound
@@ -188,6 +213,9 @@ func (n *mockNode) Ack(QueueName string, id uint64) error {
 }
 
 func (n *mockNode) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	q, ok := n.queues[QueueName]
 	if !ok {
 		return errors.ErrQueueNotFound
@@ -212,6 +240,9 @@ func (n *mockNode) Nack(QueueName string, id uint64, priority int64, metadata ma
 }
 
 func (n *mockNode) Get(QueueName string, id uint64) (*entity.Message, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	for _, m := range n.messages {
 		if m.ID == id {
 			return m, nil
@@ -221,6 +252,9 @@ func (n *mockNode) Get(QueueName string, id uint64) (*entity.Message, error) {
 }
 
 func (n *mockNode) Delete(QueueName string, id uint64) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	q, ok := n.queues[QueueName]
 	if !ok {
 		return errors.ErrQueueNotFound
@@ -240,6 +274,9 @@ func (n *mockNode) Delete(QueueName string, id uint64) error {
 }
 
 func (n *mockNode) UpdatePriority(queueName string, id uint64, priority int64) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	q, ok := n.queues[queueName]
 	if !ok {
 		return errors.ErrQueueNotFound
