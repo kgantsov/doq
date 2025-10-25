@@ -1,3 +1,9 @@
+test:
+	go test ./... -race -cover
+
+bench:
+	go test ./... -bench=. -benchmem
+
 build_web:
 	cd admin_ui; npm run build; cp -r dist/* ../cmd/server
 

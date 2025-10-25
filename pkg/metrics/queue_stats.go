@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -24,6 +25,8 @@ type QueueStats struct {
 	nackHistory    []uint64
 	windowSize     int
 
+	mu sync.RWMutex
+
 	quit chan struct{}
 }
 
@@ -35,6 +38,7 @@ func NewQueueStats(windowSize int) *QueueStats {
 		nackHistory:    make([]uint64, windowSize),
 		windowSize:     windowSize,
 		quit:           make(chan struct{}),
+		mu:             sync.RWMutex{},
 	}
 
 	return stats
@@ -75,6 +79,9 @@ func (rc *QueueStats) IncrementNack() {
 }
 
 func (rc *QueueStats) UpdateWindow() {
+	rc.mu.Lock()
+	defer rc.mu.Unlock()
+
 	// Shift history to the left and store current counts
 	for i := 1; i < rc.windowSize; i++ {
 		rc.enqueueHistory[i-1] = rc.enqueueHistory[i]
@@ -89,6 +96,8 @@ func (rc *QueueStats) UpdateWindow() {
 }
 
 func (rc *QueueStats) GetRPS() *Stats {
+	rc.mu.RLock()
+	defer rc.mu.RUnlock()
 
 	var totalEnqueue, totalDequeue, totalAck, totalNack uint64
 

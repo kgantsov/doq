@@ -64,95 +64,97 @@ func TestNodeSingleNode(t *testing.T) {
 	queues := n.GetQueues()
 	assert.Equal(t, 0, len(queues))
 
-	err = n.CreateQueue("delayed", "test_queue", entity.QueueSettings{})
+	queueName := "test_queue_0"
+
+	err = n.CreateQueue("delayed", queueName, entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	queues = n.GetQueues()
 	assert.Equal(t, 1, len(queues))
 
-	queueInfo, err := n.GetQueueInfo("test_queue")
+	queueInfo, err := n.GetQueueInfo(queueName)
 	assert.Nil(t, err)
-	assert.Equal(t, "test_queue", queueInfo.Name)
+	assert.Equal(t, queueName, queueInfo.Name)
 	assert.Equal(t, "delayed", queueInfo.Type)
 	assert.Equal(t, int64(0), queueInfo.Ready)
 	assert.Equal(t, int64(0), queueInfo.Unacked)
 	assert.Equal(t, int64(0), queueInfo.Total)
 
-	m1, err := n.Enqueue("test_queue", 0, "default", 10, "message 1", nil)
+	m1, err := n.Enqueue(queueName, 0, "default", 10, "message 1", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m1)
 	assert.Equal(t, "message 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	queueInfo, err = n.GetQueueInfo("test_queue")
+	queueInfo, err = n.GetQueueInfo(queueName)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(1), queueInfo.Ready)
 	assert.Equal(t, int64(0), queueInfo.Unacked)
 	assert.Equal(t, int64(1), queueInfo.Total)
 
-	m2, err := n.Enqueue("test_queue", 0, "default", 5, "message 2", nil)
+	m2, err := n.Enqueue(queueName, 0, "default", 5, "message 2", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m2)
 	assert.Equal(t, "message 2", m2.Content)
 	assert.Equal(t, int64(5), m2.Priority)
 
-	queueInfo, err = n.GetQueueInfo("test_queue")
+	queueInfo, err = n.GetQueueInfo(queueName)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(2), queueInfo.Ready)
 	assert.Equal(t, int64(0), queueInfo.Unacked)
 	assert.Equal(t, int64(2), queueInfo.Total)
 
-	m3, err := n.Enqueue("test_queue", 0, "default", 10, "message 3", map[string]string{"key": "value"})
+	m3, err := n.Enqueue(queueName, 0, "default", 10, "message 3", map[string]string{"key": "value"})
 	assert.Nil(t, err)
 	assert.NotNil(t, m3)
 	assert.Equal(t, "message 3", m3.Content)
 	assert.Equal(t, int64(10), m3.Priority)
 	assert.Equal(t, "value", m3.Metadata["key"])
 
-	queueInfo, err = n.GetQueueInfo("test_queue")
+	queueInfo, err = n.GetQueueInfo(queueName)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(3), queueInfo.Ready)
 	assert.Equal(t, int64(0), queueInfo.Unacked)
 	assert.Equal(t, int64(3), queueInfo.Total)
 
-	m, err := n.Get("test_queue", m1.ID)
+	m, err := n.Get(queueName, m1.ID)
 	assert.Nil(t, err)
 	assert.Equal(t, m1.ID, m.ID)
 	assert.Equal(t, m1.Content, m.Content)
 	assert.Equal(t, m1.Priority, m.Priority)
 
-	m, err = n.Dequeue("test_queue", true)
+	m, err = n.Dequeue(queueName, true)
 	assert.Nil(t, err)
 	assert.Equal(t, m2.ID, m.ID)
 	assert.Equal(t, m2.Content, m.Content)
 	assert.Equal(t, m2.Priority, m.Priority)
 
-	queueInfo, err = n.GetQueueInfo("test_queue")
+	queueInfo, err = n.GetQueueInfo(queueName)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(2), queueInfo.Ready)
 	assert.Equal(t, int64(0), queueInfo.Unacked)
 	assert.Equal(t, int64(2), queueInfo.Total)
 
-	m, err = n.Dequeue("test_queue", true)
+	m, err = n.Dequeue(queueName, true)
 	assert.Nil(t, err)
 	assert.Equal(t, m1.ID, m.ID)
 	assert.Equal(t, m1.Content, m.Content)
 	assert.Equal(t, m1.Priority, m.Priority)
 
-	queueInfo, err = n.GetQueueInfo("test_queue")
+	queueInfo, err = n.GetQueueInfo(queueName)
 	assert.Nil(t, err)
 	assert.Equal(t, int64(1), queueInfo.Ready)
 	assert.Equal(t, int64(0), queueInfo.Unacked)
 	assert.Equal(t, int64(1), queueInfo.Total)
 
-	err = n.Delete("test_queue", m3.ID)
+	err = n.Delete(queueName, m3.ID)
 	assert.Nil(t, err)
 
-	m, err = n.Dequeue("test_queue", false)
+	m, err = n.Dequeue(queueName, false)
 	assert.Nil(t, m)
 	assert.Error(t, err)
 
-	err = n.DeleteQueue("test_queue")
+	err = n.DeleteQueue(queueName)
 	assert.Nil(t, err)
 
 	queues = n.GetQueues()
@@ -200,36 +202,38 @@ func TestNodeUpdateDeleteQueue(t *testing.T) {
 	// Simple way to ensure there is a leader.
 	time.Sleep(3 * time.Second)
 
-	err = n.CreateQueue("fair", "test_queue", entity.QueueSettings{
+	queueName := "test_queue_1"
+
+	err = n.CreateQueue("fair", queueName, entity.QueueSettings{
 		Strategy:   "WEIGHTED",
 		MaxUnacked: 75,
 		AckTimeout: 300,
 	})
 	assert.Nil(t, err)
 
-	queue, err := n.GetQueueInfo("test_queue")
+	queue, err := n.GetQueueInfo(queueName)
 	assert.Nil(t, err)
 	assert.Equal(t, "WEIGHTED", queue.Settings.Strategy)
 	assert.Equal(t, int(75), queue.Settings.MaxUnacked)
 	assert.Equal(t, uint32(300), queue.Settings.AckTimeout)
 
-	err = n.UpdateQueue("test_queue", entity.QueueSettings{
+	err = n.UpdateQueue(queueName, entity.QueueSettings{
 		Strategy:   "WEIGHTED",
 		MaxUnacked: 100,
 		AckTimeout: 600,
 	})
 	assert.Nil(t, err)
 
-	queue, err = n.GetQueueInfo("test_queue")
+	queue, err = n.GetQueueInfo(queueName)
 	assert.Nil(t, err)
 	assert.Equal(t, "WEIGHTED", queue.Settings.Strategy)
 	assert.Equal(t, int(100), queue.Settings.MaxUnacked)
 	assert.Equal(t, uint32(600), queue.Settings.AckTimeout)
 
-	err = n.DeleteQueue("test_queue")
+	err = n.DeleteQueue(queueName)
 	assert.Nil(t, err)
 
-	queue, err = n.GetQueueInfo("test_queue")
+	queue, err = n.GetQueueInfo(queueName)
 	assert.NotNil(t, err)
 	assert.Nil(t, queue)
 
@@ -275,31 +279,33 @@ func TestNodeSingleNodeAck(t *testing.T) {
 	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
+	queueName := "test_queue_2"
+
 	// Simple way to ensure there is a leader.
 	time.Sleep(3 * time.Second)
-	err = n.CreateQueue("delayed", "test_queue", entity.QueueSettings{})
+	err = n.CreateQueue("delayed", queueName, entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	assert.True(t, n.IsLeader())
 
-	m1, err := n.Enqueue("test_queue", 12312, "default", 10, "message 1", nil)
+	m1, err := n.Enqueue(queueName, 12312, "default", 10, "message 1", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m1)
 	assert.Equal(t, uint64(12312), m1.ID)
 	assert.Equal(t, "message 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	m, err := n.Dequeue("test_queue", false)
+	m, err := n.Dequeue(queueName, false)
 	assert.Nil(t, err)
 	assert.Equal(t, m1.ID, m.ID)
 	assert.Equal(t, uint64(12312), m.ID)
 	assert.Equal(t, m1.Content, m.Content)
 	assert.Equal(t, m1.Priority, m.Priority)
 
-	err = n.Ack("test_queue", m.ID)
+	err = n.Ack(queueName, m.ID)
 	assert.Nil(t, err)
 
-	err = n.DeleteQueue("test_queue")
+	err = n.DeleteQueue(queueName)
 	assert.Nil(t, err)
 }
 
@@ -341,35 +347,36 @@ func TestNodeSingleNodeNack(t *testing.T) {
 	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
+	queueName := "test_queue_3"
 	// Simple way to ensure there is a leader.
 	time.Sleep(3 * time.Second)
-	err = n.CreateQueue("delayed", "test_queue", entity.QueueSettings{})
+	err = n.CreateQueue("delayed", queueName, entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	assert.True(t, n.IsLeader())
 
-	m1, err := n.Enqueue("test_queue", 0, "default", 10, "message 1", nil)
+	m1, err := n.Enqueue(queueName, 0, "default", 10, "message 1", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m1)
 	assert.Equal(t, "message 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	m, err := n.Dequeue("test_queue", false)
+	m, err := n.Dequeue(queueName, false)
 	assert.Nil(t, err)
 	assert.Equal(t, m1.ID, m.ID)
 	assert.Equal(t, m1.Content, m.Content)
 	assert.Equal(t, m1.Priority, m.Priority)
 
-	err = n.Nack("test_queue", m.ID, 5, map[string]string{})
+	err = n.Nack(queueName, m.ID, 5, map[string]string{})
 	assert.Nil(t, err)
 
-	m, err = n.Dequeue("test_queue", false)
+	m, err = n.Dequeue(queueName, false)
 	assert.Nil(t, err)
 	assert.Equal(t, m1.ID, m.ID)
 	assert.Equal(t, m1.Content, m.Content)
 	assert.Equal(t, int64(5), m.Priority)
 
-	err = n.DeleteQueue("test_queue")
+	err = n.DeleteQueue(queueName)
 	assert.Nil(t, err)
 }
 
@@ -411,56 +418,58 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
 	n.Initialize()
 
+	queueName := "test_queue_4"
+
 	// Simple way to ensure there is a leader.
 	time.Sleep(3 * time.Second)
-	err = n.CreateQueue("delayed", "test_queue", entity.QueueSettings{})
+	err = n.CreateQueue("delayed", queueName, entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	assert.True(t, n.IsLeader())
 
-	m1, err := n.Enqueue("test_queue", 0, "default", 10, "message 1", nil)
+	m1, err := n.Enqueue(queueName, 0, "default", 10, "message 1", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m1)
 	assert.Equal(t, "message 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	m2, err := n.Enqueue("test_queue", 0, "default", 5, "message 2", nil)
+	m2, err := n.Enqueue(queueName, 0, "default", 5, "message 2", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m2)
 	assert.Equal(t, "message 2", m2.Content)
 	assert.Equal(t, int64(5), m2.Priority)
 
-	m3, err := n.Enqueue("test_queue", 0, "default", 10, "message 3", nil)
+	m3, err := n.Enqueue(queueName, 0, "default", 10, "message 3", nil)
 	assert.Nil(t, err)
 	assert.NotNil(t, m3)
 	assert.Equal(t, "message 3", m3.Content)
 	assert.Equal(t, int64(10), m3.Priority)
 
-	err = n.UpdatePriority("test_queue", m1.ID, 20)
+	err = n.UpdatePriority(queueName, m1.ID, 20)
 	assert.Nil(t, err)
 
-	err = n.UpdatePriority("test_queue", m3.ID, 2)
+	err = n.UpdatePriority(queueName, m3.ID, 2)
 	assert.Nil(t, err)
 
-	m, err := n.Dequeue("test_queue", true)
+	m, err := n.Dequeue(queueName, true)
 	assert.Nil(t, err)
 	assert.Equal(t, m3.ID, m.ID)
 	assert.Equal(t, m3.Content, m.Content)
 	assert.Equal(t, int64(2), m.Priority)
 
-	m, err = n.Dequeue("test_queue", true)
+	m, err = n.Dequeue(queueName, true)
 	assert.Nil(t, err)
 	assert.Equal(t, m2.ID, m.ID)
 	assert.Equal(t, m2.Content, m.Content)
 	assert.Equal(t, m2.Priority, m.Priority)
 
-	m, err = n.Dequeue("test_queue", false)
+	m, err = n.Dequeue(queueName, false)
 	assert.Nil(t, err)
 	assert.Equal(t, m1.ID, m.ID)
 	assert.Equal(t, m1.Content, m.Content)
 	assert.Equal(t, int64(20), m.Priority)
 
-	err = n.DeleteQueue("test_queue")
+	err = n.DeleteQueue(queueName)
 	assert.Nil(t, err)
 }
 
@@ -514,7 +523,9 @@ func TestBackupRestore(t *testing.T) {
 	queues := n.GetQueues()
 	assert.Equal(t, 0, len(queues))
 
-	err = n.CreateQueue("delayed", "test_queue", entity.QueueSettings{})
+	queueName := "test_queue_5"
+
+	err = n.CreateQueue("delayed", queueName, entity.QueueSettings{})
 	assert.Nil(t, err)
 
 	queues = n.GetQueues()
@@ -522,7 +533,7 @@ func TestBackupRestore(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		msg := fmt.Sprintf("message %d", i)
-		m, err := n.Enqueue("test_queue", 0, "default", 10, msg, nil)
+		m, err := n.Enqueue(queueName, 0, "default", 10, msg, nil)
 		assert.Nil(t, err)
 		assert.NotNil(t, m)
 		assert.Equal(t, msg, m.Content)
@@ -585,13 +596,13 @@ func TestBackupRestore(t *testing.T) {
 	queues = n1.GetQueues()
 	assert.Equal(t, 1, len(queues))
 
-	queueInfo, err := n1.GetQueueInfo("test_queue")
+	queueInfo, err := n1.GetQueueInfo(queueName)
 	assert.Nil(t, err)
-	assert.Equal(t, "test_queue", queueInfo.Name)
+	assert.Equal(t, queueName, queueInfo.Name)
 
 	for i := 0; i < 10; i++ {
 		msg := fmt.Sprintf("message %d", i)
-		m, err := n1.Dequeue("test_queue", false)
+		m, err := n1.Dequeue(queueName, false)
 		assert.Nil(t, err)
 		assert.NotNil(t, m)
 		assert.Equal(t, msg, m.Content)
