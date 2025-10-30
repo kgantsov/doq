@@ -68,6 +68,11 @@ func (c *Cluster) Init() error {
 	}
 
 	for _, addr := range addrs {
+		host, port, err := net.SplitHostPort(addr)
+		if err == nil && port == "0" {
+			addr = fmt.Sprintf("%s:%s", host, c.httpAddr)
+		}
+
 		log.Debug().Msgf("Discovered address: %s Current host: %s", addr, c.hostname)
 
 		if strings.HasPrefix(addr, c.hostname) {
