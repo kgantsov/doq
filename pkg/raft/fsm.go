@@ -63,6 +63,8 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 		return f.applyAck(command)
 	case *pb.RaftCommand_Nack:
 		return f.applyNack(command)
+	case *pb.RaftCommand_Touch:
+		return f.applyTouch(command)
 	case *pb.RaftCommand_UpdatePriority:
 		return f.applyUpdatePriority(command)
 	case *pb.RaftCommand_CreateQueue:
@@ -320,6 +322,46 @@ func (f *FSM) applyNack(payload *pb.RaftCommand_Nack) *FSMResponse {
 		QueueName: payload.Nack.QueueName,
 		ID:        payload.Nack.Id,
 		Metadata:  payload.Nack.Metadata,
+		error:     nil,
+	}
+}
+
+func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch) *FSMResponse {
+	q, err := f.queueManager.GetQueue(payload.Touch.QueueName)
+	if err != nil {
+		return &FSMResponse{
+			QueueName: payload.Touch.QueueName,
+			error:     fmt.Errorf("Failed to get a queue: %s", payload.Touch.QueueName),
+		}
+	}
+
+	err = q.Touch(payload.Touch.Id)
+
+	log.Debug().Msgf("Node %s Touched a message: %v", f.NodeID, err)
+
+	if err != nil {
+		if err == errors.ErrEmptyQueue {
+			return &FSMResponse{
+				QueueName: payload.Touch.QueueName,
+				error:     fmt.Errorf("Queue is empty: %s", payload.Touch.QueueName),
+			}
+		} else if err == errors.ErrMessageNotFound {
+			return &FSMResponse{
+				QueueName: payload.Touch.QueueName,
+				error:     fmt.Errorf("Message not found: %s", payload.Touch.QueueName),
+			}
+		}
+		return &FSMResponse{
+			QueueName: payload.Touch.QueueName,
+			error: fmt.Errorf(
+				"Failed to touch a message from a queue: %s", payload.Touch.QueueName,
+			),
+		}
+	}
+
+	return &FSMResponse{
+		QueueName: payload.Touch.QueueName,
+		ID:        payload.Touch.Id,
 		error:     nil,
 	}
 }

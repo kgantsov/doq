@@ -5,289 +5,129 @@ import (
 	"sync"
 
 	"github.com/kgantsov/doq/pkg/entity"
-	"github.com/kgantsov/doq/pkg/errors"
-	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/queue"
-	"github.com/kgantsov/doq/pkg/queue/memory"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/mock"
 )
 
 type mockNode struct {
-	nextID   uint64
-	isLeader bool
-	leader   string
-	messages map[uint64]*entity.Message
-	acks     map[uint64]*entity.Message
-	queues   map[string]*memory.DelayedQueue
-
-	mu sync.Mutex
+	mock.Mock
+	NextIDFunc func() uint64
+	mu         sync.Mutex
 }
 
-func NewMockNode(leader string, isLeader bool) *mockNode {
+func NewMockNode() *mockNode {
 	return &mockNode{
-		messages: make(map[uint64]*entity.Message),
-		acks:     make(map[uint64]*entity.Message),
-		queues:   make(map[string]*memory.DelayedQueue),
-		leader:   leader,
-		isLeader: isLeader,
-		mu:       sync.Mutex{},
+		mu: sync.Mutex{},
 	}
 }
 
 func (n *mockNode) Join(nodeID, addr string) error {
-	return nil
+	args := n.Called(nodeID, addr)
+	return args.Error(0)
 }
 
 func (n *mockNode) Leave(nodeID string) error {
-	return nil
+	args := n.Called(nodeID)
+	return args.Error(0)
 }
 
 func (n *mockNode) GetServers() ([]*entity.Server, error) {
-	return nil, nil
+	args := n.Called()
+	return args.Get(0).([]*entity.Server), args.Error(1)
 }
 
 func (n *mockNode) Backup(w io.Writer, since uint64) (uint64, error) {
-
-	return 0, nil
+	args := n.Called(w, since)
+	return args.Get(0).(uint64), args.Error(1)
 }
-func (n *mockNode) Restore(r io.Reader, maxPendingWrites int) error {
 
-	return nil
+func (n *mockNode) Restore(r io.Reader, maxPendingWrites int) error {
+	args := n.Called(r, maxPendingWrites)
+	return args.Error(0)
 }
 
 func (n *mockNode) IsLeader() bool {
-	return n.isLeader
+	args := n.Called()
+	return args.Bool(0)
 }
 
 func (n *mockNode) GenerateID() uint64 {
-	n.nextID++
-	return n.nextID
+	if n.NextIDFunc != nil {
+		return n.NextIDFunc()
+	}
+	args := n.Called()
+	return args.Get(0).(uint64)
 }
 
 func (n *mockNode) GetQueues() []*queue.QueueInfo {
-	queues := make([]*queue.QueueInfo, 0, len(n.queues))
-	for name, q := range n.queues {
-		queues = append(queues, &queue.QueueInfo{
-			Name:    name,
-			Type:    "delayed",
-			Ready:   int64(q.Len()),
-			Unacked: 0,
-			Total:   int64(q.Len()),
-			Stats: &metrics.Stats{
-				EnqueueRPS: 3.1,
-				DequeueRPS: 2.5,
-				AckRPS:     1.2,
-				NackRPS:    2.3,
-			},
-		})
-	}
-
-	return queues
+	args := n.Called()
+	return args.Get(0).([]*queue.QueueInfo)
 }
 
 func (n *mockNode) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	q, ok := n.queues[queueName]
-	if !ok {
-		return nil, errors.ErrQueueNotFound
-	}
-
-	return &queue.QueueInfo{
-		Name:    queueName,
-		Type:    "delayed",
-		Ready:   int64(q.Len()),
-		Unacked: 0,
-		Total:   int64(q.Len()),
-		Stats: &metrics.Stats{
-			EnqueueRPS: 3.1,
-			DequeueRPS: 2.5,
-			AckRPS:     1.2,
-			NackRPS:    2.3,
-		},
-	}, nil
+	args := n.Called(queueName)
+	return args.Get(0).(*queue.QueueInfo), args.Error(1)
 }
 
 func (n *mockNode) PrometheusRegistry() prometheus.Registerer {
-	return nil
+	args := n.Called()
+	return args.Get(0).(prometheus.Registerer)
 }
 
 func (n *mockNode) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	n.queues[queueName] = memory.NewDelayedQueue(true)
-	return nil
+	args := n.Called(queueType, queueName, settings)
+	return args.Error(0)
 }
 
 func (n *mockNode) UpdateQueue(queueName string, settings entity.QueueSettings) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	_, ok := n.queues[queueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	return nil
+	args := n.Called(queueName, settings)
+	return args.Error(0)
 }
 
 func (n *mockNode) DeleteQueue(queueName string) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	_, ok := n.queues[queueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	delete(n.queues, queueName)
-	return nil
+	args := n.Called(queueName)
+	return args.Error(0)
 }
 
 func (n *mockNode) Enqueue(
 	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
 ) (*entity.Message, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	q, ok := n.queues[queueName]
-	if !ok {
-		return &entity.Message{}, errors.ErrQueueNotFound
-	}
-
-	n.nextID++
-	if id == 0 {
-		id = n.nextID
-	}
-	message := &entity.Message{
-		ID: id, Group: group, Priority: priority, Content: content, Metadata: metadata,
-	}
-	n.messages[message.ID] = message
-	q.Enqueue(group, &memory.Item{ID: message.ID, Priority: message.Priority})
-	return message, nil
+	args := n.Called(queueName, id, group, priority, content, metadata)
+	return args.Get(0).(*entity.Message), args.Error(1)
 }
 
 func (n *mockNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	q, ok := n.queues[QueueName]
-	if !ok {
-		return &entity.Message{}, errors.ErrQueueNotFound
-	}
-
-	if q.Len() == 0 {
-		return nil, errors.ErrEmptyQueue
-	}
-
-	item := q.Dequeue(false)
-
-	message := n.messages[item.ID]
-
-	if ack {
-		delete(n.messages, item.ID)
-	} else {
-		n.acks[item.ID] = message
-	}
-
-	return message, nil
+	args := n.Called(QueueName, ack)
+	return args.Get(0).(*entity.Message), args.Error(1)
 }
 
 func (n *mockNode) Ack(QueueName string, id uint64) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	_, ok := n.queues[QueueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	if _, ok := n.acks[id]; !ok {
-		return errors.ErrMessageNotFound
-	}
-	delete(n.acks, id)
-	delete(n.messages, id)
-	return nil
+	args := n.Called(QueueName, id)
+	return args.Error(0)
 }
 
 func (n *mockNode) Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
+	args := n.Called(QueueName, id, priority, metadata)
+	return args.Error(0)
+}
 
-	q, ok := n.queues[QueueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	message, ok := n.acks[id]
-	if !ok {
-		return errors.ErrMessageNotFound
-	}
-
-	if priority != 0 {
-		message.Priority = priority
-	}
-
-	message.Metadata = metadata
-	n.messages[message.ID] = message
-
-	q.Enqueue(message.Group, &memory.Item{ID: message.ID, Priority: message.Priority})
-
-	delete(n.acks, id)
-	return nil
+func (n *mockNode) Touch(QueueName string, id uint64) error {
+	args := n.Called(QueueName, id)
+	return args.Error(0)
 }
 
 func (n *mockNode) Get(QueueName string, id uint64) (*entity.Message, error) {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	for _, m := range n.messages {
-		if m.ID == id {
-			return m, nil
-		}
-	}
-	return nil, errors.ErrMessageNotFound
+	args := n.Called(QueueName, id)
+	return args.Get(0).(*entity.Message), args.Error(1)
 }
 
 func (n *mockNode) Delete(QueueName string, id uint64) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	q, ok := n.queues[QueueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	msg, ok := n.messages[id]
-	if !ok {
-		return errors.ErrMessageNotFound
-	}
-
-	q.Delete(msg.Group, id)
-
-	delete(n.acks, id)
-	delete(n.messages, id)
-
-	return nil
+	args := n.Called(QueueName, id)
+	return args.Error(0)
 }
 
 func (n *mockNode) UpdatePriority(queueName string, id uint64, priority int64) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	q, ok := n.queues[queueName]
-	if !ok {
-		return errors.ErrQueueNotFound
-	}
-
-	message, ok := n.messages[id]
-	if !ok {
-		return errors.ErrMessageNotFound
-	}
-
-	message.Priority = priority
-	q.UpdatePriority(message.Group, id, priority)
-	return nil
+	args := n.Called(queueName, id, priority)
+	return args.Error(0)
 }

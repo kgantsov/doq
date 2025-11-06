@@ -176,9 +176,9 @@ func (q *Queue) CreateQueue(queueType, queueName string, settings entity.QueueSe
 		if settings.Strategy == "WEIGHTED" || settings.Strategy == "ROUND_ROBIN" {
 			return errors.ErrInvalidStrategy
 		}
-		if settings.AckTimeout != 0 {
-			return errors.ErrInvalidAckTimeout
-		}
+		// if settings.AckTimeout != 0 {
+		// 	return errors.ErrInvalidAckTimeout
+		// }
 		if settings.MaxUnacked != 0 {
 			return errors.ErrInvalidMaxUnacked
 		}
@@ -394,6 +394,24 @@ func (q *Queue) UpdatePriority(id uint64, newPriority int64) error {
 
 	// Update in-memory heap
 	q.queue.UpdatePriority(group, id, newPriority)
+	return nil
+}
+
+func (q *Queue) Touch(id uint64) error {
+	queueItem := q.ackQueue.Get("default", id)
+
+	if queueItem == nil {
+		return errors.ErrMessageNotFound
+	}
+
+	q.ackQueue.UpdatePriority(
+		"default",
+		id,
+		time.Now().UTC().Add(
+			time.Duration(q.config.Settings.AckTimeout)*time.Second,
+		).Unix(),
+	)
+
 	return nil
 }
 

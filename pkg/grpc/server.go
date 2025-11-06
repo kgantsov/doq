@@ -385,6 +385,16 @@ func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackRe
 	return &pb.NackResponse{Success: true}, nil
 }
 
+// Touch touches a message (this could be used to notify the queue that the message is still being processed)
+func (s *QueueServer) Touch(ctx context.Context, req *pb.TouchRequest) (*pb.TouchResponse, error) {
+	err := s.node.Touch(req.QueueName, req.Id)
+	if err != nil {
+		return &pb.TouchResponse{Success: false}, fmt.Errorf("failed to touch a message")
+	}
+
+	return &pb.TouchResponse{Success: true}, nil
+}
+
 // UpdatePriority updates priority of a message
 func (s *QueueServer) UpdatePriority(
 	ctx context.Context,

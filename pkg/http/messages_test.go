@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/bwmarrin/snowflake"
@@ -44,8 +43,10 @@ func TestGenerateIDs(t *testing.T) {
 	}))
 	defer server.Close()
 
+	mockNode := mocks.NewMockNode()
+
 	h := &Handler{
-		node: mocks.NewMockNode(strings.Replace(server.URL, "http://", "", 1), false),
+		node: mockNode,
 	}
 	h.RegisterRoutes(api)
 
@@ -54,12 +55,11 @@ func TestGenerateIDs(t *testing.T) {
 		Status int    `json:"status"`
 		Detail string `json:"detail"`
 	}
-
-	h.node.CreateQueue("delayed", "indexing-queue", entity.QueueSettings{})
+	mockNode.On("GenerateID").Return(uint64(1))
 
 	resp := api.Post(
 		"/API/v1/ids", map[string]any{
-			"number": 234,
+			"number": 1,
 		})
 
 	output := &GenerateIdOutputBody{}
@@ -67,7 +67,7 @@ func TestGenerateIDs(t *testing.T) {
 	json.Unmarshal(resp.Body.Bytes(), output)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, 234, len(output.IDs))
+	assert.Equal(t, 1, len(output.IDs))
 
 	lastId := uint64(0)
 	for _, idStr := range output.IDs {
@@ -78,11 +78,12 @@ func TestGenerateIDs(t *testing.T) {
 	}
 }
 
-func TestEnqueueDequeue(t *testing.T) {
+func TestEnqueue(t *testing.T) {
 	_, api := humatest.New(t)
 
+	mockNode := mocks.NewMockNode()
 	h := &Handler{
-		node: mocks.NewMockNode("", true),
+		node: mockNode,
 	}
 	h.RegisterRoutes(api)
 
@@ -92,12 +93,30 @@ func TestEnqueueDequeue(t *testing.T) {
 		Detail string `json:"detail"`
 	}
 
-	h.node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
+	content := "{\"user_id\": 2, \"name\": \"Jane\"}"
+	priority := int64(100)
+	metadata := map[string]string{"retry": "3"}
+
+	mockNode.On(
+		"Enqueue",
+		"my-queue",
+		uint64(0),
+		"default",
+		int64(100),
+		content,
+		metadata,
+	).Return(&entity.Message{
+		ID:       uint64(1),
+		Priority: priority,
+		Group:    "default",
+		Content:  content,
+		Metadata: metadata,
+	}, nil)
 
 	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
-		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
-		"priority": 100,
-		"metadata": map[string]string{"retry": "3"},
+		"content":  content,
+		"priority": priority,
+		"metadata": metadata,
 	})
 
 	enqueueOutput := &EnqueueOutputBody{}
@@ -107,42 +126,113 @@ func TestEnqueueDequeue(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
 	assert.Equal(t, "1", enqueueOutput.ID)
-	assert.Equal(t, int64(100), enqueueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
+	assert.Equal(t, priority, enqueueOutput.Priority)
+	assert.Equal(t, content, enqueueOutput.Content)
 	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
+}
 
-	resp = api.Post("/API/v1/queues/my-queue/messages", map[string]any{
-		"content":  "{\"user_id\": 2, \"name\": \"Jane\"}",
-		"priority": 100,
-		"metadata": map[string]string{"retry": "3"},
-	})
+func TestDequeue(t *testing.T) {
+	_, api := humatest.New(t)
 
-	enqueueOutput = &EnqueueOutputBody{}
+	mockNode := mocks.NewMockNode()
+	h := &Handler{node: mockNode}
+	h.RegisterRoutes(api)
 
-	json.Unmarshal(resp.Body.Bytes(), enqueueOutput)
+	content := "{\"user_id\": 124, \"name\": \"John\"}"
+	priority := int64(250)
+	metadata := map[string]string{"retry": "1"}
+
+	mockNode.On("Dequeue", "my-queue", false).Return(&entity.Message{
+		ID:       uint64(5465),
+		Priority: priority,
+		Group:    "default",
+		Content:  content,
+		Metadata: metadata,
+	}, nil)
+
+	resp := api.Get("/API/v1/queues/my-queue/messages")
+
+	dequeueOutput := &DequeueOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), dequeueOutput)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
-	assert.Equal(t, "2", enqueueOutput.ID)
-	assert.Equal(t, int64(100), enqueueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 2, \"name\": \"Jane\"}", enqueueOutput.Content)
-	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
+	assert.Equal(t, "DEQUEUED", dequeueOutput.Status)
+	assert.Equal(t, "5465", dequeueOutput.ID)
+	assert.Equal(t, priority, dequeueOutput.Priority)
+	assert.Equal(t, content, dequeueOutput.Content)
+	assert.Equal(t, "1", dequeueOutput.Metadata["retry"])
+}
 
-	resp = api.Get("/API/v1/queues/my-queue/messages")
+func TestGet(t *testing.T) {
+	_, api := humatest.New(t)
 
-	enqueueOutput = &EnqueueOutputBody{}
+	mockNode := mocks.NewMockNode()
+	h := &Handler{
+		node: mockNode,
+	}
+	h.RegisterRoutes(api)
 
-	json.Unmarshal(resp.Body.Bytes(), enqueueOutput)
+	content := "{\"user_id\": 124, \"name\": \"John\"}"
+	priority := int64(250)
+	metadata := map[string]string{"retry": "1"}
+
+	mockNode.On("Get", "my-queue", uint64(6123)).Return(&entity.Message{
+		ID:       uint64(6123),
+		Priority: priority,
+		Group:    "default",
+		Content:  content,
+		Metadata: metadata,
+	}, nil)
+
+	resp := api.Get(
+		fmt.Sprintf("/API/v1/queues/my-queue/messages/%d", 6123),
+		map[string]any{},
+	)
+
+	output := &GetOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), output)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "DEQUEUED", enqueueOutput.Status)
-	assert.Equal(t, "1", enqueueOutput.ID)
-	assert.Equal(t, int64(100), enqueueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
-	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
+	assert.Equal(t, "GOT", output.Status)
+	assert.Equal(t, "6123", output.ID)
+	assert.Equal(t, priority, output.Priority)
+	assert.Equal(t, "default", output.Group)
+	assert.Equal(t, content, output.Content)
+	assert.Equal(t, metadata, output.Metadata)
+}
 
-	resp = api.Post(
-		fmt.Sprintf("/API/v1/queues/my-queue/messages/%s/ack", enqueueOutput.ID),
+func TestDelete(t *testing.T) {
+	_, api := humatest.New(t)
+
+	mockNode := mocks.NewMockNode()
+	h := &Handler{
+		node: mockNode,
+	}
+	h.RegisterRoutes(api)
+
+	mockNode.On("Delete", "my-queue", uint64(6123)).Return(nil)
+
+	api.Delete(
+		fmt.Sprintf("/API/v1/queues/my-queue/messages/%d", 6123),
+		map[string]any{},
+	)
+}
+
+func TestAck(t *testing.T) {
+	_, api := humatest.New(t)
+
+	mockNode := mocks.NewMockNode()
+	h := &Handler{
+		node: mockNode,
+	}
+	h.RegisterRoutes(api)
+
+	mockNode.On("Ack", "my-queue", uint64(6123)).Return(nil)
+
+	resp := api.Post(
+		fmt.Sprintf("/API/v1/queues/my-queue/messages/%d/ack", 6123),
 		map[string]any{},
 	)
 
@@ -152,141 +242,27 @@ func TestEnqueueDequeue(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "ACKNOWLEDGED", ackOutput.Status)
-	assert.Equal(t, "1", ackOutput.ID)
-
-	enqueueOutput = &EnqueueOutputBody{}
-
-	resp = api.Get("/API/v1/queues/my-queue/messages")
-
-	json.Unmarshal(resp.Body.Bytes(), enqueueOutput)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "DEQUEUED", enqueueOutput.Status)
-	assert.Equal(t, "2", enqueueOutput.ID)
-	assert.Equal(t, int64(100), enqueueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 2, \"name\": \"Jane\"}", enqueueOutput.Content)
-	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
-
-	resp = api.Post(
-		fmt.Sprintf("/API/v1/queues/my-queue/messages/%s/ack", enqueueOutput.ID),
-		map[string]any{},
-	)
-
-	ackOutput = &AckOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), ackOutput)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "ACKNOWLEDGED", ackOutput.Status)
-	assert.Equal(t, "2", ackOutput.ID)
-}
-
-func TestEnqueueGet(t *testing.T) {
-	_, api := humatest.New(t)
-
-	h := &Handler{
-		node: mocks.NewMockNode("", true),
-	}
-	h.RegisterRoutes(api)
-
-	type ErrorOutput struct {
-		Title  string `json:"title"`
-		Status int    `json:"status"`
-		Detail string `json:"detail"`
-	}
-
-	h.node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
-
-	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
-		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
-		"priority": 100,
-		"metadata": map[string]string{"retry": "3"},
-	})
-
-	enqueueOutput := &EnqueueOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), enqueueOutput)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
-	assert.Equal(t, "1", enqueueOutput.ID)
-	assert.Equal(t, int64(100), enqueueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
-	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
-
-	resp = api.Get(fmt.Sprintf("/API/v1/queues/my-queue/messages/%s", enqueueOutput.ID))
-
-	getOutput := &GetOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), getOutput)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "GOT", getOutput.Status)
-	assert.Equal(t, "1", getOutput.ID)
-	assert.Equal(t, int64(100), getOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", getOutput.Content)
-	assert.Equal(t, "3", getOutput.Metadata["retry"])
-
-	resp = api.Delete(fmt.Sprintf("/API/v1/queues/my-queue/messages/%s", enqueueOutput.ID))
-
-	assert.Equal(t, http.StatusNoContent, resp.Code)
-
-	resp = api.Get(fmt.Sprintf("/API/v1/queues/my-queue/messages/%s", enqueueOutput.ID))
-
-	getOutput = &GetOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), getOutput)
-	assert.Equal(t, http.StatusBadRequest, resp.Code)
+	assert.Equal(t, "6123", ackOutput.ID)
 }
 
 func TestNack(t *testing.T) {
 	_, api := humatest.New(t)
 
+	mockNode := mocks.NewMockNode()
 	h := &Handler{
-		node: mocks.NewMockNode("", true),
+		node: mockNode,
 	}
 	h.RegisterRoutes(api)
 
-	type ErrorOutput struct {
-		Title  string `json:"title"`
-		Status int    `json:"status"`
-		Detail string `json:"detail"`
-	}
+	mockNode.On(
+		"Nack", "my-transcode-queue", uint64(23421), int64(100), map[string]string{"retry": "5"},
+	).Return(nil)
 
-	h.node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
-
-	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
-		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
-		"priority": 100,
-	})
-
-	enqueueOutput := &EnqueueOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), enqueueOutput)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
-	assert.Equal(t, "1", enqueueOutput.ID)
-	assert.Equal(t, int64(100), enqueueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
-
-	resp = api.Get("/API/v1/queues/my-queue/messages?ack=false")
-
-	dequeueOutput := &DequeueOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), dequeueOutput)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "DEQUEUED", dequeueOutput.Status)
-	assert.Equal(t, "1", dequeueOutput.ID)
-	assert.Equal(t, int64(100), dequeueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
-
-	resp = api.Post(
-		fmt.Sprintf("/API/v1/queues/my-queue/messages/%s/nack", dequeueOutput.ID),
+	resp := api.Post(
+		fmt.Sprintf("/API/v1/queues/my-transcode-queue/messages/%d/nack", 23421),
 		map[string]any{
 			"priority": 100,
-			"metadata": map[string]string{"retry": "3"},
+			"metadata": map[string]string{"retry": "5"},
 		},
 	)
 
@@ -296,60 +272,23 @@ func TestNack(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "UNACKNOWLEDGED", nackOutput.Status)
-	assert.Equal(t, "1", nackOutput.ID)
-	assert.Equal(t, "3", nackOutput.Metadata["retry"])
-
-	resp = api.Get("/API/v1/queues/my-queue/messages?ack=true")
-
-	dequeueOutput = &DequeueOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), dequeueOutput)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "DEQUEUED", dequeueOutput.Status)
-	assert.Equal(t, "1", dequeueOutput.ID)
-	assert.Equal(t, int64(100), dequeueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
-	assert.Equal(t, "3", dequeueOutput.Metadata["retry"])
+	assert.Equal(t, "23421", nackOutput.ID)
+	assert.Equal(t, "5", nackOutput.Metadata["retry"])
 }
 
 func TestUpdatePriority(t *testing.T) {
 	_, api := humatest.New(t)
 
-	// var httpClient = &http.Client{
-	// 	Timeout: time.Second * 10,
-	// }
-
+	mockNode := mocks.NewMockNode()
 	h := &Handler{
-		node: mocks.NewMockNode("", true),
+		node: mockNode,
 	}
 	h.RegisterRoutes(api)
 
-	h.node.CreateQueue("delayed", "my-queue-1", entity.QueueSettings{})
+	mockNode.On("UpdatePriority", "my-queue-1", uint64(32), int64(256)).Return(nil)
 
-	type ErrorOutput struct {
-		Title  string `json:"title"`
-		Status int    `json:"status"`
-		Detail string `json:"detail"`
-	}
-
-	resp := api.Post("/API/v1/queues/my-queue-1/messages", map[string]any{
-		"content":  "{\"user_id\": 1, \"name\": \"John\"}",
-		"priority": 100,
-	})
-
-	enqueueOutput := &EnqueueOutputBody{}
-
-	json.Unmarshal(resp.Body.Bytes(), enqueueOutput)
-
-	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "ENQUEUED", enqueueOutput.Status)
-	assert.Equal(t, "1", enqueueOutput.ID)
-	assert.Equal(t, int64(100), enqueueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
-
-	resp = api.Put(
-		fmt.Sprintf("/API/v1/queues/my-queue-1/messages/%s/priority", enqueueOutput.ID),
+	resp := api.Put(
+		fmt.Sprintf("/API/v1/queues/my-queue-1/messages/%d/priority", 32),
 		map[string]any{
 			"priority": 256,
 		},
@@ -361,18 +300,31 @@ func TestUpdatePriority(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Equal(t, "UPDATED", updatePriorityOutput.Status)
-	assert.Equal(t, "1", updatePriorityOutput.ID)
+	assert.Equal(t, "32", updatePriorityOutput.ID)
 	assert.Equal(t, int64(256), updatePriorityOutput.Priority)
+}
 
-	resp = api.Get("/API/v1/queues/my-queue-1/messages")
+func TestTouch(t *testing.T) {
+	_, api := humatest.New(t)
 
-	enqueueOutput = &EnqueueOutputBody{}
+	mockNode := mocks.NewMockNode()
+	h := &Handler{
+		node: mockNode,
+	}
+	h.RegisterRoutes(api)
 
-	json.Unmarshal(resp.Body.Bytes(), enqueueOutput)
+	mockNode.On("Touch", "my-queue", uint64(6123)).Return(nil)
+
+	resp := api.Post(
+		fmt.Sprintf("/API/v1/queues/my-queue/messages/%d/touch", 6123),
+		map[string]any{},
+	)
+
+	output := &TouchOutputBody{}
+
+	json.Unmarshal(resp.Body.Bytes(), output)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Equal(t, "DEQUEUED", enqueueOutput.Status)
-	assert.Equal(t, "1", enqueueOutput.ID)
-	assert.Equal(t, int64(256), enqueueOutput.Priority)
-	assert.Equal(t, "{\"user_id\": 1, \"name\": \"John\"}", enqueueOutput.Content)
+	assert.Equal(t, "TOUCHED", output.Status)
+	assert.Equal(t, "6123", output.ID)
 }

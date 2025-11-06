@@ -184,7 +184,7 @@ type GetInput struct {
 }
 
 type GetOutputBody struct {
-	Status   string            `json:"status" example:"DEQUEUED" doc:"Status of the dequeue operation"`
+	Status   string            `json:"status" example:"DEQUEUED" doc:"Status of the get operation"`
 	ID       string            `json:"id" doc:"ID of the message"`
 	Group    string            `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
 	Priority int64             `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
@@ -212,7 +212,7 @@ type AckInput struct {
 }
 
 type AckOutputBody struct {
-	Status string `json:"status" example:"ACKNOWLEDGED" doc:"Status of the dequeue operation"`
+	Status string `json:"status" example:"ACKNOWLEDGED" doc:"Status of the ack operation"`
 	ID     string `json:"id" doc:"ID of the message"`
 }
 
@@ -233,7 +233,7 @@ type NackInput struct {
 }
 
 type NackOutputBody struct {
-	Status   string            `json:"status" example:"UNACKNOWLEDGED" doc:"Status of the dequeue operation"`
+	Status   string            `json:"status" example:"UNACKNOWLEDGED" doc:"Status of the nack operation"`
 	ID       string            `json:"id" doc:"ID of the message"`
 	Priority int64             `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 	Metadata map[string]string `json:"metadata,omitempty" example:"{\"retry\": \"0\"}" doc:"Metadata of the message"`
@@ -242,6 +242,21 @@ type NackOutputBody struct {
 type NackOutput struct {
 	Status int
 	Body   NackOutputBody
+}
+
+type TouchInput struct {
+	QueueName string `path:"queue_name" maxLength:"1024" example:"user_indexing_queue" doc:"Name of the queue"`
+	ID        uint64 `path:"id" example:"123" doc:"ID of the message"`
+}
+
+type TouchOutputBody struct {
+	Status string `json:"status" example:"TOUCHED" doc:"Status of the touch operation"`
+	ID     string `json:"id" doc:"ID of the message"`
+}
+
+type TouchOutput struct {
+	Status int
+	Body   TouchOutputBody
 }
 
 type UpdatePriorityInputBody struct {
@@ -255,7 +270,7 @@ type UpdatePriorityInput struct {
 }
 
 type UpdatePriorityOutputBody struct {
-	Status   string `json:"status" example:"ENQUEUED" doc:"Status of the enqueue operation"`
+	Status   string `json:"status" example:"ENQUEUED" doc:"Status of the update priority operation"`
 	ID       string `json:"id" doc:"ID of the message"`
 	Priority int64  `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`
 }

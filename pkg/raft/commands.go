@@ -298,6 +298,38 @@ func (n *Node) Nack(QueueName string, id uint64, priority int64, metadata map[st
 	return nil
 }
 
+func (n *Node) Touch(QueueName string, id uint64) error {
+	req := &pb.TouchRequest{
+		QueueName: QueueName,
+		Id:        id,
+	}
+
+	if n.Raft.State() != raft.Leader {
+		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+
+		_, err := n.proxy.Touch(context.Background(), leaderGrpcAddr, req)
+		return err
+	}
+
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_Touch{Touch: req}}
+	data, err := proto.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+
+	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
+	if f.Error() != nil {
+		return f.Error()
+	}
+
+	r := f.Response().(*FSMResponse)
+	if r.error != nil {
+		return r.error
+	}
+
+	return nil
+}
+
 func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error {
 	req := &pb.UpdatePriorityRequest{
 		QueueName: queueName,

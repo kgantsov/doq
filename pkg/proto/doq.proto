@@ -23,6 +23,7 @@ service DOQ {
     rpc Ack(AckRequest) returns (AckResponse);
     rpc Nack(NackRequest) returns (NackResponse);
     rpc UpdatePriority(UpdatePriorityRequest) returns (UpdatePriorityResponse);
+    rpc Touch(TouchRequest) returns (TouchResponse);
 }
 
 message LeaderConfigChange {
@@ -232,6 +233,16 @@ message UpdatePriorityResponse {
     bool success = 1;
 }
 
+message TouchRequest {
+    string queueName = 1;
+    uint64 id = 2;
+}
+
+message TouchResponse {
+    bool success = 1;
+}
+
+
 message RaftCommand {
   oneof cmd {
     CreateQueueRequest createQueue = 1;
@@ -249,5 +260,6 @@ message RaftCommand {
     UpdatePriorityRequest updatePriority = 12;
 
     LeaderConfigChange leaderConfigChange = 13;
+    TouchRequest touch = 14;
   }
 }

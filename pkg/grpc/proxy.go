@@ -139,6 +139,17 @@ func (p *GRPCProxy) Nack(ctx context.Context, host string, req *pb.NackRequest) 
 	return p.client.Nack(ctx, req)
 }
 
+func (p *GRPCProxy) Touch(ctx context.Context, host string, req *pb.TouchRequest) (*pb.TouchResponse, error) {
+	log.Debug().Msgf("PROXY Touch: %+v to the leader node: %s", req, host)
+
+	if p.leader != host || p.client == nil {
+		if err := p.initClient(host); err != nil {
+			return &pb.TouchResponse{Success: false}, err
+		}
+	}
+	return p.client.Touch(ctx, req)
+}
+
 func (p *GRPCProxy) UpdatePriority(ctx context.Context, host string, req *pb.UpdatePriorityRequest) (*pb.UpdatePriorityResponse, error) {
 	log.Debug().Msgf("PROXY UpdatePriority: %+v to the leader node: %s", req, host)
 

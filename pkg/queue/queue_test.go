@@ -623,6 +623,54 @@ func TestQueueNack(t *testing.T) {
 	assert.EqualError(t, err, errors.ErrEmptyQueue.Error())
 }
 
+func TestQueueTouch(t *testing.T) {
+	tmpDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpDir)
+
+	opts := badger.DefaultOptions(tmpDir)
+	db, err := badger.Open(opts)
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+
+	pq := NewQueue(
+		storage.NewBadgerStore(db),
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
+		nil,
+	)
+	err = pq.CreateQueue("delayed", "test_queue", entity.QueueSettings{
+		AckTimeout: 1800,
+	})
+	assert.NoError(t, err)
+
+	m1, err := pq.Enqueue(1, "default", 10, "test 1", map[string]string{"retry": "0"})
+	assert.Nil(t, err)
+	assert.Equal(t, "test 1", m1.Content)
+	assert.Equal(t, int64(10), m1.Priority)
+
+	m1, err = pq.Dequeue(false)
+	assert.Nil(t, err)
+	assert.Equal(t, "test 1", m1.Content)
+
+	item := pq.ackQueue.Get("default", m1.ID)
+	assert.NotNil(t, item)
+	initialPriority := item.Priority
+
+	time.Sleep(1 * time.Second)
+	err = pq.Touch(m1.ID)
+	assert.NoError(t, err)
+
+	item1 := pq.ackQueue.Get("default", m1.ID)
+	assert.NotNil(t, item1)
+
+	assert.Greater(t, item1.Priority, initialPriority)
+
+	db.Close()
+}
+
 func BenchmarkQueueEnqueue(b *testing.B) {
 	tempFolder, _ := os.MkdirTemp("", "testdir")
 

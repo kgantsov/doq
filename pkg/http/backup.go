@@ -19,7 +19,7 @@ func (h *Handler) Backup(ctx context.Context, input *BackupInput) (*huma.StreamR
 
 			// Start streaming backup
 			writer := ctx.BodyWriter()
-			maxVersion, err := h.node.Backup(writer, 0)
+			maxVersion, err := h.node.Backup(writer, uint64(0))
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to create a backup")
 				return

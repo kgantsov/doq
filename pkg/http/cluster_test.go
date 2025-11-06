@@ -13,8 +13,10 @@ import (
 func TestJoin(t *testing.T) {
 	_, api := humatest.New(t)
 
+	mockNode := mocks.NewMockNode()
+
 	h := &Handler{
-		node: mocks.NewMockNode("", true),
+		node: mockNode,
 	}
 
 	h.RegisterRoutes(api)
@@ -24,6 +26,8 @@ func TestJoin(t *testing.T) {
 		Status int    `json:"status"`
 		Detail string `json:"detail"`
 	}
+
+	mockNode.On("Join", "node-1", "192.168.0.1").Return(nil)
 
 	resp := api.Post("/API/v1/cluster/join", map[string]any{
 		"id":   "node-1",

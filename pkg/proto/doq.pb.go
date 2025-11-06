@@ -2032,6 +2032,102 @@ func (x *UpdatePriorityResponse) GetSuccess() bool {
 	return false
 }
 
+type TouchRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	QueueName     string                 `protobuf:"bytes,1,opt,name=queueName,proto3" json:"queueName,omitempty"`
+	Id            uint64                 `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TouchRequest) Reset() {
+	*x = TouchRequest{}
+	mi := &file_pkg_proto_doq_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TouchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TouchRequest) ProtoMessage() {}
+
+func (x *TouchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_proto_doq_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TouchRequest.ProtoReflect.Descriptor instead.
+func (*TouchRequest) Descriptor() ([]byte, []int) {
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *TouchRequest) GetQueueName() string {
+	if x != nil {
+		return x.QueueName
+	}
+	return ""
+}
+
+func (x *TouchRequest) GetId() uint64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+type TouchResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TouchResponse) Reset() {
+	*x = TouchResponse{}
+	mi := &file_pkg_proto_doq_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TouchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TouchResponse) ProtoMessage() {}
+
+func (x *TouchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_proto_doq_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TouchResponse.ProtoReflect.Descriptor instead.
+func (*TouchResponse) Descriptor() ([]byte, []int) {
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *TouchResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
 type RaftCommand struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Cmd:
@@ -2049,6 +2145,7 @@ type RaftCommand struct {
 	//	*RaftCommand_Nack
 	//	*RaftCommand_UpdatePriority
 	//	*RaftCommand_LeaderConfigChange
+	//	*RaftCommand_Touch
 	Cmd           isRaftCommand_Cmd `protobuf_oneof:"cmd"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2056,7 +2153,7 @@ type RaftCommand struct {
 
 func (x *RaftCommand) Reset() {
 	*x = RaftCommand{}
-	mi := &file_pkg_proto_doq_proto_msgTypes[33]
+	mi := &file_pkg_proto_doq_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2068,7 +2165,7 @@ func (x *RaftCommand) String() string {
 func (*RaftCommand) ProtoMessage() {}
 
 func (x *RaftCommand) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_proto_doq_proto_msgTypes[33]
+	mi := &file_pkg_proto_doq_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2081,7 +2178,7 @@ func (x *RaftCommand) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RaftCommand.ProtoReflect.Descriptor instead.
 func (*RaftCommand) Descriptor() ([]byte, []int) {
-	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{33}
+	return file_pkg_proto_doq_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *RaftCommand) GetCmd() isRaftCommand_Cmd {
@@ -2208,6 +2305,15 @@ func (x *RaftCommand) GetLeaderConfigChange() *LeaderConfigChange {
 	return nil
 }
 
+func (x *RaftCommand) GetTouch() *TouchRequest {
+	if x != nil {
+		if x, ok := x.Cmd.(*RaftCommand_Touch); ok {
+			return x.Touch
+		}
+	}
+	return nil
+}
+
 type isRaftCommand_Cmd interface {
 	isRaftCommand_Cmd()
 }
@@ -2264,6 +2370,10 @@ type RaftCommand_LeaderConfigChange struct {
 	LeaderConfigChange *LeaderConfigChange `protobuf:"bytes,13,opt,name=leaderConfigChange,proto3,oneof"`
 }
 
+type RaftCommand_Touch struct {
+	Touch *TouchRequest `protobuf:"bytes,14,opt,name=touch,proto3,oneof"`
+}
+
 func (*RaftCommand_CreateQueue) isRaftCommand_Cmd() {}
 
 func (*RaftCommand_UpdateQueue) isRaftCommand_Cmd() {}
@@ -2289,6 +2399,8 @@ func (*RaftCommand_Nack) isRaftCommand_Cmd() {}
 func (*RaftCommand_UpdatePriority) isRaftCommand_Cmd() {}
 
 func (*RaftCommand_LeaderConfigChange) isRaftCommand_Cmd() {}
+
+func (*RaftCommand_Touch) isRaftCommand_Cmd() {}
 
 var File_pkg_proto_doq_proto protoreflect.FileDescriptor
 
@@ -2450,7 +2562,12 @@ const file_pkg_proto_doq_proto_rawDesc = "" +
 	"\x02id\x18\x02 \x01(\x04R\x02id\x12\x1a\n" +
 	"\bpriority\x18\x03 \x01(\x03R\bpriority\"2\n" +
 	"\x16UpdatePriorityResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\"\xe3\x05\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"<\n" +
+	"\fTouchRequest\x12\x1c\n" +
+	"\tqueueName\x18\x01 \x01(\tR\tqueueName\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\x04R\x02id\")\n" +
+	"\rTouchResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\"\x90\x06\n" +
 	"\vRaftCommand\x12=\n" +
 	"\vcreateQueue\x18\x01 \x01(\v2\x19.queue.CreateQueueRequestH\x00R\vcreateQueue\x12=\n" +
 	"\vupdateQueue\x18\x02 \x01(\v2\x19.queue.UpdateQueueRequestH\x00R\vupdateQueue\x12=\n" +
@@ -2465,8 +2582,9 @@ const file_pkg_proto_doq_proto_rawDesc = "" +
 	" \x01(\v2\x11.queue.AckRequestH\x00R\x03ack\x12(\n" +
 	"\x04nack\x18\v \x01(\v2\x12.queue.NackRequestH\x00R\x04nack\x12F\n" +
 	"\x0eupdatePriority\x18\f \x01(\v2\x1c.queue.UpdatePriorityRequestH\x00R\x0eupdatePriority\x12K\n" +
-	"\x12leaderConfigChange\x18\r \x01(\v2\x19.queue.LeaderConfigChangeH\x00R\x12leaderConfigChangeB\x05\n" +
-	"\x03cmd2\xb5\a\n" +
+	"\x12leaderConfigChange\x18\r \x01(\v2\x19.queue.LeaderConfigChangeH\x00R\x12leaderConfigChange\x12+\n" +
+	"\x05touch\x18\x0e \x01(\v2\x13.queue.TouchRequestH\x00R\x05touchB\x05\n" +
+	"\x03cmd2\xe9\a\n" +
 	"\x03DOQ\x12D\n" +
 	"\vGenerateIDs\x12\x19.queue.GenerateIDsRequest\x1a\x1a.queue.GenerateIDsResponse\x12D\n" +
 	"\vCreateQueue\x12\x19.queue.CreateQueueRequest\x1a\x1a.queue.CreateQueueResponse\x12D\n" +
@@ -2482,7 +2600,8 @@ const file_pkg_proto_doq_proto_rawDesc = "" +
 	"\x06Delete\x12\x14.queue.DeleteRequest\x1a\x15.queue.DeleteResponse\"\x00\x12,\n" +
 	"\x03Ack\x12\x11.queue.AckRequest\x1a\x12.queue.AckResponse\x12/\n" +
 	"\x04Nack\x12\x12.queue.NackRequest\x1a\x13.queue.NackResponse\x12M\n" +
-	"\x0eUpdatePriority\x12\x1c.queue.UpdatePriorityRequest\x1a\x1d.queue.UpdatePriorityResponseB)Z'github.com/kgantsov/doq/pkg/proto;protob\x06proto3"
+	"\x0eUpdatePriority\x12\x1c.queue.UpdatePriorityRequest\x1a\x1d.queue.UpdatePriorityResponse\x122\n" +
+	"\x05Touch\x12\x13.queue.TouchRequest\x1a\x14.queue.TouchResponseB)Z'github.com/kgantsov/doq/pkg/proto;protob\x06proto3"
 
 var (
 	file_pkg_proto_doq_proto_rawDescOnce sync.Once
@@ -2497,7 +2616,7 @@ func file_pkg_proto_doq_proto_rawDescGZIP() []byte {
 }
 
 var file_pkg_proto_doq_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pkg_proto_doq_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
+var file_pkg_proto_doq_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
 var file_pkg_proto_doq_proto_goTypes = []any{
 	(QueueSettings_Strategy)(0),    // 0: queue.QueueSettings.Strategy
 	(*LeaderConfigChange)(nil),     // 1: queue.LeaderConfigChange
@@ -2533,18 +2652,20 @@ var file_pkg_proto_doq_proto_goTypes = []any{
 	(*NackResponse)(nil),           // 31: queue.NackResponse
 	(*UpdatePriorityRequest)(nil),  // 32: queue.UpdatePriorityRequest
 	(*UpdatePriorityResponse)(nil), // 33: queue.UpdatePriorityResponse
-	(*RaftCommand)(nil),            // 34: queue.RaftCommand
-	nil,                            // 35: queue.Message.MetadataEntry
-	nil,                            // 36: queue.EnqueueRequest.MetadataEntry
-	nil,                            // 37: queue.EnqueueResponse.MetadataEntry
-	nil,                            // 38: queue.DequeueResponse.MetadataEntry
-	nil,                            // 39: queue.GetResponse.MetadataEntry
-	nil,                            // 40: queue.NackRequest.MetadataEntry
+	(*TouchRequest)(nil),           // 34: queue.TouchRequest
+	(*TouchResponse)(nil),          // 35: queue.TouchResponse
+	(*RaftCommand)(nil),            // 36: queue.RaftCommand
+	nil,                            // 37: queue.Message.MetadataEntry
+	nil,                            // 38: queue.EnqueueRequest.MetadataEntry
+	nil,                            // 39: queue.EnqueueResponse.MetadataEntry
+	nil,                            // 40: queue.DequeueResponse.MetadataEntry
+	nil,                            // 41: queue.GetResponse.MetadataEntry
+	nil,                            // 42: queue.NackRequest.MetadataEntry
 }
 var file_pkg_proto_doq_proto_depIdxs = []int32{
 	0,  // 0: queue.QueueSettings.strategy:type_name -> queue.QueueSettings.Strategy
 	4,  // 1: queue.Queue.settings:type_name -> queue.QueueSettings
-	35, // 2: queue.Message.metadata:type_name -> queue.Message.MetadataEntry
+	37, // 2: queue.Message.metadata:type_name -> queue.Message.MetadataEntry
 	5,  // 3: queue.SnapshotItem.queue:type_name -> queue.Queue
 	6,  // 4: queue.SnapshotItem.message:type_name -> queue.Message
 	7,  // 5: queue.SnapshotItem.leader_configuration:type_name -> queue.LeaderConfiguration
@@ -2553,11 +2674,11 @@ var file_pkg_proto_doq_proto_depIdxs = []int32{
 	4,  // 8: queue.GetQueueResponse.settings:type_name -> queue.QueueSettings
 	16, // 9: queue.GetQueueResponse.stats:type_name -> queue.Stats
 	17, // 10: queue.GetQueuesResponse.queues:type_name -> queue.GetQueueResponse
-	36, // 11: queue.EnqueueRequest.metadata:type_name -> queue.EnqueueRequest.MetadataEntry
-	37, // 12: queue.EnqueueResponse.metadata:type_name -> queue.EnqueueResponse.MetadataEntry
-	38, // 13: queue.DequeueResponse.metadata:type_name -> queue.DequeueResponse.MetadataEntry
-	39, // 14: queue.GetResponse.metadata:type_name -> queue.GetResponse.MetadataEntry
-	40, // 15: queue.NackRequest.metadata:type_name -> queue.NackRequest.MetadataEntry
+	38, // 11: queue.EnqueueRequest.metadata:type_name -> queue.EnqueueRequest.MetadataEntry
+	39, // 12: queue.EnqueueResponse.metadata:type_name -> queue.EnqueueResponse.MetadataEntry
+	40, // 13: queue.DequeueResponse.metadata:type_name -> queue.DequeueResponse.MetadataEntry
+	41, // 14: queue.GetResponse.metadata:type_name -> queue.GetResponse.MetadataEntry
+	42, // 15: queue.NackRequest.metadata:type_name -> queue.NackRequest.MetadataEntry
 	9,  // 16: queue.RaftCommand.createQueue:type_name -> queue.CreateQueueRequest
 	11, // 17: queue.RaftCommand.updateQueue:type_name -> queue.UpdateQueueRequest
 	13, // 18: queue.RaftCommand.deleteQueue:type_name -> queue.DeleteQueueRequest
@@ -2571,41 +2692,44 @@ var file_pkg_proto_doq_proto_depIdxs = []int32{
 	30, // 26: queue.RaftCommand.nack:type_name -> queue.NackRequest
 	32, // 27: queue.RaftCommand.updatePriority:type_name -> queue.UpdatePriorityRequest
 	1,  // 28: queue.RaftCommand.leaderConfigChange:type_name -> queue.LeaderConfigChange
-	2,  // 29: queue.DOQ.GenerateIDs:input_type -> queue.GenerateIDsRequest
-	9,  // 30: queue.DOQ.CreateQueue:input_type -> queue.CreateQueueRequest
-	11, // 31: queue.DOQ.UpdateQueue:input_type -> queue.UpdateQueueRequest
-	13, // 32: queue.DOQ.DeleteQueue:input_type -> queue.DeleteQueueRequest
-	15, // 33: queue.DOQ.GetQueue:input_type -> queue.GetQueueRequest
-	18, // 34: queue.DOQ.GetQueues:input_type -> queue.GetQueuesRequest
-	20, // 35: queue.DOQ.Enqueue:input_type -> queue.EnqueueRequest
-	20, // 36: queue.DOQ.EnqueueStream:input_type -> queue.EnqueueRequest
-	22, // 37: queue.DOQ.Dequeue:input_type -> queue.DequeueRequest
-	22, // 38: queue.DOQ.DequeueStream:input_type -> queue.DequeueRequest
-	24, // 39: queue.DOQ.Get:input_type -> queue.GetRequest
-	26, // 40: queue.DOQ.Delete:input_type -> queue.DeleteRequest
-	28, // 41: queue.DOQ.Ack:input_type -> queue.AckRequest
-	30, // 42: queue.DOQ.Nack:input_type -> queue.NackRequest
-	32, // 43: queue.DOQ.UpdatePriority:input_type -> queue.UpdatePriorityRequest
-	3,  // 44: queue.DOQ.GenerateIDs:output_type -> queue.GenerateIDsResponse
-	10, // 45: queue.DOQ.CreateQueue:output_type -> queue.CreateQueueResponse
-	12, // 46: queue.DOQ.UpdateQueue:output_type -> queue.UpdateQueueResponse
-	14, // 47: queue.DOQ.DeleteQueue:output_type -> queue.DeleteQueueResponse
-	17, // 48: queue.DOQ.GetQueue:output_type -> queue.GetQueueResponse
-	19, // 49: queue.DOQ.GetQueues:output_type -> queue.GetQueuesResponse
-	21, // 50: queue.DOQ.Enqueue:output_type -> queue.EnqueueResponse
-	21, // 51: queue.DOQ.EnqueueStream:output_type -> queue.EnqueueResponse
-	23, // 52: queue.DOQ.Dequeue:output_type -> queue.DequeueResponse
-	23, // 53: queue.DOQ.DequeueStream:output_type -> queue.DequeueResponse
-	25, // 54: queue.DOQ.Get:output_type -> queue.GetResponse
-	27, // 55: queue.DOQ.Delete:output_type -> queue.DeleteResponse
-	29, // 56: queue.DOQ.Ack:output_type -> queue.AckResponse
-	31, // 57: queue.DOQ.Nack:output_type -> queue.NackResponse
-	33, // 58: queue.DOQ.UpdatePriority:output_type -> queue.UpdatePriorityResponse
-	44, // [44:59] is the sub-list for method output_type
-	29, // [29:44] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	34, // 29: queue.RaftCommand.touch:type_name -> queue.TouchRequest
+	2,  // 30: queue.DOQ.GenerateIDs:input_type -> queue.GenerateIDsRequest
+	9,  // 31: queue.DOQ.CreateQueue:input_type -> queue.CreateQueueRequest
+	11, // 32: queue.DOQ.UpdateQueue:input_type -> queue.UpdateQueueRequest
+	13, // 33: queue.DOQ.DeleteQueue:input_type -> queue.DeleteQueueRequest
+	15, // 34: queue.DOQ.GetQueue:input_type -> queue.GetQueueRequest
+	18, // 35: queue.DOQ.GetQueues:input_type -> queue.GetQueuesRequest
+	20, // 36: queue.DOQ.Enqueue:input_type -> queue.EnqueueRequest
+	20, // 37: queue.DOQ.EnqueueStream:input_type -> queue.EnqueueRequest
+	22, // 38: queue.DOQ.Dequeue:input_type -> queue.DequeueRequest
+	22, // 39: queue.DOQ.DequeueStream:input_type -> queue.DequeueRequest
+	24, // 40: queue.DOQ.Get:input_type -> queue.GetRequest
+	26, // 41: queue.DOQ.Delete:input_type -> queue.DeleteRequest
+	28, // 42: queue.DOQ.Ack:input_type -> queue.AckRequest
+	30, // 43: queue.DOQ.Nack:input_type -> queue.NackRequest
+	32, // 44: queue.DOQ.UpdatePriority:input_type -> queue.UpdatePriorityRequest
+	34, // 45: queue.DOQ.Touch:input_type -> queue.TouchRequest
+	3,  // 46: queue.DOQ.GenerateIDs:output_type -> queue.GenerateIDsResponse
+	10, // 47: queue.DOQ.CreateQueue:output_type -> queue.CreateQueueResponse
+	12, // 48: queue.DOQ.UpdateQueue:output_type -> queue.UpdateQueueResponse
+	14, // 49: queue.DOQ.DeleteQueue:output_type -> queue.DeleteQueueResponse
+	17, // 50: queue.DOQ.GetQueue:output_type -> queue.GetQueueResponse
+	19, // 51: queue.DOQ.GetQueues:output_type -> queue.GetQueuesResponse
+	21, // 52: queue.DOQ.Enqueue:output_type -> queue.EnqueueResponse
+	21, // 53: queue.DOQ.EnqueueStream:output_type -> queue.EnqueueResponse
+	23, // 54: queue.DOQ.Dequeue:output_type -> queue.DequeueResponse
+	23, // 55: queue.DOQ.DequeueStream:output_type -> queue.DequeueResponse
+	25, // 56: queue.DOQ.Get:output_type -> queue.GetResponse
+	27, // 57: queue.DOQ.Delete:output_type -> queue.DeleteResponse
+	29, // 58: queue.DOQ.Ack:output_type -> queue.AckResponse
+	31, // 59: queue.DOQ.Nack:output_type -> queue.NackResponse
+	33, // 60: queue.DOQ.UpdatePriority:output_type -> queue.UpdatePriorityResponse
+	35, // 61: queue.DOQ.Touch:output_type -> queue.TouchResponse
+	46, // [46:62] is the sub-list for method output_type
+	30, // [30:46] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_pkg_proto_doq_proto_init() }
@@ -2618,7 +2742,7 @@ func file_pkg_proto_doq_proto_init() {
 		(*SnapshotItem_Message)(nil),
 		(*SnapshotItem_LeaderConfiguration)(nil),
 	}
-	file_pkg_proto_doq_proto_msgTypes[33].OneofWrappers = []any{
+	file_pkg_proto_doq_proto_msgTypes[35].OneofWrappers = []any{
 		(*RaftCommand_CreateQueue)(nil),
 		(*RaftCommand_UpdateQueue)(nil),
 		(*RaftCommand_DeleteQueue)(nil),
@@ -2632,6 +2756,7 @@ func file_pkg_proto_doq_proto_init() {
 		(*RaftCommand_Nack)(nil),
 		(*RaftCommand_UpdatePriority)(nil),
 		(*RaftCommand_LeaderConfigChange)(nil),
+		(*RaftCommand_Touch)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -2639,7 +2764,7 @@ func file_pkg_proto_doq_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pkg_proto_doq_proto_rawDesc), len(file_pkg_proto_doq_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   40,
+			NumMessages:   42,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -162,6 +162,26 @@ func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, erro
 	return res, nil
 }
 
+func (h *Handler) Touch(ctx context.Context, input *TouchInput) (*TouchOutput, error) {
+	queueName := input.QueueName
+
+	err := h.node.Touch(queueName, input.ID)
+
+	if err != nil {
+		return nil, huma.Error400BadRequest("Failed to ack a message from a queue", err)
+	}
+
+	res := &TouchOutput{
+		Status: http.StatusOK,
+		Body: TouchOutputBody{
+			Status: "TOUCHED",
+			ID:     strconv.Itoa(int(input.ID)),
+		},
+	}
+
+	return res, nil
+}
+
 func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput) (*UpdatePriorityOutput, error) {
 	queueName := input.QueueName
 	priority := input.Body.Priority

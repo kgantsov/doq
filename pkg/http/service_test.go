@@ -10,6 +10,7 @@ import (
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/mocks"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,9 +23,11 @@ func TestNew(t *testing.T) {
 		},
 	}
 
-	node := mocks.NewMockNode("", true)
+	node := mocks.NewMockNode()
+
+	node.On("PrometheusRegistry").Return(prometheus.NewRegistry())
+
 	service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
-	node.CreateQueue("delayed", "my-queue", entity.QueueSettings{})
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.router)
@@ -52,6 +55,21 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, tt.expectedCode, resp.StatusCode)
 		})
 	}
+
+	node.On(
+		"Enqueue",
+		"my-queue",
+		uint64(0),
+		"default",
+		int64(60),
+		`{"user_id": 1}`,
+		map[string]string(nil),
+	).Return(&entity.Message{
+		ID:       uint64(1),
+		Priority: 60,
+		Group:    "default",
+		Content:  `{"user_id": 1}`,
+	}, nil)
 
 	// check that the correct headers are set by middlewares
 	jsonBody := []byte(`{"content": "{\"user_id\": 1}", "priority": 60}`)

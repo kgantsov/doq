@@ -34,6 +34,7 @@ const (
 	DOQ_Ack_FullMethodName            = "/queue.DOQ/Ack"
 	DOQ_Nack_FullMethodName           = "/queue.DOQ/Nack"
 	DOQ_UpdatePriority_FullMethodName = "/queue.DOQ/UpdatePriority"
+	DOQ_Touch_FullMethodName          = "/queue.DOQ/Touch"
 )
 
 // DOQClient is the client API for DOQ service.
@@ -55,6 +56,7 @@ type DOQClient interface {
 	Ack(ctx context.Context, in *AckRequest, opts ...grpc.CallOption) (*AckResponse, error)
 	Nack(ctx context.Context, in *NackRequest, opts ...grpc.CallOption) (*NackResponse, error)
 	UpdatePriority(ctx context.Context, in *UpdatePriorityRequest, opts ...grpc.CallOption) (*UpdatePriorityResponse, error)
+	Touch(ctx context.Context, in *TouchRequest, opts ...grpc.CallOption) (*TouchResponse, error)
 }
 
 type dOQClient struct {
@@ -221,6 +223,16 @@ func (c *dOQClient) UpdatePriority(ctx context.Context, in *UpdatePriorityReques
 	return out, nil
 }
 
+func (c *dOQClient) Touch(ctx context.Context, in *TouchRequest, opts ...grpc.CallOption) (*TouchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TouchResponse)
+	err := c.cc.Invoke(ctx, DOQ_Touch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DOQServer is the server API for DOQ service.
 // All implementations must embed UnimplementedDOQServer
 // for forward compatibility.
@@ -240,6 +252,7 @@ type DOQServer interface {
 	Ack(context.Context, *AckRequest) (*AckResponse, error)
 	Nack(context.Context, *NackRequest) (*NackResponse, error)
 	UpdatePriority(context.Context, *UpdatePriorityRequest) (*UpdatePriorityResponse, error)
+	Touch(context.Context, *TouchRequest) (*TouchResponse, error)
 	mustEmbedUnimplementedDOQServer()
 }
 
@@ -294,6 +307,9 @@ func (UnimplementedDOQServer) Nack(context.Context, *NackRequest) (*NackResponse
 }
 func (UnimplementedDOQServer) UpdatePriority(context.Context, *UpdatePriorityRequest) (*UpdatePriorityResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdatePriority not implemented")
+}
+func (UnimplementedDOQServer) Touch(context.Context, *TouchRequest) (*TouchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Touch not implemented")
 }
 func (UnimplementedDOQServer) mustEmbedUnimplementedDOQServer() {}
 func (UnimplementedDOQServer) testEmbeddedByValue()             {}
@@ -564,6 +580,24 @@ func _DOQ_UpdatePriority_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DOQ_Touch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TouchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DOQServer).Touch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DOQ_Touch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DOQServer).Touch(ctx, req.(*TouchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DOQ_ServiceDesc is the grpc.ServiceDesc for DOQ service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -622,6 +656,10 @@ var DOQ_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdatePriority",
 			Handler:    _DOQ_UpdatePriority_Handler,
+		},
+		{
+			MethodName: "Touch",
+			Handler:    _DOQ_Touch_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -57,6 +57,7 @@ type Node interface {
 	Delete(QueueName string, id uint64) error
 	Ack(QueueName string, id uint64) error
 	Nack(QueueName string, id uint64, priority int64, metadata map[string]string) error
+	Touch(QueueName string, id uint64) error
 	UpdatePriority(queueName string, id uint64, priority int64) error
 	Backup(w io.Writer, since uint64) (uint64, error)
 	Restore(r io.Reader, maxPendingWrites int) error
@@ -313,6 +314,18 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Tags:        []string{"Messages"},
 		},
 		h.Nack,
+	)
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "touch",
+			Method:      http.MethodPost,
+			Path:        "/API/v1/queues/{queue_name}/messages/{id}/touch",
+			Summary:     "Touch a message",
+			Description: "Touch the message",
+			Tags:        []string{"Messages"},
+		},
+		h.Touch,
 	)
 	huma.Register(
 		api,

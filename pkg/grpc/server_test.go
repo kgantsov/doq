@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"testing"
 
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/http"
+	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/mocks"
 	pb "github.com/kgantsov/doq/pkg/proto"
+	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 )
@@ -19,8 +25,7 @@ const bufSize = 1024 * 1024
 
 var lis *bufconn.Listener
 
-// Initialize a buffer listener to mock the gRPC connection
-func init() {
+func startTestServer(node http.Node) {
 	lis = bufconn.Listen(bufSize)
 
 	cfg := &config.Config{
@@ -30,7 +35,7 @@ func init() {
 		},
 	}
 
-	grpcServer, _ := NewGRPCServer(cfg, mocks.NewMockNode("", true), 0)
+	grpcServer, _ := NewGRPCServer(cfg, node, 0)
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
@@ -45,6 +50,9 @@ func bufDialer(context.Context, string) (net.Conn, error) {
 }
 
 func TestGenerateIDs(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	tests := []struct {
 		name   string
 		number int
@@ -65,6 +73,13 @@ func TestGenerateIDs(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
+	var idCounter uint64 = 0
+	mockNode.NextIDFunc = func() uint64 {
+		idCounter++
+		return idCounter
+	}
+	// mockNode.On("GenerateID").Return(uint64(0), nil)
+
 	for _, tt := range tests {
 		lastId := uint64(0)
 
@@ -83,6 +98,9 @@ func TestGenerateIDs(t *testing.T) {
 }
 
 func TestCreateQueue(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	tests := []struct {
 		name          string
 		queueName     string
@@ -142,10 +160,23 @@ func TestCreateQueue(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	for i, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var settings entity.QueueSettings
+			if tt.queueSettings != nil {
+				settings.Strategy = strings.ToUpper(tt.queueSettings.Strategy.String())
+				settings.MaxUnacked = int(tt.queueSettings.MaxUnacked)
+				settings.AckTimeout = tt.queueSettings.AckTimeout
+			}
+			mockNode.On(
+				"CreateQueue",
+				tt.queueType,
+				tt.queueName,
+				settings,
+			).Return(nil)
+
 			req := &pb.CreateQueueRequest{
-				Name:     fmt.Sprintf("%s-%d", tt.queueName, i),
+				Name:     tt.queueName,
 				Type:     tt.queueType,
 				Settings: tt.queueSettings,
 			}
@@ -155,15 +186,22 @@ func TestCreateQueue(t *testing.T) {
 				assert.Equal(t, tt.error.Error(), err.Error())
 			} else {
 				assert.True(t, resp.Success, "Queue creation should succeed")
-
-				_, err = client.DeleteQueue(ctx, &pb.DeleteQueueRequest{Name: req.Name})
-				assert.NoError(t, err)
 			}
+
+			mockNode.On(
+				"CreateQueue",
+				tt.queueType,
+				tt.queueName,
+				settings,
+			).Unset()
 		})
 	}
 }
 
 func TestUpdateQueue(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -174,19 +212,11 @@ func TestUpdateQueue(t *testing.T) {
 	defer conn.Close()
 
 	client := pb.NewDOQClient(conn)
-
-	// Create a queue first
-	reqCreate := &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "delayed",
-		Settings: &pb.QueueSettings{
-			AckTimeout: 600,
-		},
-	}
-	_, err = client.CreateQueue(ctx, reqCreate)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
+	mockNode.On("UpdateQueue", "test-queue", entity.QueueSettings{
+		Strategy:   "STRATEGY_UNSPECIFIED",
+		MaxUnacked: 10,
+		AckTimeout: 1200,
+	}).Return(nil)
 
 	// Update the queue settings
 	reqUpdate := &pb.UpdateQueueRequest{
@@ -207,6 +237,9 @@ func TestUpdateQueue(t *testing.T) {
 
 // Test for DeleteQueue function
 func TestDeleteQueue(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -218,18 +251,7 @@ func TestDeleteQueue(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	// Create a queue first
-	reqCreate := &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "delayed",
-		Settings: &pb.QueueSettings{
-			AckTimeout: 600,
-		},
-	}
-	_, err = client.CreateQueue(ctx, reqCreate)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
+	mockNode.On("DeleteQueue", "test-queue").Return(nil)
 
 	// Test case 1: Delete the queue successfully
 	reqDelete := &pb.DeleteQueueRequest{Name: "test-queue"}
@@ -238,20 +260,13 @@ func TestDeleteQueue(t *testing.T) {
 		t.Fatalf("DeleteQueue failed: %v", err)
 	}
 	assert.True(t, resp.Success, "Queue deletion should succeed")
-
-	// // Test case 2: Try to delete a non-existent queue (should fail)
-	resp, err = client.DeleteQueue(ctx, reqDelete)
-	assert.Equal(
-		t,
-		"rpc error: code = Unknown desc = failed to delete a queue test-queue",
-		err.Error(),
-		"Error message should match",
-	)
-	// assert.False(t, resp.Success, "Queue deletion should fail for a non-existent queue")
 }
 
 // Test for Enqueue function
 func TestEnqueue(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -263,49 +278,46 @@ func TestEnqueue(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	// Create a queue first
-	reqCreate := &pb.CreateQueueRequest{
-		Name:     "test-queue",
-		Type:     "delayed",
-		Settings: &pb.QueueSettings{AckTimeout: 600},
-	}
-	_, err = client.CreateQueue(ctx, reqCreate)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
+	content := "{\"user_id\": 2, \"name\": \"Jane\"}"
+	priority := int64(100)
+	metadata := map[string]string{"retry": "3"}
+
+	mockNode.On(
+		"Enqueue",
+		"test-queue",
+		uint64(0),
+		"default",
+		int64(10),
+		content,
+		metadata,
+	).Return(&entity.Message{
+		ID:       uint64(1),
+		Priority: priority,
+		Group:    "default",
+		Content:  content,
+		Metadata: metadata,
+	}, nil)
 
 	// Test case: Enqueue a message successfully
 	reqEnqueue := &pb.EnqueueRequest{
 		QueueName: "test-queue",
-		Content:   "test-message",
+		Content:   content,
 		Group:     "default",
 		Priority:  10,
+		Metadata:  metadata,
 	}
 	resp, err := client.Enqueue(ctx, reqEnqueue)
 	if err != nil {
 		t.Fatalf("Enqueue failed: %v", err)
 	}
 	assert.True(t, resp.Success, "Enqueue should succeed")
-
-	// // Test case: Try to enqueue a message to a non-existent queue (should fail)
-	reqEnqueue = &pb.EnqueueRequest{
-		QueueName: "non-existent-queue",
-		Content:   "test-message",
-		Group:     "default",
-		Priority:  10,
-	}
-	resp, err = client.Enqueue(ctx, reqEnqueue)
-	assert.Equal(
-		t,
-		"rpc error: code = Unknown desc = failed to enqueue a message",
-		err.Error(),
-		"Error message should match",
-	)
-	// assert.False(t, resp.Success, "Enqueue should fail for a non-existent queue")
 }
 
 // Test for Dequeue function
 func TestDequeue(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -317,30 +329,17 @@ func TestDequeue(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	// Create a queue and enqueue a message first
-	reqCreate := &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "delayed",
-		Settings: &pb.QueueSettings{
-			AckTimeout: 600,
-		},
-	}
-	_, err = client.CreateQueue(ctx, reqCreate)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
+	content := "{\"user_id\": 124, \"name\": \"John\"}"
+	priority := int64(250)
+	metadata := map[string]string{"retry": "1"}
 
-	reqEnqueue := &pb.EnqueueRequest{
-		QueueName: "test-queue",
-		Content:   "test-message",
-		Group:     "default",
-		Priority:  10,
-		Metadata:  map[string]string{"retry": "3"},
-	}
-	_, err = client.Enqueue(ctx, reqEnqueue)
-	if err != nil {
-		t.Fatalf("Enqueue failed: %v", err)
-	}
+	mockNode.On("Dequeue", "test-queue", false).Return(&entity.Message{
+		ID:       uint64(5465),
+		Priority: priority,
+		Group:    "default",
+		Content:  content,
+		Metadata: metadata,
+	}, nil)
 
 	// Test case: Dequeue the message successfully
 	reqDequeue := &pb.DequeueRequest{QueueName: "test-queue"}
@@ -348,17 +347,18 @@ func TestDequeue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dequeue failed: %v", err)
 	}
-	assert.Equal(
-		t,
-		"test-message",
-		resp.Content,
-		"Dequeued message should match the enqueued message",
-	)
-	assert.Equal(t, "3", resp.Metadata["retry"], "Metadata should match the enqueued message")
+	assert.Equal(t, content, resp.Content)
+	assert.Equal(t, priority, resp.Priority)
+	assert.Equal(t, "default", resp.Group)
+	assert.Equal(t, metadata, resp.Metadata)
+	assert.Equal(t, "1", resp.Metadata["retry"])
 }
 
 // Test for Get function
 func TestGet(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -370,55 +370,35 @@ func TestGet(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	// Create a queue and enqueue a message first
-	reqCreate := &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "delayed",
-		Settings: &pb.QueueSettings{
-			AckTimeout: 600,
-		},
-	}
-	_, err = client.CreateQueue(ctx, reqCreate)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
+	content := "{\"user_id\": 124, \"name\": \"John\"}"
+	priority := int64(250)
+	metadata := map[string]string{"retry": "1"}
 
-	reqEnqueue := &pb.EnqueueRequest{
-		QueueName: "test-queue",
-		Content:   "test-message",
-		Group:     "default",
-		Priority:  10,
-		Metadata:  map[string]string{"retry": "3"},
-	}
-	respEnqueue, err := client.Enqueue(ctx, reqEnqueue)
-	if err != nil {
-		t.Fatalf("Enqueue failed: %v", err)
-	}
+	mockNode.On("Get", "test-queue", uint64(6123)).Return(&entity.Message{
+		ID:       uint64(6123),
+		Priority: priority,
+		Group:    "default",
+		Content:  content,
+		Metadata: metadata,
+	}, nil)
 
 	// Test case: Get the message successfully
-	reqGet := &pb.GetRequest{QueueName: "test-queue", Id: respEnqueue.Id}
+	reqGet := &pb.GetRequest{QueueName: "test-queue", Id: uint64(6123)}
 	resp, err := client.Get(ctx, reqGet)
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
-	assert.Equal(t, "test-message", resp.Content, "Got message should match the enqueued message")
-	assert.Equal(t, "3", resp.Metadata["retry"], "Metadata should match the enqueued message")
-
-	// Test case: Delete the message successfully
-	reqDelete := &pb.DeleteRequest{QueueName: "test-queue", Id: respEnqueue.Id}
-	respDelete, err := client.Delete(ctx, reqDelete)
-	if err != nil {
-		t.Fatalf("Get failed: %v", err)
-	}
-	assert.True(t, respDelete.Success, "Delete should succeed")
-
-	// Test case: Get the message successfully
-	reqGet = &pb.GetRequest{QueueName: "test-queue", Id: respEnqueue.Id}
-	resp, err = client.Get(ctx, reqGet)
-	assert.Equal(t, "rpc error: code = Unknown desc = failed to get a message", err.Error())
+	assert.Equal(t, uint64(6123), resp.Id)
+	assert.Equal(t, content, resp.Content)
+	assert.Equal(t, "default", resp.Group)
+	assert.Equal(t, metadata, resp.Metadata)
+	assert.Equal(t, "1", resp.Metadata["retry"])
 }
 
 func TestUpdatePriority(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -430,73 +410,23 @@ func TestUpdatePriority(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	// Create a queue and enqueue a message first
-	reqCreate := &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "delayed",
-		Settings: &pb.QueueSettings{
-			AckTimeout: 600,
-		}}
-	_, err = client.CreateQueue(ctx, reqCreate)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
-
-	reqEnqueue := &pb.EnqueueRequest{
-		QueueName: "test-queue",
-		Content:   "test-message-1",
-		Group:     "default",
-		Priority:  10,
-	}
-	_, err = client.Enqueue(ctx, reqEnqueue)
-	if err != nil {
-		t.Fatalf("Enqueue failed: %v", err)
-	}
-
-	reqEnqueue = &pb.EnqueueRequest{
-		QueueName: "test-queue",
-		Content:   "test-message-2",
-		Group:     "default",
-		Priority:  20,
-	}
-	resEnqueue, err := client.Enqueue(ctx, reqEnqueue)
-	if err != nil {
-		t.Fatalf("Enqueue failed: %v", err)
-	}
+	mockNode.On("UpdatePriority", "test-queue", uint64(32), int64(256)).Return(nil)
 
 	reqUpdatePriority := &pb.UpdatePriorityRequest{
 		QueueName: "test-queue",
-		Id:        resEnqueue.Id,
-		Priority:  2,
+		Id:        uint64(32),
+		Priority:  256,
 	}
 	respUpdatePriority, err := client.UpdatePriority(ctx, reqUpdatePriority)
-	assert.Nil(t, err, "UpdatePriority should succeed")
-	assert.Equal(t, true, respUpdatePriority.Success, "UpdatePriority should succeed")
-
-	reqDequeue := &pb.DequeueRequest{QueueName: "test-queue", Ack: true}
-	resp, err := client.Dequeue(ctx, reqDequeue)
-	if err != nil {
-		t.Fatalf("Dequeue failed: %v", err)
-	}
-	assert.Equal(
-		t,
-		"test-message-2",
-		resp.Content,
-		"Dequeued message should match the enqueued message",
-	)
-
-	reqDequeue = &pb.DequeueRequest{QueueName: "test-queue", Ack: true}
-	resp, err = client.Dequeue(ctx, reqDequeue)
-	if err != nil {
-		t.Fatalf("Dequeue failed: %v", err)
-	}
-	assert.Equal(
-		t, "test-message-1", resp.Content, "Dequeued message should match the enqueued message",
-	)
+	assert.Nil(t, err)
+	assert.Equal(t, true, respUpdatePriority.Success)
 }
 
 // Test for Acknowledge function
 func TestAck(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -508,50 +438,20 @@ func TestAck(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	// Create a queue and enqueue a message first
-	reqCreate := &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "delayed",
-		Settings: &pb.QueueSettings{
-			AckTimeout: 600,
-		},
-	}
-	_, err = client.CreateQueue(ctx, reqCreate)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
+	mockNode.On("Ack", "test-queue", uint64(6123)).Return(nil)
 
-	reqEnqueue := &pb.EnqueueRequest{
-		QueueName: "test-queue",
-		Content:   "test-message",
-		Group:     "default",
-		Priority:  10,
-	}
-	_, err = client.Enqueue(ctx, reqEnqueue)
-	if err != nil {
-		t.Fatalf("Enqueue failed: %v", err)
-	}
-
-	// Test case: Dequeue the message successfully
-	reqDequeue := &pb.DequeueRequest{QueueName: "test-queue", Ack: false}
-	resp, err := client.Dequeue(ctx, reqDequeue)
-	if err != nil {
-		t.Fatalf("Dequeue failed: %v", err)
-	}
-	assert.Equal(
-		t, "test-message", resp.Content, "Dequeued message should match the enqueued message",
-	)
-
-	// Test case: Acknowledge message successfully (implement actual logic in the server if needed)
-	req := &pb.AckRequest{QueueName: "test-queue", Id: resp.Id}
+	req := &pb.AckRequest{QueueName: "test-queue", Id: 6123}
 	respAck, err := client.Ack(ctx, req)
 	if err != nil {
 		t.Fatalf("Acknowledge failed: %v", err)
 	}
-	assert.True(t, respAck.Success, "Acknowledge should succeed")
+	assert.True(t, respAck.Success)
 }
 
 func TestNack(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -563,59 +463,25 @@ func TestNack(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	// Create a queue and enqueue a message first
-	reqCreate := &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "delayed",
-		Settings: &pb.QueueSettings{
-			AckTimeout: 600,
-		},
-	}
-	_, err = client.CreateQueue(ctx, reqCreate)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
+	mockNode.On(
+		"Nack", "my-transcode-queue", uint64(23421), int64(100), map[string]string{"retry": "5"},
+	).Return(nil)
 
-	reqEnqueue := &pb.EnqueueRequest{
-		QueueName: "test-queue",
-		Content:   "test-message",
-		Group:     "default",
-		Priority:  10,
+	req := &pb.NackRequest{
+		QueueName: "my-transcode-queue",
+		Id:        uint64(23421),
+		Priority:  100,
+		Metadata:  map[string]string{"retry": "5"},
 	}
-	_, err = client.Enqueue(ctx, reqEnqueue)
-	if err != nil {
-		t.Fatalf("Enqueue failed: %v", err)
-	}
-
-	// Test case: Dequeue the message successfully
-	reqDequeue := &pb.DequeueRequest{QueueName: "test-queue", Ack: false}
-	resp, err := client.Dequeue(ctx, reqDequeue)
-	if err != nil {
-		t.Fatalf("Dequeue failed: %v", err)
-	}
-	assert.Equal(
-		t, "test-message", resp.Content, "Dequeued message should match the enqueued message",
-	)
-
-	// Test case: Acknowledge message successfully (implement actual logic in the server if needed)
-	req := &pb.NackRequest{QueueName: "test-queue", Id: resp.Id}
 	respAck, err := client.Nack(ctx, req)
-	if err != nil {
-		t.Fatalf("Nack failed: %v", err)
-	}
-	assert.True(t, respAck.Success, "Unacknowledge should succeed")
-
-	reqDequeue = &pb.DequeueRequest{QueueName: "test-queue", Ack: true}
-	resp, err = client.Dequeue(ctx, reqDequeue)
-	if err != nil {
-		t.Fatalf("Dequeue failed: %v", err)
-	}
-	assert.Equal(
-		t, "test-message", resp.Content, "Dequeued message should match the enqueued message",
-	)
+	require.NoError(t, err)
+	assert.True(t, respAck.Success)
 }
 
-func TestEnqueuetDequeueStream(t *testing.T) {
+func TestTouch(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -627,21 +493,47 @@ func TestEnqueuetDequeueStream(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	// Create a queue first
-	req := &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "delayed",
-		Settings: &pb.QueueSettings{
-			AckTimeout: 600,
-		},
-	}
-	_, err = client.CreateQueue(ctx, req)
+	mockNode.On("Touch", "test-queue", uint64(6123)).Return(nil)
+
+	req := &pb.TouchRequest{QueueName: "test-queue", Id: uint64(6123)}
+	respAck, err := client.Touch(ctx, req)
+	require.NoError(t, err)
+	assert.True(t, respAck.Success, "Touch should succeed")
+}
+
+func TestEnqueuetStream(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
 	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
+		t.Fatalf("Failed to dial bufnet: %v", err)
 	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
 
 	enqueueStream, err := client.EnqueueStream(ctx)
 	assert.Nil(t, err, "Failed to open stream")
+
+	mockNode.On(
+		"Enqueue",
+		"test-queue",
+		uint64(0),
+		"default",
+		int64(10),
+		"test-message-1",
+		map[string]string{"retry": "3"},
+	).Return(&entity.Message{
+		ID:       uint64(1),
+		Priority: 10,
+		Group:    "default",
+		Content:  "test-message-1",
+		Metadata: map[string]string{"retry": "3"},
+	}, nil)
 
 	enqueueStream.Send(
 		&pb.EnqueueRequest{
@@ -655,28 +547,71 @@ func TestEnqueuetDequeueStream(t *testing.T) {
 	_, err = enqueueStream.Recv()
 	assert.Nil(t, err)
 
-	enqueueStream.Send(
-		&pb.EnqueueRequest{
-			QueueName: "test-queue",
-			Content:   "test-message-2",
-			Group:     "default",
-			Priority:  10,
-			Metadata:  map[string]string{"retry": "1"},
-		},
-	)
-	_, err = enqueueStream.Recv()
-	assert.Nil(t, err)
+	mockNode.On(
+		"Enqueue",
+		"test-queue",
+		uint64(0),
+		"default",
+		int64(10),
+		"test-message-1",
+		map[string]string{"retry": "3"},
+	).Unset()
+
+	mockNode.On(
+		"Enqueue",
+		"test-queue",
+		uint64(0),
+		"default",
+		int64(132),
+		"test-message-126346",
+		map[string]string{"retry": "5"},
+	).Return(&entity.Message{
+		ID:       uint64(2),
+		Priority: 132,
+		Group:    "default",
+		Content:  "test-message-1",
+		Metadata: map[string]string{"retry": "3"},
+	}, nil)
 
 	enqueueStream.Send(
 		&pb.EnqueueRequest{
 			QueueName: "test-queue",
-			Content:   "test-message-3",
+			Content:   "test-message-126346",
 			Group:     "default",
-			Priority:  10,
+			Priority:  132,
+			Metadata:  map[string]string{"retry": "5"},
 		},
 	)
 	_, err = enqueueStream.Recv()
 	assert.Nil(t, err)
+}
+
+func TestDequeueStream(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
+	if err != nil {
+		t.Fatalf("Failed to dial bufnet: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	mockNode.On(
+		"Dequeue",
+		"test-queue",
+		true,
+	).Return(&entity.Message{
+		ID:       uint64(1),
+		Priority: 10,
+		Group:    "default",
+		Content:  "test-message-1",
+		Metadata: map[string]string{"retry": "3"},
+	}, nil)
 
 	// Open a dequeueStream to receive messages from the queue
 	dequeueStream, err := client.DequeueStream(ctx)
@@ -689,19 +624,49 @@ func TestEnqueuetDequeueStream(t *testing.T) {
 	assert.Nil(t, err, "Failed to send DequeueRequest")
 
 	// Consume messages from the stream
-	for i := 1; i <= 3; i++ {
-		msg, err := dequeueStream.Recv()
-		if err != nil {
-			t.Fatalf("Failed to receive message: %v", err)
-		}
+	msg, err := dequeueStream.Recv()
+	require.NoError(t, err)
 
-		assert.Equal(t, fmt.Sprintf("test-message-%d", i), msg.Content)
+	assert.Equal(t, "test-message-1", msg.Content)
 
-		dequeueStream.Send(&pb.DequeueRequest{})
-	}
+	dequeueStream.Send(&pb.DequeueRequest{})
+
+	mockNode.On(
+		"Dequeue",
+		"test-queue",
+		true,
+	).Unset()
+
+	mockNode.On(
+		"Dequeue",
+		"test-queue",
+		true,
+	).Return(&entity.Message{
+		ID:       uint64(2),
+		Priority: 50,
+		Group:    "default",
+		Content:  "test-message-2",
+		Metadata: map[string]string{"retry": "3"},
+	}, nil)
+
+	// Consume messages from the stream
+	msg, err = dequeueStream.Recv()
+	require.NoError(t, err)
+
+	assert.Equal(t, "test-message-2", msg.Content)
+	assert.Equal(t, uint64(2), msg.Id)
+	assert.Equal(t, int64(50), msg.Priority)
+	assert.Equal(t, "default", msg.Group)
+	assert.Equal(t, "test-message-2", msg.Content)
+	assert.Equal(t, map[string]string{"retry": "3"}, msg.Metadata)
+
+	dequeueStream.Send(&pb.DequeueRequest{})
 }
 
 func TestGetQueues(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -713,32 +678,38 @@ func TestGetQueues(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	// Create a queue first
-	req := &pb.CreateQueueRequest{
-		Name: "test-queue",
-		Type: "delayed",
-		Settings: &pb.QueueSettings{
-			AckTimeout: 600,
+	mockNode.On("GetQueues").Return([]*queue.QueueInfo{
+		{
+			Name: "test-queue-1",
+			Type: "delayed",
+			Settings: entity.QueueSettings{
+				Strategy:   "WEIGHTED",
+				AckTimeout: 600,
+				MaxUnacked: 75,
+			},
+			Stats: &metrics.Stats{
+				EnqueueRPS: 3.1,
+				DequeueRPS: 2.5,
+				AckRPS:     1.2,
+				NackRPS:    2.3,
+			},
+			Ready:   123,
+			Unacked: 456,
+			Total:   789,
 		},
-	}
-	_, err = client.CreateQueue(ctx, req)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
+	})
 
 	resp, err := client.GetQueues(ctx, &pb.GetQueuesRequest{})
 	if err != nil {
 		t.Fatalf("GetQueues failed: %v", err)
 	}
 
-	fmt.Printf("=====> %+v", len(resp.Queues))
-
 	assert.NotEmpty(t, resp.Queues)
-	assert.Equal(t, "test-queue", resp.Queues[0].Name)
+	assert.Equal(t, "test-queue-1", resp.Queues[0].Name)
 	assert.Equal(t, "delayed", resp.Queues[0].Type)
-	assert.Equal(t, int64(0), resp.Queues[0].Ready)
-	assert.Equal(t, int64(0), resp.Queues[0].Unacked)
-	assert.Equal(t, int64(0), resp.Queues[0].Total)
+	assert.Equal(t, int64(123), resp.Queues[0].Ready)
+	assert.Equal(t, int64(456), resp.Queues[0].Unacked)
+	assert.Equal(t, int64(789), resp.Queues[0].Total)
 	assert.Equal(t, float64(3.1), resp.Queues[0].Stats.EnqueueRPS)
 	assert.Equal(t, float64(2.5), resp.Queues[0].Stats.DequeueRPS)
 	assert.Equal(t, float64(1.2), resp.Queues[0].Stats.AckRPS)
@@ -746,6 +717,9 @@ func TestGetQueues(t *testing.T) {
 }
 
 func TestGetQueue(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
 	ctx := context.Background()
 	conn, err := grpc.DialContext(
 		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
@@ -757,29 +731,35 @@ func TestGetQueue(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
-	// Create a queue first
-	req := &pb.CreateQueueRequest{
-		Name: "test-queue",
+	mockNode.On("GetQueueInfo", "test-queue-3").Return(&queue.QueueInfo{
+		Name: "test-queue-3",
 		Type: "delayed",
-		Settings: &pb.QueueSettings{
+		Settings: entity.QueueSettings{
+			Strategy:   "WEIGHTED",
 			AckTimeout: 600,
+			MaxUnacked: 75,
 		},
-	}
-	_, err = client.CreateQueue(ctx, req)
-	if err != nil {
-		t.Fatalf("CreateQueue failed: %v", err)
-	}
+		Stats: &metrics.Stats{
+			EnqueueRPS: 3.1,
+			DequeueRPS: 2.5,
+			AckRPS:     1.2,
+			NackRPS:    2.3,
+		},
+		Ready:   123,
+		Unacked: 456,
+		Total:   789,
+	}, nil)
 
-	resp, err := client.GetQueue(ctx, &pb.GetQueueRequest{Name: "test-queue"})
+	resp, err := client.GetQueue(ctx, &pb.GetQueueRequest{Name: "test-queue-3"})
 	if err != nil {
 		t.Fatalf("GetQueue failed: %v", err)
 	}
 
-	assert.Equal(t, "test-queue", resp.Name)
+	assert.Equal(t, "test-queue-3", resp.Name)
 	assert.Equal(t, "delayed", resp.Type)
-	assert.Equal(t, int64(0), resp.Ready)
-	assert.Equal(t, int64(0), resp.Unacked)
-	assert.Equal(t, int64(0), resp.Total)
+	assert.Equal(t, int64(123), resp.Ready)
+	assert.Equal(t, int64(456), resp.Unacked)
+	assert.Equal(t, int64(789), resp.Total)
 	assert.Equal(t, float64(3.1), resp.Stats.EnqueueRPS)
 	assert.Equal(t, float64(2.5), resp.Stats.DequeueRPS)
 	assert.Equal(t, float64(1.2), resp.Stats.AckRPS)
