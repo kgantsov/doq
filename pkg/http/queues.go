@@ -14,7 +14,11 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 	queueType := input.Body.Type
 	queueSettings := input.Body.Settings
 
-	err := h.node.CreateQueue(queueType, queueName, entity.QueueSettings{})
+	err := h.node.CreateQueue(queueType, queueName, entity.QueueSettings{
+		Strategy:   strings.ToUpper(queueSettings.Strategy),
+		MaxUnacked: queueSettings.MaxUnacked,
+		AckTimeout: queueSettings.AckTimeout,
+	})
 
 	if err != nil {
 		return nil, huma.Error409Conflict("Failed to enqueue a message", err)
