@@ -2,6 +2,7 @@ import {
   Field,
   Button,
   Input,
+  NumberInput,
   Progress,
   Box,
   Select,
@@ -99,11 +100,15 @@ const CreateQueueModal = ({
 
               <Field.Root invalid={isError}>
                 <Field.Label>Acknowledgement Timeout</Field.Label>
-                <Input
-                  onChange={(e) => setAckTimeout(Number(e.target.value))}
-                  value={ackTimeout}
-                  type="number"
-                ></Input>
+                <NumberInput.Root
+                  width="100%"
+                  value={ackTimeout.toString()}
+                  onValueChange={(e) => setAckTimeout(Number(e.value))}
+                  min={60}
+                >
+                  <NumberInput.Control />
+                  <NumberInput.Input />
+                </NumberInput.Root>
               </Field.Root>
 
               <Field.Root invalid={isError}>
@@ -175,11 +180,15 @@ const CreateQueueModal = ({
 
                   <Field.Root invalid={isError}>
                     <Field.Label>Max Unacked</Field.Label>
-                    <Input
-                      onChange={(e) => setMaxUnacked(Number(e.target.value))}
-                      value={maxUnacked}
-                      type="number"
-                    ></Input>
+                    <NumberInput.Root
+                      width="100%"
+                      value={maxUnacked.toString()}
+                      onValueChange={(e) => setMaxUnacked(Number(e.value))}
+                      min={0}
+                    >
+                      <NumberInput.Control />
+                      <NumberInput.Input />
+                    </NumberInput.Root>
                   </Field.Root>
                 </Fieldset.Root>
               ) : (
