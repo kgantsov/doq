@@ -257,7 +257,7 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 	config.SnapshotThreshold = 8192
 	config.LocalID = raft.ServerID(nodeID)
 	config.LogLevel = "DEBUG"
-	config.Logger = logger.NewZeroHCLLogger("raft", hclog.LevelFromString(n.cfg.Logging.LogLevel))
+	config.Logger = logger.NewZeroHCLLogger("raft", hclog.LevelFromString(n.cfg.Logging.Level))
 
 	bindAddr := raftPort
 	transport, err := raft.NewTCPTransport(bindAddr, nil, 3, 10*time.Second, os.Stderr)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/danielgtaylor/huma/v2"
@@ -14,7 +15,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/healthcheck"
 	"github.com/gofiber/fiber/v2/middleware/helmet"
-	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/monitor"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
@@ -65,7 +65,13 @@ type Node interface {
 
 // New returns an uninitialized HTTP service.
 func NewHttpService(config *config.Config, node Node, indexHtmlFS embed.FS, frontendFS embed.FS) *Service {
-	router := fiber.New()
+	cfg := fiber.Config{}
+
+	if strings.ToUpper(config.Logging.Mode) != "CONSOLE" {
+		cfg.DisableStartupMessage = true
+	}
+
+	router := fiber.New(cfg)
 
 	api := humafiber.New(
 		router, huma.DefaultConfig("DOQ a distributed priority queue servie", "1.0.0"),
@@ -101,12 +107,6 @@ func NewHttpService(config *config.Config, node Node, indexHtmlFS embed.FS, fron
 }
 
 func (h *Handler) ConfigureMiddleware(router *fiber.App) {
-	router.Use(logger.New(logger.Config{
-		TimeFormat: "2006-01-02T15:04:05.999Z0700",
-		TimeZone:   "Local",
-		Format:     "${time} [INFO] ${locals:requestid} ${method} ${path} ${status} ${latency} ${error}​\n",
-	}))
-
 	router.Use(healthcheck.New())
 	router.Use(helmet.New())
 

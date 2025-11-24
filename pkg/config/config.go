@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -27,7 +28,8 @@ type PrometheusConfig struct {
 }
 
 type LoggingConfig struct {
-	LogLevel string `mapstructure:"level"`
+	Mode  string `mapstructure:"mode"`
+	Level string `mapstructure:"level"`
 }
 
 type HttpConfig struct {
@@ -143,6 +145,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	rootCmd.Flags().Bool("profiling.enabled", false, "Enable profiling")
 	rootCmd.Flags().Int32("profiling.port", 6060, "Profiling port")
 	rootCmd.Flags().String("prometheus.enabled", "false", "Enable Prometheus")
+	rootCmd.Flags().String("logging.mode", "console", "Log mode. Can be one of console, stackdriver")
 	rootCmd.Flags().String("logging.level", "warning", "Log level")
 	rootCmd.Flags().String("http.port", "8000", "Port to run the HTTP server on")
 	rootCmd.Flags().String("grpc.address", "", "Address to run the GRPC server on")
@@ -173,6 +176,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	viper.BindPFlag("profiling.enabled", rootCmd.Flags().Lookup("profiling.enabled"))
 	viper.BindPFlag("profiling.port", rootCmd.Flags().Lookup("profiling.port"))
 	viper.BindPFlag("prometheus.enabled", rootCmd.Flags().Lookup("prometheus.enabled"))
+	viper.BindPFlag("logging.mode", rootCmd.Flags().Lookup("logging.mode"))
 	viper.BindPFlag("logging.level", rootCmd.Flags().Lookup("logging.level"))
 	viper.BindPFlag("http.port", rootCmd.Flags().Lookup("http.port"))
 	viper.BindPFlag("grpc.address", rootCmd.Flags().Lookup("grpc.address"))
@@ -206,7 +210,34 @@ func (config *Config) ConfigureLogger() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
 
-	logLevel, err := zerolog.ParseLevel(config.Logging.LogLevel)
+	if strings.ToUpper(config.Logging.Mode) == "STACKDRIVER" {
+		log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
+
+		zerolog.LevelFieldName = "severity"
+		zerolog.TimestampFieldName = "time"
+
+		zerolog.LevelFieldMarshalFunc = func(level zerolog.Level) string {
+			severity := map[zerolog.Level]string{
+				zerolog.DebugLevel: "DEBUG",
+				zerolog.InfoLevel:  "INFO",
+				zerolog.WarnLevel:  "WARNING",
+				zerolog.ErrorLevel: "ERROR",
+				zerolog.FatalLevel: "CRITICAL",
+				zerolog.PanicLevel: "EMERGENCY",
+			}[level]
+			return severity
+		}
+
+	} else {
+		log.Logger = log.Output(
+			zerolog.ConsoleWriter{
+				Out:        os.Stderr,
+				TimeFormat: time.RFC3339Nano,
+			},
+		)
+	}
+
+	logLevel, err := zerolog.ParseLevel(config.Logging.Level)
 	if err != nil {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	} else {
