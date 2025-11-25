@@ -214,7 +214,7 @@ func (config *Config) ConfigureLogger() {
 		log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 		zerolog.LevelFieldName = "severity"
-		zerolog.TimestampFieldName = "time"
+		zerolog.TimestampFieldName = "date"
 
 		zerolog.LevelFieldMarshalFunc = func(level zerolog.Level) string {
 			severity := map[zerolog.Level]string{
