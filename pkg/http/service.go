@@ -11,6 +11,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humafiber"
 	"github.com/gofiber/fiber/v2"
+	"github.com/rs/zerolog/log"
 
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/fiber/v2/middleware/healthcheck"
@@ -372,5 +373,6 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 
 // Start starts the service.
 func (s *Service) Start() error {
+	log.Info().Msg("Starting http server")
 	return s.router.Listen(fmt.Sprintf(":%s", s.addr))
 }
