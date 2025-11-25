@@ -208,13 +208,13 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 
 func (config *Config) ConfigureLogger() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixNano
+	zerolog.TimeFieldFormat = time.RFC3339Nano
 
 	if strings.ToUpper(config.Logging.Mode) == "STACKDRIVER" {
 		log.Logger = zerolog.New(os.Stdout).With().Timestamp().Logger()
 
 		zerolog.LevelFieldName = "severity"
-		zerolog.TimestampFieldName = "date"
+		zerolog.TimestampFieldName = "time"
 
 		zerolog.LevelFieldMarshalFunc = func(level zerolog.Level) string {
 			severity := map[zerolog.Level]string{
