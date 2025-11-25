@@ -2,6 +2,7 @@ package raft
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"sort"
 	"time"
@@ -176,6 +177,7 @@ func (n *Node) ListenToLeaderChanges() {
 	for isLeader := range n.Raft.LeaderCh() {
 		if isLeader {
 			log.Info().Msgf("Node %s has become a leader", n.id)
+			// Notify the leader configuration
 			n.NotifyLeaderConfiguration()
 		} else {
 			log.Info().Msgf("Node %s lost leadership", n.id)
@@ -239,12 +241,14 @@ func (n *Node) GetServers() ([]*entity.Server, error) {
 
 	var servers []*entity.Server
 
+	leaderAddr := n.leaderConfig.GetLeaderRaftAddress()
+
 	for _, server := range future.Configuration().Servers {
 		servers = append(servers, &entity.Server{
 			Id:         string(server.ID),
 			Addr:       string(server.Address),
-			LeaderAddr: string(n.Raft.Leader()),
-			IsLeader:   n.Raft.Leader() == server.Address,
+			LeaderAddr: string(leaderAddr),
+			IsLeader:   leaderAddr == string(server.Address),
 			Suffrage:   server.Suffrage.String(),
 		})
 	}
@@ -309,9 +313,24 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 	if len(configFuture.Configuration().Servers) == 0 {
 		servers := make([]raft.Server, 0)
 
+		host, _, err := net.SplitHostPort(string(config.LocalID))
+		if err != nil {
+			log.Warn().Msgf(
+				"Error splitting host and port for config.LocalID: %s %v\n", config.LocalID, err,
+			)
+			host = "localhost"
+		}
+
+		_, raftPort, err := net.SplitHostPort(string(transport.LocalAddr()))
+		if err != nil {
+			log.Warn().Msgf(
+				"Error splitting host and port for raftAddr: %s %v\n", transport.LocalAddr(), err,
+			)
+		}
+
 		servers = append(servers, raft.Server{
 			ID:      config.LocalID,
-			Address: transport.LocalAddr(),
+			Address: raft.ServerAddress(fmt.Sprintf("%s:%s", host, raftPort)),
 		})
 
 		log.Info().Msgf("BootstrapCluster %s joining peers: %v", nodeID, servers)

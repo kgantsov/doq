@@ -75,6 +75,7 @@ type LeaderConfigChange struct {
 	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	RaftAddr      string                 `protobuf:"bytes,2,opt,name=raft_addr,json=raftAddr,proto3" json:"raft_addr,omitempty"`
 	GrpcAddr      string                 `protobuf:"bytes,3,opt,name=grpc_addr,json=grpcAddr,proto3" json:"grpc_addr,omitempty"`
+	HttpAddr      string                 `protobuf:"bytes,4,opt,name=http_addr,json=httpAddr,proto3" json:"http_addr,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -126,6 +127,13 @@ func (x *LeaderConfigChange) GetRaftAddr() string {
 func (x *LeaderConfigChange) GetGrpcAddr() string {
 	if x != nil {
 		return x.GrpcAddr
+	}
+	return ""
+}
+
+func (x *LeaderConfigChange) GetHttpAddr() string {
+	if x != nil {
+		return x.HttpAddr
 	}
 	return ""
 }
@@ -427,6 +435,7 @@ type LeaderConfiguration struct {
 	NodeId        string                 `protobuf:"bytes,1,opt,name=node_id,json=nodeId,proto3" json:"node_id,omitempty"`
 	RaftAddr      string                 `protobuf:"bytes,2,opt,name=raft_addr,json=raftAddr,proto3" json:"raft_addr,omitempty"`
 	GrpcAddr      string                 `protobuf:"bytes,3,opt,name=grpc_addr,json=grpcAddr,proto3" json:"grpc_addr,omitempty"`
+	HttpAddr      string                 `protobuf:"bytes,4,opt,name=http_addr,json=httpAddr,proto3" json:"http_addr,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -478,6 +487,13 @@ func (x *LeaderConfiguration) GetRaftAddr() string {
 func (x *LeaderConfiguration) GetGrpcAddr() string {
 	if x != nil {
 		return x.GrpcAddr
+	}
+	return ""
+}
+
+func (x *LeaderConfiguration) GetHttpAddr() string {
+	if x != nil {
+		return x.HttpAddr
 	}
 	return ""
 }
@@ -2406,11 +2422,12 @@ var File_pkg_proto_doq_proto protoreflect.FileDescriptor
 
 const file_pkg_proto_doq_proto_rawDesc = "" +
 	"\n" +
-	"\x13pkg/proto/doq.proto\x12\x05queue\"g\n" +
+	"\x13pkg/proto/doq.proto\x12\x05queue\"\x84\x01\n" +
 	"\x12LeaderConfigChange\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1b\n" +
 	"\traft_addr\x18\x02 \x01(\tR\braftAddr\x12\x1b\n" +
-	"\tgrpc_addr\x18\x03 \x01(\tR\bgrpcAddr\",\n" +
+	"\tgrpc_addr\x18\x03 \x01(\tR\bgrpcAddr\x12\x1b\n" +
+	"\thttp_addr\x18\x04 \x01(\tR\bhttpAddr\",\n" +
 	"\x12GenerateIDsRequest\x12\x16\n" +
 	"\x06number\x18\x01 \x01(\x05R\x06number\"A\n" +
 	"\x13GenerateIDsResponse\x12\x18\n" +
@@ -2438,11 +2455,12 @@ const file_pkg_proto_doq_proto_rawDesc = "" +
 	"\bmetadata\x18\x05 \x03(\v2\x1c.queue.Message.MetadataEntryR\bmetadata\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"h\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x85\x01\n" +
 	"\x13LeaderConfiguration\x12\x17\n" +
 	"\anode_id\x18\x01 \x01(\tR\x06nodeId\x12\x1b\n" +
 	"\traft_addr\x18\x02 \x01(\tR\braftAddr\x12\x1b\n" +
-	"\tgrpc_addr\x18\x03 \x01(\tR\bgrpcAddr\"\xb9\x01\n" +
+	"\tgrpc_addr\x18\x03 \x01(\tR\bgrpcAddr\x12\x1b\n" +
+	"\thttp_addr\x18\x04 \x01(\tR\bhttpAddr\"\xb9\x01\n" +
 	"\fSnapshotItem\x12$\n" +
 	"\x05queue\x18\x01 \x01(\v2\f.queue.QueueH\x00R\x05queue\x12*\n" +
 	"\amessage\x18\x02 \x01(\v2\x0e.queue.MessageH\x00R\amessage\x12O\n" +

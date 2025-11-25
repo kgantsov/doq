@@ -30,6 +30,7 @@ message LeaderConfigChange {
   string node_id = 1;
   string raft_addr = 2;
   string grpc_addr = 3;
+  string http_addr = 4;
 }
 
 message GenerateIDsRequest {
@@ -72,6 +73,7 @@ message LeaderConfiguration {
   string node_id = 1;
   string raft_addr = 2;
   string grpc_addr = 3;
+  string http_addr = 4;
 }
 
 message SnapshotItem {

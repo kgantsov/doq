@@ -80,16 +80,18 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 
 func (f *FSM) applyLeaderConfigChange(payload *pb.RaftCommand_LeaderConfigChange) interface{} {
 	log.Info().Msgf(
-		"Leader config change: %s at %s (gRPC: %s)",
+		"Leader config change: %s at %s (gRPC: %s) (HTTP: %s)",
 		payload.LeaderConfigChange.NodeId,
 		payload.LeaderConfigChange.RaftAddr,
 		payload.LeaderConfigChange.GrpcAddr,
+		payload.LeaderConfigChange.HttpAddr,
 	)
 
 	f.leaderConfig.Set(
 		payload.LeaderConfigChange.NodeId,
 		payload.LeaderConfigChange.RaftAddr,
 		payload.LeaderConfigChange.GrpcAddr,
+		payload.LeaderConfigChange.HttpAddr,
 	)
 	return nil
 }
@@ -531,6 +533,7 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 				v.LeaderConfiguration.NodeId,
 				v.LeaderConfiguration.RaftAddr,
 				v.LeaderConfiguration.GrpcAddr,
+				v.LeaderConfiguration.HttpAddr,
 			)
 		case *pb.SnapshotItem_Queue:
 			log.Debug().Msgf("Restoring queue: %s", v.Queue.Name)

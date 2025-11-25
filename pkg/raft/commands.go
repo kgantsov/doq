@@ -2,6 +2,8 @@ package raft
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -14,11 +16,18 @@ import (
 )
 
 func (n *Node) NotifyLeaderConfiguration() error {
-	log.Info().Msgf("Notifying leader configuration: NodeID=%s, RaftAddr=%s, GrpcAddr=%s",
+	log.Info().Msgf("Notifying leader configuration: NodeID=%s, RaftAddr=%s, GrpcAddr=%s HTTP=%s",
 		n.cfg.Cluster.NodeID,
 		n.cfg.Raft.Address,
 		n.cfg.Grpc.Address,
+		n.cfg.Http.Port,
 	)
+
+	host, _, err := net.SplitHostPort(n.cfg.Grpc.Address)
+	if err != nil {
+		log.Error().Msgf("Failed to split HTTP address: %v", err)
+		return err
+	}
 
 	cmd := &pb.RaftCommand{
 		Cmd: &pb.RaftCommand_LeaderConfigChange{
@@ -26,6 +35,7 @@ func (n *Node) NotifyLeaderConfiguration() error {
 				NodeId:   n.cfg.Cluster.NodeID,
 				RaftAddr: n.cfg.Raft.Address,
 				GrpcAddr: n.cfg.Grpc.Address,
+				HttpAddr: fmt.Sprintf("%s:%s", host, n.cfg.Http.Port),
 			},
 		},
 	}
