@@ -35,10 +35,11 @@ func (h *Handler) Servers(ctx context.Context, input *ServersInput) (*ServersOut
 	responsServers := make([]Server, len(servers))
 	for i, server := range servers {
 		responsServers[i] = Server{
-			Id:       server.Id,
-			Addr:     server.Addr,
-			IsLeader: server.IsLeader,
-			Suffrage: server.Suffrage,
+			Id:         server.Id,
+			Addr:       server.Addr,
+			LeaderAddr: server.LeaderAddr,
+			IsLeader:   server.IsLeader,
+			Suffrage:   server.Suffrage,
 		}
 	}
 

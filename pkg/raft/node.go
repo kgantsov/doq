@@ -241,10 +241,11 @@ func (n *Node) GetServers() ([]*entity.Server, error) {
 
 	for _, server := range future.Configuration().Servers {
 		servers = append(servers, &entity.Server{
-			Id:       string(server.ID),
-			Addr:     string(server.Address),
-			IsLeader: n.Raft.Leader() == server.Address,
-			Suffrage: server.Suffrage.String(),
+			Id:         string(server.ID),
+			Addr:       string(server.Address),
+			LeaderAddr: string(n.Raft.Leader()),
+			IsLeader:   n.Raft.Leader() == server.Address,
+			Suffrage:   server.Suffrage.String(),
 		})
 	}
 
