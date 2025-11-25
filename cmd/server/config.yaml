@@ -2,7 +2,7 @@ prometheus:
   enabled: true
 
 profiling:
-  enabled: true
+  enabled: false
   port: 6060
 
 logging:

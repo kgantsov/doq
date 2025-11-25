@@ -20,6 +20,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/logger"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -107,6 +108,8 @@ func NewHttpService(config *config.Config, node Node, indexHtmlFS embed.FS, fron
 }
 
 func (h *Handler) ConfigureMiddleware(router *fiber.App) {
+	router.Use(logger.ZeroHCLLoggerMiddleware())
+
 	router.Use(healthcheck.New())
 	router.Use(helmet.New())
 

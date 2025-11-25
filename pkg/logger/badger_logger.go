@@ -6,17 +6,17 @@ type BadgerLogger struct {
 }
 
 func (bl *BadgerLogger) Errorf(msg string, args ...interface{}) {
-	log.Error().Msgf("[badger] "+msg, args...)
+	log.Error().Str("component", "badger").Msgf("[badger] "+msg, args...)
 }
 
 func (bl *BadgerLogger) Warningf(msg string, args ...interface{}) {
-	log.Warn().Msgf("[badger] "+msg, args...)
+	log.Warn().Str("component", "badger").Msgf("[badger] "+msg, args...)
 }
 
 func (bl *BadgerLogger) Infof(msg string, args ...interface{}) {
-	log.Info().Msgf("[badger] "+msg, args...)
+	log.Info().Str("component", "badger").Msgf("[badger] "+msg, args...)
 }
 
 func (bl *BadgerLogger) Debugf(msg string, args ...interface{}) {
-	log.Debug().Msgf("[badger] "+msg, args...)
+	log.Debug().Str("component", "badger").Msgf("[badger] "+msg, args...)
 }

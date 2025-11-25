@@ -27,15 +27,15 @@ func NewZeroHCLLogger(name string, level hclog.Level) *ZeroHCLLogger {
 func (z *ZeroHCLLogger) Log(level hclog.Level, msg string, args ...interface{}) {
 	switch level {
 	case hclog.Trace:
-		log.Trace().Fields(argsToMap(args...)).Msgf("[%s] %s", z.name, msg)
+		log.Trace().Str("component", "raft").Fields(argsToMap(args...)).Msgf("[%s] %s", z.name, msg)
 	case hclog.Debug:
-		log.Debug().Fields(argsToMap(args...)).Msgf("[%s] %s", z.name, msg)
+		log.Debug().Str("component", "raft").Fields(argsToMap(args...)).Msgf("[%s] %s", z.name, msg)
 	case hclog.Info:
-		log.Info().Fields(argsToMap(args...)).Msgf("[%s] %s", z.name, msg)
+		log.Info().Str("component", "raft").Fields(argsToMap(args...)).Msgf("[%s] %s", z.name, msg)
 	case hclog.Warn:
-		log.Warn().Fields(argsToMap(args...)).Msgf("[%s] %s", z.name, msg)
+		log.Warn().Str("component", "raft").Fields(argsToMap(args...)).Msgf("[%s] %s", z.name, msg)
 	case hclog.Error:
-		log.Error().Fields(argsToMap(args...)).Msgf("[%s] %s", z.name, msg)
+		log.Error().Str("component", "raft").Fields(argsToMap(args...)).Msgf("[%s] %s", z.name, msg)
 	}
 }
 

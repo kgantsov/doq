@@ -92,14 +92,6 @@ func (q *FairWeightedQueue) Dequeue(ack bool) *Item {
 		return nil
 	}
 
-	log.Info().Msgf(
-		"Dequeue %+v ::: %+v ====> %s %d",
-		q.unackedByGroup,
-		q.weights.Items(),
-		selectedGroup,
-		q.weights.Sum(),
-	)
-
 	item := heap.Pop(q.queues[selectedGroup]).(*Item)
 	if item == nil {
 		log.Info().Msgf("No item in queue for group %s", selectedGroup)
