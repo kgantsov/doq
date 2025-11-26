@@ -261,11 +261,11 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 	config.SnapshotInterval = 120 * time.Second
 	config.SnapshotThreshold = 8192
 	config.LocalID = raft.ServerID(nodeID)
-	config.LogLevel = "DEBUG"
+	config.LogLevel = n.cfg.Logging.Level
 	config.Logger = logger.NewZeroHCLLogger("raft", hclog.LevelFromString(n.cfg.Logging.Level))
 
 	bindAddr := raftPort
-	transport, err := raft.NewTCPTransport(bindAddr, nil, 3, 10*time.Second, os.Stderr)
+	transport, err := raft.NewTCPTransportWithLogger(bindAddr, nil, 3, 10*time.Second, config.Logger)
 	if err != nil {
 		log.Warn().Msgf("failed to create transport: %s", err)
 		return nil, err
@@ -285,7 +285,7 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 	logStore = badgerDB
 	stableStore = badgerDB
 
-	snapshots, err := raft.NewFileSnapshotStore(raftDir, 1, os.Stderr)
+	snapshots, err := raft.NewFileSnapshotStoreWithLogger(raftDir, 1, config.Logger)
 	if err != nil {
 		log.Warn().Msgf("failed to create snapshot store: %s", err)
 		return nil, err
