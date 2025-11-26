@@ -53,12 +53,18 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
 
   const {
     isPending,
+    isError,
+    error,
     dataUpdatedAt,
     data: queue,
   } = useQuery({
-    queryKey: ["queue"],
+    retry: false,
+    queryKey: ["queue", queueName],
     queryFn: () => getQueue(queueName),
-    refetchInterval: 1000,
+    refetchInterval: (query) => {
+      if (query.state.error) return false; // stop on error
+      return 1000; // normal interval
+    },
   });
 
   useEffect(() => {
@@ -86,6 +92,14 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
     };
   }, []);
 
+  if (isError) {
+    return (
+      <div>
+        Error fetching queue "{queueName}": {error.message}
+      </div>
+    );
+  }
+
   if (isPending) {
     return (
       <Center h="90vh" color="white">
@@ -98,10 +112,6 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
         />
       </Center>
     );
-  }
-
-  if (!queue) {
-    return <></>;
   }
 
   const chartData = statsBuffer.current.getPoints();
