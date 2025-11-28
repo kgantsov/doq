@@ -1,7 +1,10 @@
 package memory
 
 import (
+	"math/rand"
+	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -94,6 +97,43 @@ func TestFairWeightedQueueBasic(t *testing.T) {
 	item := queue.Dequeue(false)
 	assert.NotNil(t, item)
 	assert.Equal(t, uint64(1), item.ID)
+	assert.Equal(t, uint64(0), queue.Len())
+}
+
+func TestFairWeightedQueueGroupsAck(t *testing.T) {
+	queue := NewFairWeightedQueue(8)
+	customerMessages := map[string]int{
+		"customer-1": 10,
+		"customer-2": 8,
+		"customer-3": 3,
+		"customer-4": 1,
+	}
+
+	messageCount := 0
+	for customer, count := range customerMessages {
+		for i := 0; i < count; i++ {
+			queue.Enqueue(
+				customer, &Item{ID: uint64(messageCount) + 1, Priority: 10, Group: customer},
+			)
+		}
+	}
+
+	items := make(map[string]int)
+
+	for _, count := range customerMessages {
+		for i := 0; i < count; i++ {
+			item := queue.Dequeue(true)
+			if item != nil {
+				items[item.Group] += 1
+			}
+			messageCount++
+		}
+	}
+
+	assert.Equal(t, 10, items["customer-1"])
+	assert.Equal(t, 8, items["customer-2"])
+	assert.Equal(t, 3, items["customer-3"])
+	assert.Equal(t, 1, items["customer-4"])
 	assert.Equal(t, uint64(0), queue.Len())
 }
 
@@ -310,4 +350,63 @@ func TestFairWeightedQueueMaxUnacked(t *testing.T) {
 	// Should be able to dequeue again
 	item4 := queue.Dequeue(false)
 	assert.NotNil(t, item4)
+}
+
+// forceGCAndLog runs the GC, waits briefly, and logs memory statistics.
+// This is not a deterministic check but helps confirm memory reclamation.
+func forceGCAndLog(t *testing.T, prefix string) {
+	// Give the program a hint to run the garbage collector
+	runtime.GC()
+	// Wait a moment for any finalizer/cleanup routines to potentially run
+	time.Sleep(100 * time.Millisecond)
+
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	t.Logf("%s: HeapAlloc = %v MiB, NumGC = %v", prefix, m.HeapAlloc/1024/1024, m.NumGC)
+}
+
+// TestFairWeightedQueue_MemoryCleanup verifies that all internal references are
+// broken after dequeuing all items, which is the necessary condition for GC.
+func TestFairWeightedQueue_MemoryCleanup(t *testing.T) {
+	const numItems = 1000000
+	groups := []string{"group-A", "group-B", "group-C", "group-D"}
+	q := NewFairWeightedQueue(1000)
+
+	// Use a fixed seed for deterministic sampling in the WeightedAVL
+	rng := rand.New(rand.NewSource(42))
+	q.weights.SetRNG(rng)
+
+	t.Logf("Attempting to enqueue %d items...", numItems)
+	startTime := time.Now()
+	for i := range numItems {
+		group := groups[i%len(groups)]
+		item := &Item{
+			ID:       uint64(i) + 1,
+			Priority: int64(i % 100),
+			Group:    group,
+		}
+		q.Enqueue(group, item)
+	}
+	t.Logf("Enqueue finished in %v. Total queue length: %d", time.Since(startTime), q.Len())
+
+	forceGCAndLog(t, "Memory AFTER Enqueue")
+
+	t.Logf("Attempting to dequeue all items...")
+	startTime = time.Now()
+	dequeuedCount := 0
+	for q.Len() > 0 {
+		item := q.Dequeue(true)
+		assert.NotNil(t, item)
+		dequeuedCount++
+	}
+	assert.Equal(t, numItems, dequeuedCount)
+	t.Logf("Dequeue finished in %v. Total queue length: %d", time.Since(startTime), dequeuedCount)
+
+	t.Log("Running final garbage collection check...")
+	forceGCAndLog(t, "Memory AFTER Dequeue + GC")
+
+	assert.Equal(t, uint64(0), q.Len())
+	assert.Equal(t, 0, len(q.queues))
+	assert.Equal(t, 0, len(q.unackedByGroup))
+	assert.Equal(t, 0, q.weights.Sum())
 }

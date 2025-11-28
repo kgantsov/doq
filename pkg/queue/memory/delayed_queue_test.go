@@ -122,3 +122,44 @@ func BenchmarkDelayedQueueDequeue(b *testing.B) {
 		pq.Dequeue(false)
 	}
 }
+
+// TestDelayedQueue_MemoryCleanup verifies that all internal references are
+// broken after dequeuing all items, which is the necessary condition for GC.
+func TestDelayedQueue_MemoryCleanup(t *testing.T) {
+	const numItems = 1000000
+	q := NewDelayedQueue(true)
+
+	t.Logf("Attempting to enqueue %d items...", numItems)
+	startTime := time.Now()
+
+	for i := range numItems {
+		group := "default"
+		item := &Item{
+			ID:       uint64(i) + 1,
+			Priority: int64(i % 100),
+			Group:    group,
+		}
+		q.Enqueue(group, item)
+	}
+	t.Logf("Enqueue finished in %v. Total queue length: %d", time.Since(startTime), q.Len())
+
+	forceGCAndLog(t, "Memory AFTER Enqueue")
+
+	t.Logf("Attempting to dequeue all items...")
+	startTime = time.Now()
+	dequeuedCount := 0
+	for q.Len() > 0 {
+		item := q.Dequeue(true)
+		assert.NotNil(t, item)
+		dequeuedCount++
+	}
+	t.Logf("Dequeue finished in %v. Dequeued count: %d", time.Since(startTime), dequeuedCount)
+	assert.Equal(t, numItems, dequeuedCount)
+
+	t.Log("Running final garbage collection check...")
+	forceGCAndLog(t, "Memory AFTER Dequeue + GC")
+
+	assert.Equal(t, uint64(0), q.Len())
+	assert.Equal(t, 0, len(q.queue.items))
+	assert.Equal(t, 0, len(q.queue.idToIndex))
+}

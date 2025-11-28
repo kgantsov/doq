@@ -101,13 +101,18 @@ func (q *FairWeightedQueue) Dequeue(ack bool) *Item {
 	if !ack {
 		q.unackedByGroup[selectedGroup]++
 	}
-
-	q.weights.Update(
-		selectedGroup,
-		CalculateWeight(
-			q.maxUnacked, q.unackedByGroup[selectedGroup], q.queues[selectedGroup].Len(),
-		),
-	)
+	if q.unackedByGroup[selectedGroup] == 0 && q.queues[selectedGroup].Len() == 0 {
+		delete(q.queues, selectedGroup)
+		delete(q.unackedByGroup, selectedGroup)
+		q.weights.Remove(selectedGroup)
+	} else {
+		q.weights.Update(
+			selectedGroup,
+			CalculateWeight(
+				q.maxUnacked, q.unackedByGroup[selectedGroup], q.queues[selectedGroup].Len(),
+			),
+		)
+	}
 
 	return item
 }
