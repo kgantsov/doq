@@ -44,9 +44,6 @@ spec:
             requests:
               cpu: 1000m
               memory: 100Mi
-            limits:
-              cpu: 2000m
-              memory: 1500Mi
           livenessProbe:
             failureThreshold: 3
             httpGet:

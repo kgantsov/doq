@@ -24,6 +24,13 @@ spec:
             - "true"
             - "--storage.data_dir"
             - "/usr/local/doq/data"
+          resources:
+            requests:
+              cpu: 1000m
+              memory: 100Mi
+            limits:
+              cpu: 2000m
+              memory: 1500Mi
   volumeClaimTemplates:
     - metadata:
         name: data
