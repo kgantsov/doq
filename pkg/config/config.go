@@ -56,6 +56,7 @@ type StorageConfig struct {
 	BlockCacheSize          int64  `mapstructure:"block_cache_size"`
 	IndexCacheSize          int64  `mapstructure:"index_cache_size"`
 	BaseTableSize           int64  `mapstructure:"base_table_size"`
+	BaseLevelSize           int64  `mapstructure:"base_level_size"`
 	NumCompactors           int    `mapstructure:"num_compactors"`
 	NumLevelZeroTables      int    `mapstructure:"num_level_zero_tables"`
 	NumLevelZeroTablesStall int    `mapstructure:"num_level_zero_tables_stall"`
@@ -159,6 +160,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	rootCmd.Flags().Int64("storage.block_cache_size", 0, "Block cache size in MB")
 	rootCmd.Flags().Int64("storage.index_cache_size", 0, "Index cache size in MB")
 	rootCmd.Flags().Int64("storage.base_table_size", 0, "Base table size in bytes")
+	rootCmd.Flags().Int64("storage.base_level_size", 0, "Maximum size target for the base level")
 	rootCmd.Flags().Int("storage.num_compactors", 0, "Number of compaction workers")
 	rootCmd.Flags().Int("storage.num_level_zero_tables", 0, "Number of level zero tables")
 	rootCmd.Flags().Int("storage.num_level_zero_tables_stall", 0, "Number of level zero tables to stall compaction")
@@ -190,6 +192,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	viper.BindPFlag("storage.block_cache_size", rootCmd.Flags().Lookup("storage.block_cache_size"))
 	viper.BindPFlag("storage.index_cache_size", rootCmd.Flags().Lookup("storage.index_cache_size"))
 	viper.BindPFlag("storage.base_table_size", rootCmd.Flags().Lookup("storage.base_table_size"))
+	viper.BindPFlag("storage.base_level_size", rootCmd.Flags().Lookup("storage.base_level_size"))
 	viper.BindPFlag("storage.num_compactors", rootCmd.Flags().Lookup("storage.num_compactors"))
 	viper.BindPFlag("storage.num_level_zero_tables", rootCmd.Flags().Lookup("storage.num_level_zero_tables"))
 	viper.BindPFlag("storage.num_level_zero_tables_stall", rootCmd.Flags().Lookup("storage.num_level_zero_tables_stall"))
@@ -265,6 +268,9 @@ func (config *Config) BadgerOptions(name string) badger.Options {
 	}
 	if config.Storage.BaseTableSize > 0 {
 		opts = opts.WithBaseTableSize(config.Storage.BaseTableSize)
+	}
+	if config.Storage.BaseLevelSize > 0 {
+		opts = opts.WithBaseLevelSize(config.Storage.BaseLevelSize)
 	}
 	if config.Storage.NumCompactors > 0 {
 		opts = opts.WithNumCompactors(config.Storage.NumCompactors)

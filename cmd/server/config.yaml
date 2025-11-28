@@ -13,7 +13,9 @@ storage:
   gc_discard_ratio: 0.7
 
   compression: "none"
-  block_cache_size: 0
+  block_cache_size: 268435456
+  base_table_size: 16777216
+  base_level_size: 67108864
 
 queue:
   acknowledgement_check_interval: 1
