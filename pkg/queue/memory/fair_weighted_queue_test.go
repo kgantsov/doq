@@ -354,15 +354,26 @@ func TestFairWeightedQueueMaxUnacked(t *testing.T) {
 
 // forceGCAndLog runs the GC, waits briefly, and logs memory statistics.
 // This is not a deterministic check but helps confirm memory reclamation.
-func forceGCAndLog(t *testing.T, prefix string) {
-	// Give the program a hint to run the garbage collector
+func forceGCAndLog(t *testing.T, stage string) runtime.MemStats {
+	// Run GC explicitly.
+	// Sometimes running it twice is recommended to ensure finalizers run
+	// and freed memory is fully reclaimed by the OS statistics.
 	runtime.GC()
+	runtime.GC()
+
 	// Wait a moment for any finalizer/cleanup routines to potentially run
 	time.Sleep(100 * time.Millisecond)
 
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	t.Logf("%s: HeapAlloc = %v MiB, NumGC = %v", prefix, m.HeapAlloc/1024/1024, m.NumGC)
+
+	t.Logf("=== %s ===", stage)
+	// HeapAlloc: Bytes of allocated heap objects.
+	t.Logf("HeapAlloc:   %d MB", m.HeapAlloc/1024/1024)
+	// HeapObjects: The number of allocated heap objects.
+	t.Logf("HeapObjects: %d", m.HeapObjects)
+
+	return m
 }
 
 // TestFairWeightedQueue_MemoryCleanup verifies that all internal references are

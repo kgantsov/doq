@@ -76,6 +76,13 @@ func (pq *PriorityMemoryQueue) Pop() any {
 	old[n-1] = nil // avoid memory leak
 	pq.items = old[0 : n-1]
 	delete(pq.idToIndex, item.ID)
+
+	// Check for empty and reset items capacity and idToIndex to avoid memory leaks
+	if len(pq.items) == 0 {
+		pq.items = []*Item{}                // Reset to a new zero-length/zero-capacity slice
+		pq.idToIndex = make(map[uint64]int) // Reset to a new zero-length/zero-capacity map
+	}
+
 	return item
 }
 

@@ -126,6 +126,8 @@ func BenchmarkDelayedQueueDequeue(b *testing.B) {
 // TestDelayedQueue_MemoryCleanup verifies that all internal references are
 // broken after dequeuing all items, which is the necessary condition for GC.
 func TestDelayedQueue_MemoryCleanup(t *testing.T) {
+	baseMem := forceGCAndLog(t, "Baseline (Start)")
+
 	const numItems = 1000000
 	q := NewDelayedQueue(true)
 
@@ -141,9 +143,22 @@ func TestDelayedQueue_MemoryCleanup(t *testing.T) {
 		}
 		q.Enqueue(group, item)
 	}
-	t.Logf("Enqueue finished in %v. Total queue length: %d", time.Since(startTime), q.Len())
+	t.Logf(
+		"Enqueue finished in %v. Total queue length: %d capacity: %d",
+		time.Since(startTime),
+		q.Len(),
+		cap(q.queue.items),
+	)
 
-	forceGCAndLog(t, "Memory AFTER Enqueue")
+	peakMem := forceGCAndLog(t, "Memory AFTER Enqueue")
+
+	if peakMem.HeapObjects <= baseMem.HeapObjects {
+		t.Fatal("Test Invalid: Heap object count did not increase after enqueueing 1M items.")
+	}
+
+	if peakMem.HeapAlloc < baseMem.HeapAlloc+(50*1024*1024) {
+		t.Fatal("Test Invalid: HeapAlloc did not increase significantly.")
+	}
 
 	t.Logf("Attempting to dequeue all items...")
 	startTime = time.Now()
@@ -153,13 +168,35 @@ func TestDelayedQueue_MemoryCleanup(t *testing.T) {
 		assert.NotNil(t, item)
 		dequeuedCount++
 	}
-	t.Logf("Dequeue finished in %v. Dequeued count: %d", time.Since(startTime), dequeuedCount)
+	t.Logf(
+		"Dequeue finished in %v. Dequeued count: %d length: %d capacity: %d",
+		time.Since(startTime),
+		dequeuedCount,
+		len(q.queue.items),
+		cap(q.queue.items),
+	)
 	assert.Equal(t, numItems, dequeuedCount)
 
 	t.Log("Running final garbage collection check...")
-	forceGCAndLog(t, "Memory AFTER Dequeue + GC")
+	finalMem := forceGCAndLog(t, "Memory AFTER Dequeue + GC")
+
+	assert.Equal(t, 0, len(q.queue.items))
+	assert.Equal(t, 0, cap(q.queue.items))
+
+	margin := uint64(2 * 1024 * 1024)
+
+	if finalMem.HeapAlloc > baseMem.HeapAlloc+margin {
+		t.Errorf("Possible Memory Leak! Final Heap (%d MB) is significantly higher than Baseline (%d MB)",
+			finalMem.HeapAlloc/1024/1024, baseMem.HeapAlloc/1024/1024)
+	}
+
+	if finalMem.HeapObjects > baseMem.HeapObjects+1000 {
+		t.Errorf("Object Leak! Objects remaining: %d (Baseline was %d)",
+			finalMem.HeapObjects, baseMem.HeapObjects)
+	}
 
 	assert.Equal(t, uint64(0), q.Len())
 	assert.Equal(t, 0, len(q.queue.items))
+	assert.Equal(t, 0, cap(q.queue.items))
 	assert.Equal(t, 0, len(q.queue.idToIndex))
 }
