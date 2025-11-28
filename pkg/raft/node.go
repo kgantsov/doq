@@ -130,8 +130,6 @@ func (n *Node) Initialize() {
 
 	// go n.monitorLeadership()
 	go n.ListenToLeaderChanges()
-	go n.RunValueLogGC()
-
 }
 
 func (n *Node) GenerateID() uint64 {
@@ -343,25 +341,4 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 	}
 
 	return r, nil
-}
-
-func (n *Node) RunValueLogGC() {
-	if n.cfg.Storage.GCInterval == 0 {
-		log.Warn().Msg("Value GC is disabled due to GCInterval is 0")
-		return
-	}
-
-	ticker := time.NewTicker(time.Duration(n.cfg.Storage.GCInterval) * time.Second)
-	defer ticker.Stop()
-
-	log.Debug().Msg("Started running value GC")
-
-	for range ticker.C {
-		log.Debug().Msg("Running value GC")
-	again:
-		err := n.db.RunValueLogGC(n.cfg.Storage.GCDiscardRatio)
-		if err == nil {
-			goto again
-		}
-	}
 }

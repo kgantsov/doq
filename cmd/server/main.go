@@ -164,18 +164,21 @@ func Run(cmd *cobra.Command, args []string) {
 }
 
 func RunValueLogGC(config *config.Config, db *badger.DB) {
-	ticker := time.NewTicker(time.Duration(config.Storage.GCInterval) * time.Second)
+	interval := time.Duration(config.Storage.GCInterval) * time.Second
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	log.Info().Msg("Started running value GC")
+	log.Info().Msgf("Started running value GC for '%s' every %s", db.Opts().Dir, interval)
 
 	for range ticker.C {
-		log.Debug().Msg("Running value GC")
+		log.Info().Msgf("Running value GC for '%s'", db.Opts().Dir)
 	again:
 		err := db.RunValueLogGC(config.Storage.GCDiscardRatio)
 		if err == nil {
+			log.Info().Msgf("Running next iteration of value GC for '%s'", db.Opts().Dir)
 			goto again
 		}
+		log.Info().Msgf("Finished value GC for '%s'", db.Opts().Dir)
 	}
 }
 
