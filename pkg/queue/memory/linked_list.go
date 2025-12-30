@@ -51,6 +51,10 @@ func (l *LinkedList) Remove(node *LinkedListNode) {
 		l.tail = node.prev
 	}
 
+	node.prev = nil
+	node.next = nil
+	node.queue = nil
+
 	l.total--
 }
 

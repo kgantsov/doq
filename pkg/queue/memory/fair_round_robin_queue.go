@@ -150,11 +150,6 @@ func (fq *FairRoundRobinQueue) dequeueFromNode(node *GroupNode) *Item {
 					node.currentChild = node.childrenList.head
 				}
 
-				// Clean up empty children
-				if childNode.messageCount == 0 {
-					fq.removeEmptyChild(node, childName)
-				}
-
 				return item
 			}
 		}
@@ -185,7 +180,9 @@ func (fq *FairRoundRobinQueue) getGroupKeyForNode(node *GroupNode) string {
 }
 
 func (fq *FairRoundRobinQueue) removeEmptyChild(parent *GroupNode, childName string) {
-	// Find and remove from linked list
+	child := parent.children[childName]
+
+	// Remove from linked list
 	current := parent.childrenList.head
 	for current != nil {
 		if current.group == childName {
@@ -195,12 +192,21 @@ func (fq *FairRoundRobinQueue) removeEmptyChild(parent *GroupNode, childName str
 		current = current.next
 	}
 
-	// Remove from children map
+	// Remove from maps
 	delete(parent.children, childName)
 
-	// Reset current child if it was the removed one
+	// remove leaf reference
+	groupKey := fq.getGroupKeyForNode(child)
+	delete(fq.groupKeyToLeaf, groupKey)
+
+	// Reset RR pointer
 	if parent.currentChild != nil && parent.currentChild.group == childName {
 		parent.currentChild = parent.childrenList.head
+	}
+
+	// recursively clean empty parents
+	if parent != fq.root && parent.messageCount == 0 {
+		fq.removeEmptyChild(parent.parent, parent.name)
 	}
 }
 
@@ -220,6 +226,10 @@ func (fq *FairRoundRobinQueue) Dequeue(ack bool) *Item {
 		for node != nil {
 			node.messageCount--
 			node = node.parent
+		}
+
+		if leaf.messageCount == 0 {
+			fq.removeEmptyChild(leaf.parent, leaf.name)
 		}
 	}
 
@@ -254,6 +264,11 @@ func (fq *FairRoundRobinQueue) Delete(group string, id uint64) *Item {
 				node.messageCount--
 				node = node.parent
 			}
+
+			if leaf.messageCount == 0 {
+				fq.removeEmptyChild(leaf.parent, leaf.name)
+			}
+
 			fq.totalMessages--
 		}
 		return item
@@ -280,15 +295,16 @@ func (fq *FairRoundRobinQueue) UpdateWeights(group string, id uint64) error {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
-	if _, ok := fq.unackedByGroup[group]; !ok {
+	count, ok := fq.unackedByGroup[group]
+	if !ok {
 		return nil
 	}
 
-	if fq.unackedByGroup[group] <= 0 {
+	count--
+	if count <= 0 {
 		delete(fq.unackedByGroup, group)
 	} else {
-		fq.unackedByGroup[group]--
+		fq.unackedByGroup[group] = count
 	}
-
 	return nil
 }

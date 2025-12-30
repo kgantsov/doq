@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -307,4 +308,46 @@ func BenchmarkFairRoundRobinQueueDequeue(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		fq.Dequeue(true)
 	}
+}
+
+// TestFairRoundRobinQueue_MemoryCleanup verifies that all internal references are
+// broken after dequeuing all items, which is the necessary condition for GC.
+func TestFairRoundRobinQueue_MemoryCleanup(t *testing.T) {
+	const numItems = 1000000
+	groups := []string{"group-A", "group-B", "group-C", "group-D"}
+	q := NewFairRoundRobinQueue(1000)
+
+	t.Logf("Attempting to enqueue %d items...", numItems)
+	startTime := time.Now()
+	for i := range numItems {
+		group := groups[i%len(groups)]
+		item := &Item{
+			ID:       uint64(i) + 1,
+			Priority: int64(i % 100),
+			Group:    group,
+		}
+		q.Enqueue(group, item)
+	}
+	t.Logf("Enqueue finished in %v. Total queue length: %d", time.Since(startTime), q.Len())
+
+	forceGCAndLog(t, "Memory AFTER Enqueue")
+
+	t.Logf("Attempting to dequeue all items...")
+	startTime = time.Now()
+	dequeuedCount := 0
+	for q.Len() > 0 {
+		item := q.Dequeue(true)
+		assert.NotNil(t, item)
+		dequeuedCount++
+	}
+	assert.Equal(t, numItems, dequeuedCount)
+	t.Logf("Dequeue finished in %v. Total queue length: %d", time.Since(startTime), dequeuedCount)
+
+	t.Log("Running final garbage collection check...")
+	forceGCAndLog(t, "Memory AFTER Dequeue + GC")
+
+	assert.Equal(t, uint64(0), q.Len(), "queue length should be zero")
+	assert.Equal(t, uint64(0), q.totalMessages, "totalMessages should be zero")
+	assert.Equal(t, 0, len(q.groupKeyToLeaf), "groupKeyToLeaf should be empty")
+	assert.Equal(t, 0, len(q.unackedByGroup), "unackedByGroup should be empty")
 }
