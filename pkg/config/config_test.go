@@ -36,7 +36,7 @@ func TestInitCobraCommand__DefaultValues(t *testing.T) {
 		assert.Equal(t, 0, config.Storage.NumLevelZeroTablesStall)
 		assert.Equal(t, 0, config.Storage.NumMemtables)
 		assert.Equal(t, int64(0), config.Storage.ValueLogFileSize)
-		assert.Equal(t, "node-1", config.Cluster.NodeID)
+		assert.Equal(t, "node-0", config.Cluster.NodeID)
 		assert.Equal(t, "", config.Cluster.ServiceName)
 		assert.Equal(t, "", config.Cluster.JoinAddr)
 		assert.Equal(t, int64(1), config.Queue.AcknowledgementCheckInterval)
