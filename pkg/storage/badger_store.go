@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/dgraph-io/badger/v4"
@@ -16,6 +17,86 @@ type BadgerStore struct {
 
 func NewBadgerStore(db *badger.DB) *BadgerStore {
 	return &BadgerStore{db: db}
+}
+
+func (bpq *BadgerStore) ListQueues() ([]*entity.QueueConfig, error) {
+	var queues []*entity.QueueConfig
+
+	err := bpq.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		var qc *entity.QueueConfig
+		var err error
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			key := item.Key()
+
+			if bytes.HasPrefix(key, []byte("queues:")) {
+				err = item.Value(func(val []byte) error {
+					qc, err = entity.QueueConfigFromBytes(val)
+					return err
+				})
+				queues = append(queues, qc)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return queues, nil
+}
+
+func (bpq *BadgerStore) GetMessages(queueName string, limit int, lastID uint64) ([]*entity.Message, error) {
+	messages := make([]*entity.Message, 0, limit)
+
+	err := bpq.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		var count int
+		var err error
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			key := item.Key()
+
+			if bytes.HasPrefix(key, bpq.getMessagesPrefix(queueName)) {
+				if count >= limit {
+					break
+				}
+				err = item.Value(func(val []byte) error {
+					msg, err := entity.MessageFromBytes(val)
+					if err != nil {
+						return err
+					}
+					if msg.ID > lastID {
+						messages = append(messages, msg)
+						count++
+					}
+					return nil
+				})
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return messages, nil
 }
 
 func (bpq *BadgerStore) getMessagesPrefix(queueName string) []byte {

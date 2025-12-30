@@ -32,6 +32,15 @@ func TestCreateUpdateQueue(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
+	queues, err := store.ListQueues()
+	assert.NoError(t, err)
+	assert.Len(t, queues, 1)
+	assert.Equal(t, queueName, queues[0].Name)
+	assert.Equal(t, "fair", queues[0].Type)
+	assert.Equal(t, "WEIGHTED", queues[0].Settings.Strategy)
+	assert.Equal(t, 75, queues[0].Settings.MaxUnacked)
+	assert.Equal(t, uint32(3600), queues[0].Settings.AckTimeout)
+
 	q, err := store.LoadQueue(queueName)
 	assert.NoError(t, err)
 	assert.Equal(t, queueName, q.Name)
@@ -96,6 +105,21 @@ func TestBadgerStore(t *testing.T) {
 	assert.Equal(t, "default", message.Group)
 	assert.Equal(t, int64(1000), message.Priority)
 	assert.Equal(t, map[string]string{"retry": "5"}, message.Metadata)
+
+	queues, err := store.ListQueues()
+	assert.NoError(t, err)
+	assert.Len(t, queues, 1)
+	assert.Equal(t, queueName, queues[0].Name)
+	assert.Equal(t, "delayed", queues[0].Type)
+
+	messages, err := store.GetMessages(queueName, 100, 0)
+	assert.NoError(t, err)
+	assert.Len(t, messages, 1)
+	assert.Equal(t, uint64(534654), messages[0].ID)
+	assert.Equal(t, "test-message", messages[0].Content)
+	assert.Equal(t, "default", messages[0].Group)
+	assert.Equal(t, int64(1000), messages[0].Priority)
+	assert.Equal(t, map[string]string{"retry": "5"}, messages[0].Metadata)
 
 	message, err = store.Dequeue(queueName, 534654, false)
 	assert.NoError(t, err)

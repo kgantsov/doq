@@ -36,7 +36,7 @@ var indexHtmlFS embed.FS
 //go:embed assets/*
 var frontendFS embed.FS
 
-func Run(cmd *cobra.Command, args []string) {
+func RunServer(cmd *cobra.Command, args []string) {
 	// Load the config
 	config, err := config.LoadConfig()
 	if err != nil {
@@ -182,87 +182,18 @@ func RunValueLogGC(config *config.Config, db *badger.DB) {
 	}
 }
 
-func NewCmdRestore() *cobra.Command {
-	var fullBackup string
-	var incrementalBackups []string
-
-	cmd := &cobra.Command{
-		Use:     "restore",
-		Short:   "Restore DB from a backup",
-		Aliases: []string{"restore"},
-		Run: func(cmd *cobra.Command, args []string) {
-			config, err := config.LoadConfig()
-			if err != nil {
-				fmt.Printf("Error loading config: %v\n", err)
-				return
-			}
-
-			config.ConfigureLogger()
-
-			log.Info().Msgf("Full backup: %s", fullBackup)
-			log.Info().Msgf("Incremental backups: %v", incrementalBackups)
-
-			if config.Storage.DataDir == "" {
-				log.Info().Msg("No storage directory specified")
-			}
-			if err := os.MkdirAll(config.Storage.DataDir, 0700); err != nil {
-				log.Fatal().Msgf(
-					"failed to create path '%s' for a storage: %s", config.Storage.DataDir, err.Error(),
-				)
-			}
-
-			opts := config.BadgerOptions("store")
-
-			db, err := badger.Open(opts)
-			if err != nil {
-				log.Fatal().Msg(err.Error())
-			}
-			defer db.Close()
-
-			err = restoreFile(db, fullBackup)
-			if err != nil {
-				log.Error().Msgf("Error restoring from %s: %v", fullBackup, err)
-				return
-			}
-			for _, backup := range incrementalBackups {
-				err = restoreFile(db, backup)
-				if err != nil {
-					log.Error().Msgf("Error restoring from %s: %v", backup, err)
-					return
-				}
-			}
-		},
-	}
-
-	cmd.Flags().StringVarP(&fullBackup, "full", "f", "", "Full backup")
-	cmd.Flags().StringSliceVarP(
-		&incrementalBackups, "incremental", "i", []string{}, "List of incremental backups",
-	)
-
-	return cmd
-}
-
-func restoreFile(db *badger.DB, filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		log.Error().Msgf("Error opening %s: %v", filename, err)
-		return err
-	}
-	defer file.Close()
-
-	err = db.Load(file, 256) // Load with concurrency
-	if err != nil {
-		log.Error().Err(err)
-		return err
-	}
-	log.Info().Msgf("Restored from %s", filename)
-	return nil
-}
-
 func main() {
+	rootCmd := config.InitCobraCommand(RunServer)
 
-	rootCmd := config.InitCobraCommand(Run)
+	var getCmd = &cobra.Command{
+		Use: "get",
+	}
+
+	rootCmd.AddCommand(getCmd)
+
 	rootCmd.AddCommand(NewCmdRestore())
+	getCmd.AddCommand(NewCmdQueues())
+	getCmd.AddCommand(NewCmdMessages())
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Warn().Err(err)

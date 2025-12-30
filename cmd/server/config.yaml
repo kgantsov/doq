@@ -9,6 +9,7 @@ logging:
   level: "info"
 
 storage:
+  data_dir: data
   gc_interval: 300
   gc_discard_ratio: 0.7
 
