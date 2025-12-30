@@ -314,7 +314,24 @@ func BenchmarkFairRoundRobinQueueDequeue(b *testing.B) {
 // broken after dequeuing all items, which is the necessary condition for GC.
 func TestFairRoundRobinQueue_MemoryCleanup(t *testing.T) {
 	const numItems = 1000000
-	groups := []string{"group-A", "group-B", "group-C", "group-D"}
+	groups := []string{
+		"customer-1.group-a.user-1",
+		"customer-1.group-a.user-2",
+		"customer-1.group-b.user-1",
+		"customer-1.group-b.user-2",
+		"customer-1.group-c.user-1",
+		"customer-1.group-c.user-2",
+		"customer-1.group-d.user-1",
+		"customer-1.group-d.user-2",
+		"customer-2.group-a.user-1",
+		"customer-2.group-a.user-2",
+		"customer-2.group-b.user-1",
+		"customer-2.group-b.user-2",
+		"customer-2.group-c.user-1",
+		"customer-2.group-c.user-2",
+		"customer-2.group-d.user-1",
+		"customer-2.group-d.user-2",
+	}
 	q := NewFairRoundRobinQueue(1000)
 
 	t.Logf("Attempting to enqueue %d items...", numItems)
