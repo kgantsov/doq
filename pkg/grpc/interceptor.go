@@ -101,7 +101,7 @@ func UnaryInterceptor(prometheusEnabled bool, m *PrometheusMetrics) grpc.UnarySe
 			m.RequestDuration.WithLabelValues(info.FullMethod).Observe(duration.Seconds())
 		}
 
-		log.Info().
+		log.Debug().
 			Dur("duration", duration).
 			Str("code", code.String()).
 			Msgf("[grpc] %s %s %s", info.FullMethod, code.String(), duration)

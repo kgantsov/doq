@@ -18,7 +18,7 @@ func ZeroHCLLoggerMiddleware() fiber.Handler {
 		// Log response details
 		duration := time.Since(start)
 
-		log.Info().
+		log.Debug().
 			Int("status", c.Response().StatusCode()).
 			Dur("duration", duration).
 			Msgf("%s %s %d %s", c.Method(), c.Path(), c.Response().StatusCode(), duration)
