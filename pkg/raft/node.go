@@ -52,6 +52,10 @@ type Node struct {
 	leaderConfig *LeaderConfig
 
 	proxy *grpc.GRPCProxy
+
+	// newNode is true when this node had no prior Raft state and was freshly
+	// bootstrapped. Nodes with existing state do not need to call Join.
+	newNode bool
 }
 
 func NewNode(db *badger.DB, raftDB *badger.DB, raftDir string, cfg *config.Config, peers []string) *Node {
@@ -186,6 +190,13 @@ func (n *Node) ListenToLeaderChanges() {
 
 func (n *Node) IsLeader() bool {
 	return n.Raft.State() == raft.Leader
+}
+
+// IsNewNode returns true if this node had no prior Raft state when it started.
+// A new node must call Join to be admitted into the cluster; a restarting node
+// already exists in the persisted Raft configuration and must not re-join.
+func (n *Node) IsNewNode() bool {
+	return n.newNode
 }
 
 func (n *Node) Join(nodeID, addr string) error {
@@ -335,7 +346,7 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 
 		configuration := raft.Configuration{Servers: servers}
 		r.BootstrapCluster(configuration)
-		// time.Sleep(2 * time.Second)
+		n.newNode = true
 	} else {
 		log.Info().Msgf("Already bootstraped %s %v", nodeID, configFuture.Configuration().Servers)
 	}

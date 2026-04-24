@@ -37,7 +37,7 @@ func (j *Joiner) Join() error {
 	var host string
 	var err error
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 30; i++ {
 		for _, host = range j.hosts {
 			log.Debug().Msgf("Trying to join: %s", host)
 
@@ -45,7 +45,7 @@ func (j *Joiner) Join() error {
 				return nil
 			}
 		}
-		time.Sleep(time.Duration(1) * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 
 	return fmt.Errorf("failed to join node at %s: %s", host, err.Error())

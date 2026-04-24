@@ -124,11 +124,16 @@ func RunServer(cmd *cobra.Command, args []string) {
 
 	node.Initialize()
 
-	// If join was specified, make the join request.
-	j = cluster.NewJoiner(config.Cluster.NodeID, config.Raft.Address, hosts)
+	// Only call Join for nodes that have no prior Raft state. Nodes that are
+	// restarting already exist in the persisted cluster configuration; they
+	// rejoin automatically through Raft's peer discovery and must not call
+	// Join, otherwise they attempt AddVoter on a non-leader and crash-loop.
+	if node.IsNewNode() {
+		j = cluster.NewJoiner(config.Cluster.NodeID, config.Raft.Address, hosts)
 
-	if err := j.Join(); err != nil {
-		log.Fatal().Msg(err.Error())
+		if err := j.Join(); err != nil {
+			log.Fatal().Msg(err.Error())
+		}
 	}
 
 	node.InitIDGenerator()
