@@ -45,6 +45,7 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 
 	var c pb.RaftCommand
 	if err := proto.Unmarshal(raftLog.Data, &c); err != nil {
+		log.Error().Str("component", "fsm").Err(err).Msg("Failed to unmarshal raft command")
 		return &FSMResponse{error: err}
 	}
 
@@ -79,13 +80,15 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 }
 
 func (f *FSM) applyLeaderConfigChange(payload *pb.RaftCommand_LeaderConfigChange) interface{} {
-	log.Info().Msgf(
-		"Leader config change: %s at %s (gRPC: %s) (HTTP: %s)",
-		payload.LeaderConfigChange.NodeId,
-		payload.LeaderConfigChange.RaftAddr,
-		payload.LeaderConfigChange.GrpcAddr,
-		payload.LeaderConfigChange.HttpAddr,
-	)
+	log.Info().
+		Str("component", "fsm").
+		Msgf(
+			"Leader config change: %s at %s (gRPC: %s) (HTTP: %s)",
+			payload.LeaderConfigChange.NodeId,
+			payload.LeaderConfigChange.RaftAddr,
+			payload.LeaderConfigChange.GrpcAddr,
+			payload.LeaderConfigChange.HttpAddr,
+		)
 
 	f.leaderConfig.Set(
 		payload.LeaderConfigChange.NodeId,
@@ -99,6 +102,10 @@ func (f *FSM) applyLeaderConfigChange(payload *pb.RaftCommand_LeaderConfigChange
 func (f *FSM) applyEnqueue(payload *pb.RaftCommand_Enqueue) *FSMResponse {
 	queue, err := f.queueManager.GetQueue(payload.Enqueue.QueueName)
 	if err != nil {
+		log.Error().
+			Err(err).
+			Str("component", "fsm").
+			Msgf("Failed to get a queue: %s", payload.Enqueue.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Enqueue.QueueName,
 			error:     fmt.Errorf("Failed to get a queue: %s", payload.Enqueue.QueueName),
@@ -113,9 +120,13 @@ func (f *FSM) applyEnqueue(payload *pb.RaftCommand_Enqueue) *FSMResponse {
 		payload.Enqueue.Metadata,
 	)
 
-	log.Debug().Msgf("Node %s Enqueued a message: %+v %v", f.NodeID, msg, err)
+	log.Debug().Str("component", "fsm").Msgf("Node %s Enqueued a message: %+v %v", f.NodeID, msg, err)
 
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to enqueue a message to a queue: %s", payload.Enqueue.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Enqueue.QueueName,
 			error: fmt.Errorf(
@@ -138,6 +149,10 @@ func (f *FSM) applyEnqueue(payload *pb.RaftCommand_Enqueue) *FSMResponse {
 func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.Dequeue.QueueName)
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to get a queue: %s", payload.Dequeue.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Dequeue.QueueName,
 			error:     fmt.Errorf("Failed to get a queue: %s", payload.Dequeue.QueueName),
@@ -146,7 +161,7 @@ func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue) *FSMResponse {
 
 	msg, err := q.Dequeue(payload.Dequeue.Ack)
 
-	log.Debug().Msgf("Node %s Dequeued a message: %+v %v", f.NodeID, msg, err)
+	log.Debug().Str("component", "fsm").Msgf("Node %s Dequeued a message: %+v %v", f.NodeID, msg, err)
 
 	if err != nil {
 		if err == errors.ErrEmptyQueue {
@@ -155,6 +170,10 @@ func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue) *FSMResponse {
 				error:     fmt.Errorf("Queue is empty: %s", payload.Dequeue.QueueName),
 			}
 		}
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to dequeue a message from a queue: %s", payload.Dequeue.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Dequeue.QueueName,
 			error: fmt.Errorf(
@@ -177,6 +196,10 @@ func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue) *FSMResponse {
 func (f *FSM) applyGet(payload *pb.RaftCommand_Get) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.Get.QueueName)
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to get a queue: %s", payload.Get.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Get.QueueName,
 			error:     fmt.Errorf("Failed to get a queue: %s", payload.Get.QueueName),
@@ -185,7 +208,7 @@ func (f *FSM) applyGet(payload *pb.RaftCommand_Get) *FSMResponse {
 
 	msg, err := q.Get(payload.Get.Id)
 
-	log.Debug().Msgf("Node %s got a message: %+v %v", f.NodeID, msg, err)
+	log.Debug().Str("component", "fsm").Msgf("Node %s got a message: %+v %v", f.NodeID, msg, err)
 
 	if err != nil {
 		if err == errors.ErrEmptyQueue {
@@ -194,6 +217,10 @@ func (f *FSM) applyGet(payload *pb.RaftCommand_Get) *FSMResponse {
 				error:     fmt.Errorf("Queue is empty: %s", payload.Get.QueueName),
 			}
 		}
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to get a message from a queue: %s", payload.Get.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Get.QueueName,
 			error: fmt.Errorf(
@@ -216,6 +243,10 @@ func (f *FSM) applyGet(payload *pb.RaftCommand_Get) *FSMResponse {
 func (f *FSM) applyDelete(payload *pb.RaftCommand_Delete) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.Delete.QueueName)
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to get a queue: %s", payload.Delete.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Delete.QueueName,
 			error:     fmt.Errorf("Failed to get a queue: %s", payload.Delete.QueueName),
@@ -232,6 +263,10 @@ func (f *FSM) applyDelete(payload *pb.RaftCommand_Delete) *FSMResponse {
 			}
 		}
 
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to delete a message from a queue: %s", payload.Delete.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Delete.QueueName,
 			error: fmt.Errorf(
@@ -250,6 +285,10 @@ func (f *FSM) applyDelete(payload *pb.RaftCommand_Delete) *FSMResponse {
 func (f *FSM) applyAck(payload *pb.RaftCommand_Ack) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.Ack.QueueName)
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to get a queue: %s", payload.Ack.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Ack.QueueName,
 			error:     fmt.Errorf("Failed to get a queue: %s", payload.Ack.QueueName),
@@ -258,7 +297,7 @@ func (f *FSM) applyAck(payload *pb.RaftCommand_Ack) *FSMResponse {
 
 	err = q.Ack(payload.Ack.Id)
 
-	log.Debug().Msgf("Node %s Acked a message: %v", f.NodeID, err)
+	log.Debug().Str("component", "fsm").Msgf("Node %s Acked a message: %v", f.NodeID, err)
 
 	if err != nil {
 		if err == errors.ErrEmptyQueue {
@@ -267,11 +306,19 @@ func (f *FSM) applyAck(payload *pb.RaftCommand_Ack) *FSMResponse {
 				error:     fmt.Errorf("Queue is empty: %s", payload.Ack.QueueName),
 			}
 		} else if err == errors.ErrMessageNotFound {
+			log.Error().
+				Str("component", "fsm").
+				Err(err).
+				Msgf("Message not found in queue: %s", payload.Ack.QueueName)
 			return &FSMResponse{
 				QueueName: payload.Ack.QueueName,
 				error:     fmt.Errorf("Message not found: %s", payload.Ack.QueueName),
 			}
 		}
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to ack a message from a queue: %s", payload.Ack.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Ack.QueueName,
 			error: fmt.Errorf(
@@ -290,6 +337,10 @@ func (f *FSM) applyAck(payload *pb.RaftCommand_Ack) *FSMResponse {
 func (f *FSM) applyNack(payload *pb.RaftCommand_Nack) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.Nack.QueueName)
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to get a queue: %s", payload.Nack.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Nack.QueueName,
 			error:     fmt.Errorf("Failed to get a queue: %s", payload.Nack.QueueName),
@@ -298,7 +349,7 @@ func (f *FSM) applyNack(payload *pb.RaftCommand_Nack) *FSMResponse {
 
 	err = q.Nack(payload.Nack.Id, payload.Nack.Priority, payload.Nack.Metadata)
 
-	log.Debug().Msgf("Node %s Nacked a message: %v", f.NodeID, err)
+	log.Debug().Str("component", "fsm").Msgf("Node %s Nacked a message: %v", f.NodeID, err)
 
 	if err != nil {
 		if err == errors.ErrEmptyQueue {
@@ -307,11 +358,19 @@ func (f *FSM) applyNack(payload *pb.RaftCommand_Nack) *FSMResponse {
 				error:     fmt.Errorf("Queue is empty: %s", payload.Nack.QueueName),
 			}
 		} else if err == errors.ErrMessageNotFound {
+			log.Error().
+				Str("component", "fsm").
+				Err(err).
+				Msgf("Message not found in queue: %s", payload.Nack.QueueName)
 			return &FSMResponse{
 				QueueName: payload.Nack.QueueName,
 				error:     fmt.Errorf("Message not found: %s", payload.Nack.QueueName),
 			}
 		}
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to nack a message from a queue: %s", payload.Nack.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Nack.QueueName,
 			error: fmt.Errorf(
@@ -331,6 +390,10 @@ func (f *FSM) applyNack(payload *pb.RaftCommand_Nack) *FSMResponse {
 func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.Touch.QueueName)
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to get a queue: %s", payload.Touch.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Touch.QueueName,
 			error:     fmt.Errorf("Failed to get a queue: %s", payload.Touch.QueueName),
@@ -339,7 +402,7 @@ func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch) *FSMResponse {
 
 	err = q.Touch(payload.Touch.Id)
 
-	log.Debug().Msgf("Node %s Touched a message: %v", f.NodeID, err)
+	log.Debug().Str("component", "fsm").Msgf("Node %s Touched a message: %v", f.NodeID, err)
 
 	if err != nil {
 		if err == errors.ErrEmptyQueue {
@@ -348,11 +411,19 @@ func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch) *FSMResponse {
 				error:     fmt.Errorf("Queue is empty: %s", payload.Touch.QueueName),
 			}
 		} else if err == errors.ErrMessageNotFound {
+			log.Error().
+				Str("component", "fsm").
+				Err(err).
+				Msgf("Message not found in queue: %s", payload.Touch.QueueName)
 			return &FSMResponse{
 				QueueName: payload.Touch.QueueName,
 				error:     fmt.Errorf("Message not found: %s", payload.Touch.QueueName),
 			}
 		}
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to touch a message from a queue: %s", payload.Touch.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Touch.QueueName,
 			error: fmt.Errorf(
@@ -371,6 +442,10 @@ func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch) *FSMResponse {
 func (f *FSM) applyUpdatePriority(payload *pb.RaftCommand_UpdatePriority) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.UpdatePriority.QueueName)
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to get a queue: %s", payload.UpdatePriority.QueueName)
 		return &FSMResponse{
 			QueueName: payload.UpdatePriority.QueueName,
 			error:     fmt.Errorf("Failed to get a queue: %s", payload.UpdatePriority.QueueName),
@@ -379,7 +454,7 @@ func (f *FSM) applyUpdatePriority(payload *pb.RaftCommand_UpdatePriority) *FSMRe
 
 	err = q.UpdatePriority(payload.UpdatePriority.Id, payload.UpdatePriority.Priority)
 
-	log.Debug().Msgf(
+	log.Debug().Str("component", "fsm").Msgf(
 		"Node %s Updated priority for a message: %d %d %v",
 		f.NodeID,
 		payload.UpdatePriority.Id,
@@ -394,6 +469,13 @@ func (f *FSM) applyUpdatePriority(payload *pb.RaftCommand_UpdatePriority) *FSMRe
 				error:     fmt.Errorf("Queue is empty: %s", payload.UpdatePriority.QueueName),
 			}
 		}
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf(
+				"Failed to update priority for a message in queue: %s",
+				payload.UpdatePriority.QueueName,
+			)
 		return &FSMResponse{
 			QueueName: payload.UpdatePriority.QueueName,
 			error: fmt.Errorf(
@@ -412,7 +494,14 @@ func (f *FSM) applyUpdatePriority(payload *pb.RaftCommand_UpdatePriority) *FSMRe
 }
 
 func (f *FSM) applyCreateQueue(payload *pb.RaftCommand_CreateQueue) *FSMResponse {
-	log.Info().Msgf("Creating queue: %s %d %s", payload.CreateQueue.Name, payload.CreateQueue.Settings.AckTimeout, payload.CreateQueue.Settings.Strategy.String())
+	log.Info().
+		Str("component", "fsm").
+		Msgf(
+			"Creating queue: %s %d %s",
+			payload.CreateQueue.Name,
+			payload.CreateQueue.Settings.AckTimeout,
+			payload.CreateQueue.Settings.Strategy.String(),
+		)
 	_, err := f.queueManager.CreateQueue(
 		payload.CreateQueue.Type,
 		payload.CreateQueue.Name,
@@ -423,13 +512,19 @@ func (f *FSM) applyCreateQueue(payload *pb.RaftCommand_CreateQueue) *FSMResponse
 		},
 	)
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to create a queue: %s", payload.CreateQueue.Name)
 		return &FSMResponse{
 			QueueName: payload.CreateQueue.Name,
 			error:     fmt.Errorf("Failed to create a queue: %s", payload.CreateQueue.Name),
 		}
 	}
 
-	log.Debug().Msgf("Node %s Created a queue: %s", f.NodeID, payload.CreateQueue.Name)
+	log.Debug().
+		Str("component", "fsm").
+		Msgf("Node %s Created a queue: %s", f.NodeID, payload.CreateQueue.Name)
 	return &FSMResponse{
 		QueueName: payload.CreateQueue.Name,
 		error:     nil,
@@ -437,7 +532,14 @@ func (f *FSM) applyCreateQueue(payload *pb.RaftCommand_CreateQueue) *FSMResponse
 }
 
 func (f *FSM) applyUpdateQueue(payload *pb.RaftCommand_UpdateQueue) *FSMResponse {
-	log.Info().Msgf("Updating queue: %s %d %s", payload.UpdateQueue.Name, payload.UpdateQueue.Settings.AckTimeout, payload.UpdateQueue.Settings.Strategy.String())
+	log.Info().
+		Str("component", "fsm").
+		Msgf(
+			"Updating queue: %s %d %s",
+			payload.UpdateQueue.Name,
+			payload.UpdateQueue.Settings.AckTimeout,
+			payload.UpdateQueue.Settings.Strategy.String(),
+		)
 	err := f.queueManager.UpdateQueue(
 		payload.UpdateQueue.Name,
 		entity.QueueSettings{
@@ -447,13 +549,19 @@ func (f *FSM) applyUpdateQueue(payload *pb.RaftCommand_UpdateQueue) *FSMResponse
 		},
 	)
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to update a queue: %s", payload.UpdateQueue.Name)
 		return &FSMResponse{
 			QueueName: payload.UpdateQueue.Name,
 			error:     fmt.Errorf("Failed to update a queue: %s", payload.UpdateQueue.Name),
 		}
 	}
 
-	log.Debug().Msgf("Node %s Updated a queue: %s", f.NodeID, payload.UpdateQueue.Name)
+	log.Debug().
+		Str("component", "fsm").
+		Msgf("Node %s Updated a queue: %s", f.NodeID, payload.UpdateQueue.Name)
 
 	return &FSMResponse{
 		QueueName: payload.UpdateQueue.Name,
@@ -464,13 +572,19 @@ func (f *FSM) applyUpdateQueue(payload *pb.RaftCommand_UpdateQueue) *FSMResponse
 func (f *FSM) applyDeleteQueue(payload *pb.RaftCommand_DeleteQueue) *FSMResponse {
 	err := f.queueManager.DeleteQueue(payload.DeleteQueue.Name)
 	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to delete a queue: %s", payload.DeleteQueue.Name)
 		return &FSMResponse{
 			QueueName: payload.DeleteQueue.Name,
 			error:     fmt.Errorf("Failed to delete a queue: %s", payload.DeleteQueue.Name),
 		}
 	}
 
-	log.Debug().Msgf("Node %s Deleted a queue: %s", f.NodeID, payload.DeleteQueue.Name)
+	log.Debug().
+		Str("component", "fsm").
+		Msgf("Node %s Deleted a queue: %s", f.NodeID, payload.DeleteQueue.Name)
 
 	return &FSMResponse{
 		QueueName: payload.DeleteQueue.Name,
@@ -482,7 +596,7 @@ func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	log.Info().Msgf("Node %s Snapshot() called", f.NodeID)
+	log.Info().Str("component", "fsm").Msgf("Node %s Snapshot() called", f.NodeID)
 
 	// Create a read-only transaction that captures DB state as of now.
 	// This transaction will provide a consistent view even while writes continue.
@@ -497,7 +611,7 @@ func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
 }
 
 func (f *FSM) Restore(rc io.ReadCloser) error {
-	log.Info().Msgf("=====> Restoring snapshot <=====")
+	log.Info().Str("component", "fsm").Msgf("=====> Restoring snapshot <=====")
 
 	defer rc.Close()
 
@@ -524,6 +638,7 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 		switch v := item.Item.(type) {
 		case *pb.SnapshotItem_LeaderConfiguration:
 			log.Debug().
+				Str("component", "fsm").
 				Str("node_id", v.LeaderConfiguration.NodeId).
 				Str("raft_addr", v.LeaderConfiguration.RaftAddr).
 				Str("grpc_addr", v.LeaderConfiguration.GrpcAddr).
@@ -536,24 +651,26 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 				v.LeaderConfiguration.HttpAddr,
 			)
 		case *pb.SnapshotItem_Queue:
-			log.Debug().Msgf("Restoring queue: %s", v.Queue.Name)
+			log.Debug().Str("component", "fsm").Msgf("Restoring queue: %s", v.Queue.Name)
 			q, err = f.queueManager.CreateQueue(v.Queue.Type, v.Queue.Name, entity.QueueSettings{
 				Strategy:   v.Queue.Settings.Strategy.String(),
 				MaxUnacked: int(v.Queue.Settings.MaxUnacked),
 				AckTimeout: v.Queue.Settings.AckTimeout,
 			})
 			if err != nil {
-				log.Warn().Msgf("Failed to create a queue: %v", err)
+				log.Warn().Str("component", "fsm").Msgf("Failed to create a queue: %v", err)
 				continue
 			}
 			queuesTotal++
 		case *pb.SnapshotItem_Message:
-			log.Debug().Msgf(
-				"Restoring message: %d %s %d",
-				v.Message.Id,
-				v.Message.Group,
-				v.Message.Priority,
-			)
+			log.Debug().
+				Str("component", "fsm").
+				Msgf(
+					"Restoring message: %d %s %d",
+					v.Message.Id,
+					v.Message.Group,
+					v.Message.Priority,
+				)
 			q.Enqueue(
 				v.Message.Id,
 				v.Message.Group,
@@ -567,7 +684,7 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 		linesRestored++
 	}
 
-	log.Warn().Msgf("Restored %d out of %d lines", linesRestored, linesTotal)
+	log.Warn().Str("component", "fsm").Msgf("Restored %d out of %d lines", linesRestored, linesTotal)
 
 	return nil
 }
@@ -580,8 +697,8 @@ type FSMSnapshot struct {
 }
 
 func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
-	log.Warn().Msg("Persisting snapshot")
-	defer log.Warn().Msg("Persisted snapshot")
+	log.Warn().Str("component", "fsm").Msg("Persisting snapshot")
+	defer log.Warn().Str("component", "fsm").Msg("Persisted snapshot")
 
 	snapshotItem := &pb.SnapshotItem{
 		Item: &pb.SnapshotItem_LeaderConfiguration{
@@ -598,7 +715,7 @@ func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
 	}
 
 	if err := f.queueManager.PersistSnapshot(sink, f.txn); err != nil {
-		log.Debug().Msg("Error copying logs to sink")
+		log.Debug().Str("component", "fsm").Msg("Error copying logs to sink")
 		sink.Cancel()
 		return err
 	}

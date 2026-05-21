@@ -9,7 +9,7 @@ import (
 func (h *Handler) Join(ctx context.Context, input *JoinInput) (*JoinOutput, error) {
 
 	if err := h.node.Join(input.Body.ID, input.Body.Addr); err != nil {
-		log.Error().Err(err).Msgf("Failed to add a server to the cluster: %s", input.Body.ID)
+		log.Error().Str("component", "http").Err(err).Msgf("Failed to add a server to the cluster: %s", input.Body.ID)
 		return &JoinOutput{}, err
 	}
 
@@ -22,7 +22,7 @@ func (h *Handler) Join(ctx context.Context, input *JoinInput) (*JoinOutput, erro
 
 func (h *Handler) Leave(ctx context.Context, input *LeaveInput) (*LeaveOutput, error) {
 	if err := h.node.Leave(input.Body.ID); err != nil {
-		log.Error().Err(err).Msgf("Failed to remove a server from the cluster: %s", input.Body.ID)
+		log.Error().Str("component", "http").Err(err).Msgf("Failed to remove a server from the cluster: %s", input.Body.ID)
 		return &LeaveOutput{}, err
 	}
 
@@ -35,7 +35,7 @@ func (h *Handler) Leave(ctx context.Context, input *LeaveInput) (*LeaveOutput, e
 func (h *Handler) Servers(ctx context.Context, input *ServersInput) (*ServersOutput, error) {
 	servers, err := h.node.GetServers()
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to get servers")
+		log.Error().Str("component", "http").Err(err).Msgf("Failed to get servers")
 		return &ServersOutput{}, err
 	}
 

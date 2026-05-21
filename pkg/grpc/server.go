@@ -83,7 +83,7 @@ func (s *QueueServer) CreateQueue(
 		},
 	)
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to create a queue %s", req.Name)
+		log.Error().Str("component", "grpc").Err(err).Msgf("Failed to create a queue %s", req.Name)
 		return &pb.CreateQueueResponse{Success: false}, fmt.Errorf(
 			"failed to create a queue %s", req.Name,
 		)
@@ -112,7 +112,7 @@ func (s *QueueServer) UpdateQueue(
 		},
 	)
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to update a queue %s", req.Name)
+		log.Error().Str("component", "grpc").Err(err).Msgf("Failed to update a queue %s", req.Name)
 		return &pb.UpdateQueueResponse{Success: false}, fmt.Errorf(
 			"failed to update a queue %s", req.Name,
 		)
@@ -129,7 +129,7 @@ func (s *QueueServer) DeleteQueue(
 	err := s.node.DeleteQueue(req.Name)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to delete a queue %s", req.Name)
+		log.Error().Str("component", "grpc").Err(err).Msgf("Failed to delete a queue %s", req.Name)
 		return &pb.DeleteQueueResponse{Success: false}, fmt.Errorf(
 			"failed to delete a queue %s", req.Name,
 		)
@@ -179,7 +179,10 @@ func (s *QueueServer) GetQueue(
 
 	queue, err := s.node.GetQueueInfo(req.Name)
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to get a queue %s", req.Name)
+		log.Error().
+			Str("component", "grpc").
+			Err(err).
+			Msgf("Failed to get a queue %s", req.Name)
 		return nil, fmt.Errorf("failed to get a queue %s", req.Name)
 	}
 
@@ -213,7 +216,10 @@ func (s *QueueServer) Enqueue(
 	)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to enqueue a message to queue %s", req.QueueName)
+		log.Error().
+			Str("component", "grpc").
+			Err(err).
+			Msgf("Failed to enqueue a message to queue %s", req.QueueName)
 		return &pb.EnqueueResponse{Success: false}, fmt.Errorf("failed to enqueue a message")
 	}
 
@@ -243,7 +249,7 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 			req.QueueName, req.Id, req.Group, req.Priority, req.Content, req.Metadata,
 		)
 		if err != nil {
-			log.Error().Err(err).Msgf(
+			log.Error().Str("component", "grpc").Err(err).Msgf(
 				"Failed to enqueue a message to queue %s", req.QueueName,
 			)
 			return fmt.Errorf("failed to enqueue a message")
@@ -258,7 +264,7 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 			Metadata: message.Metadata,
 		})
 		if err != nil {
-			log.Error().Err(err).Msgf(
+			log.Error().Str("component", "grpc").Err(err).Msgf(
 				"Failed to send enqueue response for queue %s", req.QueueName,
 			)
 			return err
@@ -293,7 +299,7 @@ func (s *QueueServer) DequeueStream(stream pb.DOQ_DequeueStreamServer) error {
 
 	req, err := stream.Recv()
 	if err != nil {
-		log.Warn().Msg("Client closed the stream or encountered an error")
+		log.Warn().Str("component", "grpc").Msg("Client closed the stream or encountered an error")
 		return err
 	}
 
@@ -306,18 +312,20 @@ func (s *QueueServer) DequeueStream(stream pb.DOQ_DequeueStreamServer) error {
 	for {
 		select {
 		case <-stream.Context().Done():
-			log.Info().Msgf("Dequeue stream for consumer closed")
+			log.Info().Str("component", "grpc").Msgf("Dequeue stream for consumer closed")
 			return nil
 		default:
 			message, err := s.node.Dequeue(queueName, ack)
 			if err != nil {
-				log.Info().Err(err).Msg("Failed to dequeue message")
+				log.Info().Str("component", "grpc").Err(err).Msg("Failed to dequeue message")
 
 				time.Sleep(1 * time.Second)
 				continue
 			}
 
-			log.Info().Msgf("Dequeued message %d from queue %s", message.ID, queueName)
+			log.Info().
+				Str("component", "grpc").
+				Msgf("Dequeued message %d from queue %s", message.ID, queueName)
 
 			err = stream.Send(&pb.DequeueResponse{
 				Success:  true,
@@ -328,14 +336,18 @@ func (s *QueueServer) DequeueStream(stream pb.DOQ_DequeueStreamServer) error {
 				Metadata: message.Metadata,
 			})
 			if err != nil {
-				log.Warn().Msgf("Failed to send dequeue response for consumer")
+				log.Warn().
+					Str("component", "grpc").
+					Msgf("Failed to send dequeue response for consumer")
 				return err
 			}
 
 			// receive the signal from the consumer that it is ready for the next message
 			req, err = stream.Recv()
 			if err != nil {
-				log.Warn().Msg("Client closed the stream or encountered an error")
+				log.Warn().
+					Str("component", "grpc").
+					Msg("Client closed the stream or encountered an error")
 				return err
 			}
 		}
@@ -346,7 +358,7 @@ func (s *QueueServer) DequeueStream(stream pb.DOQ_DequeueStreamServer) error {
 func (s *QueueServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
 	message, err := s.node.Get(req.QueueName, req.Id)
 	if err != nil {
-		log.Error().Err(err).Msgf(
+		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to get a message %d from queue %s", req.Id, req.QueueName,
 		)
 		return &pb.GetResponse{Success: false}, fmt.Errorf("failed to get a message")
@@ -370,7 +382,7 @@ func (s *QueueServer) Delete(
 ) (*pb.DeleteResponse, error) {
 	err := s.node.Delete(req.QueueName, req.Id)
 	if err != nil {
-		log.Error().Err(err).Msgf(
+		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to delete a message %d from queue %s", req.Id, req.QueueName,
 		)
 		return &pb.DeleteResponse{Success: false}, fmt.Errorf("failed to delete a message")
@@ -385,7 +397,7 @@ func (s *QueueServer) Delete(
 func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckResponse, error) {
 	err := s.node.Ack(req.QueueName, req.Id)
 	if err != nil {
-		log.Error().Err(err).Msgf(
+		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to ack a message %d from queue %s", req.Id, req.QueueName,
 		)
 		return &pb.AckResponse{Success: false}, fmt.Errorf("failed to ack a message")
@@ -399,7 +411,7 @@ func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckRespo
 func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackResponse, error) {
 	err := s.node.Nack(req.QueueName, req.Id, req.Priority, req.Metadata)
 	if err != nil {
-		log.Error().Err(err).Msgf(
+		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to nack a message %d from queue %s", req.Id, req.QueueName,
 		)
 		return &pb.NackResponse{Success: false}, fmt.Errorf("failed to ack a message")
@@ -412,7 +424,7 @@ func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackRe
 func (s *QueueServer) Touch(ctx context.Context, req *pb.TouchRequest) (*pb.TouchResponse, error) {
 	err := s.node.Touch(req.QueueName, req.Id)
 	if err != nil {
-		log.Error().Err(err).Msgf(
+		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to touch a message %d from queue %s", req.Id, req.QueueName,
 		)
 		return &pb.TouchResponse{Success: false}, fmt.Errorf("failed to touch a message")
@@ -428,7 +440,7 @@ func (s *QueueServer) UpdatePriority(
 ) (*pb.UpdatePriorityResponse, error) {
 	err := s.node.UpdatePriority(req.QueueName, req.Id, req.Priority)
 	if err != nil {
-		log.Error().Err(err).Msgf(
+		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to update priority of a message %d from queue %s", req.Id, req.QueueName,
 		)
 		return &pb.UpdatePriorityResponse{Success: false}, fmt.Errorf(

@@ -16,16 +16,18 @@ import (
 )
 
 func (n *Node) NotifyLeaderConfiguration() error {
-	log.Info().Msgf("Notifying leader configuration: NodeID=%s, RaftAddr=%s, GrpcAddr=%s HTTP=%s",
-		n.cfg.Cluster.NodeID,
-		n.cfg.Raft.Address,
-		n.cfg.Grpc.Address,
-		n.cfg.Http.Port,
-	)
+	log.Info().
+		Str("component", "commands").
+		Msgf("Notifying leader configuration: NodeID=%s, RaftAddr=%s, GrpcAddr=%s HTTP=%s",
+			n.cfg.Cluster.NodeID,
+			n.cfg.Raft.Address,
+			n.cfg.Grpc.Address,
+			n.cfg.Http.Port,
+		)
 
 	host, _, err := net.SplitHostPort(n.cfg.Grpc.Address)
 	if err != nil {
-		log.Error().Msgf("Failed to split HTTP address: %v", err)
+		log.Error().Str("component", "commands").Msgf("Failed to split HTTP address: %v", err)
 		return err
 	}
 
@@ -42,14 +44,18 @@ func (n *Node) NotifyLeaderConfiguration() error {
 
 	data, err := proto.Marshal(cmd)
 	if err != nil {
-		log.Error().Msgf("Failed to marshal leader config change command: %v", err)
+		log.Error().
+			Str("component", "commands").
+			Msgf("Failed to marshal leader config change command: %v", err)
 		return err
 	}
 
 	f := n.Raft.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
 
 	if f.Error() != nil {
-		log.Error().Msgf("Failed to apply leader config change command: %v", f.Error())
+		log.Error().
+			Str("component", "commands").
+			Msgf("Failed to apply leader config change command: %v", f.Error())
 		return f.Error()
 	}
 

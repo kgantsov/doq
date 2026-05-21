@@ -31,7 +31,7 @@ func (p *GRPCProxy) initClient(leader string) error {
 
 	conn, err := grpc.Dial(host, grpc.WithInsecure())
 	if err != nil {
-		log.Fatal().Msgf("Failed to connect: %v", err)
+		log.Fatal().Str("component", "grpc").Msgf("Failed to connect: %v", err)
 	}
 	// defer conn.Close()
 
@@ -41,11 +41,16 @@ func (p *GRPCProxy) initClient(leader string) error {
 }
 
 func (p *GRPCProxy) CreateQueue(ctx context.Context, host string, req *pb.CreateQueueRequest) (*pb.CreateQueueResponse, error) {
-	log.Debug().Msgf("PROXY CreateQueue: %+v to the leader node: %s", req, host)
+	log.Debug().
+		Str("component", "grpc").
+		Msgf("PROXY CreateQueue: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.CreateQueueResponse{Success: false}, err
 		}
 	}
@@ -53,11 +58,16 @@ func (p *GRPCProxy) CreateQueue(ctx context.Context, host string, req *pb.Create
 }
 
 func (p *GRPCProxy) UpdateQueue(ctx context.Context, host string, req *pb.UpdateQueueRequest) (*pb.UpdateQueueResponse, error) {
-	log.Debug().Msgf("PROXY UpdateQueue: %+v to the leader node: %s", req, host)
+	log.Debug().
+		Str("component", "grpc").
+		Msgf("PROXY UpdateQueue: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.UpdateQueueResponse{Success: false}, err
 		}
 	}
@@ -65,11 +75,16 @@ func (p *GRPCProxy) UpdateQueue(ctx context.Context, host string, req *pb.Update
 }
 
 func (p *GRPCProxy) DeleteQueue(ctx context.Context, host string, req *pb.DeleteQueueRequest) (*pb.DeleteQueueResponse, error) {
-	log.Debug().Msgf("PROXY DeleteQueue: %+v to the leader node: %s", req, host)
+	log.Debug().
+		Str("component", "grpc").
+		Msgf("PROXY DeleteQueue: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.DeleteQueueResponse{Success: false}, err
 		}
 	}
@@ -77,11 +92,16 @@ func (p *GRPCProxy) DeleteQueue(ctx context.Context, host string, req *pb.Delete
 }
 
 func (p *GRPCProxy) Enqueue(ctx context.Context, host string, req *pb.EnqueueRequest) (*pb.EnqueueResponse, error) {
-	log.Debug().Msgf("PROXY Enqueue: %+v to the leader node: %s", req, host)
+	log.Debug().
+		Str("component", "grpc").
+		Msgf("PROXY Enqueue: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.EnqueueResponse{Success: false}, err
 		}
 	}
@@ -89,11 +109,16 @@ func (p *GRPCProxy) Enqueue(ctx context.Context, host string, req *pb.EnqueueReq
 }
 
 func (p *GRPCProxy) Dequeue(ctx context.Context, host string, req *pb.DequeueRequest) (*pb.DequeueResponse, error) {
-	log.Debug().Msgf("PROXY Dequeue: %+v to the leader node: %s", req, host)
+	log.Debug().
+		Str("component", "grpc").
+		Msgf("PROXY Dequeue: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.DequeueResponse{Success: false}, err
 		}
 	}
@@ -101,11 +126,16 @@ func (p *GRPCProxy) Dequeue(ctx context.Context, host string, req *pb.DequeueReq
 }
 
 func (p *GRPCProxy) Get(ctx context.Context, host string, req *pb.GetRequest) (*pb.GetResponse, error) {
-	log.Debug().Msgf("PROXY Get: %+v to the leader node: %s", req, host)
+	log.Debug().
+		Str("component", "grpc").
+		Msgf("PROXY Get: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.GetResponse{Success: false}, err
 		}
 	}
@@ -113,11 +143,14 @@ func (p *GRPCProxy) Get(ctx context.Context, host string, req *pb.GetRequest) (*
 }
 
 func (p *GRPCProxy) Delete(ctx context.Context, host string, req *pb.DeleteRequest) (*pb.DeleteResponse, error) {
-	log.Debug().Msgf("PROXY Delete: %+v to the leader node: %s", req, host)
+	log.Debug().Str("component", "grpc").Msgf("PROXY Delete: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.DeleteResponse{Success: false}, err
 		}
 	}
@@ -125,11 +158,14 @@ func (p *GRPCProxy) Delete(ctx context.Context, host string, req *pb.DeleteReque
 }
 
 func (p *GRPCProxy) Ack(ctx context.Context, host string, req *pb.AckRequest) (*pb.AckResponse, error) {
-	log.Debug().Msgf("PROXY Ack: %+v to the leader node: %s", req, host)
+	log.Debug().Str("component", "grpc").Msgf("PROXY Ack: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.AckResponse{Success: false}, err
 		}
 	}
@@ -137,11 +173,14 @@ func (p *GRPCProxy) Ack(ctx context.Context, host string, req *pb.AckRequest) (*
 }
 
 func (p *GRPCProxy) Nack(ctx context.Context, host string, req *pb.NackRequest) (*pb.NackResponse, error) {
-	log.Debug().Msgf("PROXY Nack: %+v to the leader node: %s", req, host)
+	log.Debug().Str("component", "grpc").Msgf("PROXY Nack: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.NackResponse{Success: false}, err
 		}
 	}
@@ -149,11 +188,14 @@ func (p *GRPCProxy) Nack(ctx context.Context, host string, req *pb.NackRequest) 
 }
 
 func (p *GRPCProxy) Touch(ctx context.Context, host string, req *pb.TouchRequest) (*pb.TouchResponse, error) {
-	log.Debug().Msgf("PROXY Touch: %+v to the leader node: %s", req, host)
+	log.Debug().Str("component", "grpc").Msgf("PROXY Touch: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.TouchResponse{Success: false}, err
 		}
 	}
@@ -161,11 +203,16 @@ func (p *GRPCProxy) Touch(ctx context.Context, host string, req *pb.TouchRequest
 }
 
 func (p *GRPCProxy) UpdatePriority(ctx context.Context, host string, req *pb.UpdatePriorityRequest) (*pb.UpdatePriorityResponse, error) {
-	log.Debug().Msgf("PROXY UpdatePriority: %+v to the leader node: %s", req, host)
+	log.Debug().
+		Str("component", "grpc").
+		Msgf("PROXY UpdatePriority: %+v to the leader node: %s", req, host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.UpdatePriorityResponse{Success: false}, err
 		}
 	}
@@ -173,18 +220,23 @@ func (p *GRPCProxy) UpdatePriority(ctx context.Context, host string, req *pb.Upd
 }
 
 func (p *GRPCProxy) EnqueueStream(inStream pb.DOQ_EnqueueStreamServer, host string) error {
-	log.Debug().Msgf("PROXY EnqueueStream to the leader node: %s", host)
+	log.Debug().Str("component", "grpc").Msgf("PROXY EnqueueStream to the leader node: %s", host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return err
 		}
 	}
 
 	outStream, err := p.client.EnqueueStream(inStream.Context())
 	if err != nil {
-		log.Error().Msgf("Failed to open stream: %v", err)
+		log.Error().
+			Str("component", "grpc").
+			Msgf("Failed to open stream: %v", err)
 		return err
 	}
 
@@ -200,14 +252,14 @@ func (p *GRPCProxy) EnqueueStream(inStream pb.DOQ_EnqueueStreamServer, host stri
 
 		// Send the message to the queue
 		if err := outStream.Send(req); err != nil {
-			log.Error().Msgf("Failed to send message: %v", err)
+			log.Error().Str("component", "grpc").Msgf("Failed to send message: %v", err)
 			return err
 		}
 
 		// Receive the acknowledgment from the server
 		message, err := outStream.Recv()
 		if err != nil {
-			log.Error().Msgf("Failed to receive acknowledgment: %v", err)
+			log.Error().Str("component", "grpc").Msgf("Failed to receive acknowledgment: %v", err)
 			return err
 		}
 
@@ -226,30 +278,33 @@ func (p *GRPCProxy) EnqueueStream(inStream pb.DOQ_EnqueueStreamServer, host stri
 }
 
 func (p *GRPCProxy) DequeueStream(outStream pb.DOQ_DequeueStreamServer, host string) error {
-	log.Debug().Msgf("PROXY DequeueStream to the leader node: %s", host)
+	log.Debug().Str("component", "grpc").Msgf("PROXY DequeueStream to the leader node: %s", host)
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
-			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
+			log.Error().
+				Str("component", "grpc").
+				Err(err).
+				Msgf("Failed to initialize gRPC client for host: %s", host)
 			return err
 		}
 	}
 
 	inStream, err := p.client.DequeueStream(outStream.Context())
 	if err != nil {
-		log.Error().Msgf("Failed to open stream: %v", err)
+		log.Error().Str("component", "grpc").Msgf("Failed to open stream: %v", err)
 		return err
 	}
 
 	msg, err := outStream.Recv()
 	if err != nil {
-		log.Error().Msgf("Failed to receive message: %v", err)
+		log.Error().Str("component", "grpc").Msgf("Failed to receive message: %v", err)
 		return err
 	}
 
 	err = inStream.Send(msg)
 	if err != nil {
-		log.Error().Msgf("Failed to open stream: %v", err)
+		log.Error().Str("component", "grpc").Msgf("Failed to open stream: %v", err)
 		return err
 	}
 
@@ -257,27 +312,27 @@ func (p *GRPCProxy) DequeueStream(outStream pb.DOQ_DequeueStreamServer, host str
 	for {
 		select {
 		case <-outStream.Context().Done():
-			log.Info().Msg("Client closed the connection")
+			log.Info().Str("component", "grpc").Msg("Client closed the connection")
 			return nil
 		case <-inStream.Context().Done():
 			return nil
 		default:
 			msg, err := inStream.Recv()
 			if err != nil {
-				log.Warn().Msgf("Failed to receive message: %v", err)
+				log.Warn().Str("component", "grpc").Msgf("Failed to receive message: %v", err)
 				time.Sleep(50 * time.Millisecond)
 				continue
 			}
 
 			if err := outStream.Send(msg); err != nil {
-				log.Error().Msgf("Failed to send message: %v", err)
+				log.Error().Str("component", "grpc").Msgf("Failed to send message: %v", err)
 				return err
 			}
 
 			err = inStream.Send(&pb.DequeueRequest{})
 
 			if err != nil {
-				log.Error().Msgf("Failed to send message: %v", err)
+				log.Error().Str("component", "grpc").Msgf("Failed to send message: %v", err)
 				return err
 			}
 		}

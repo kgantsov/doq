@@ -104,7 +104,7 @@ func (n *Node) Initialize() {
 
 	nodeID := n.id
 
-	log.Debug().Msgf("=====> TEST Initialize %+v", nodes)
+	log.Debug().Str("component", "node").Msgf("=====> TEST Initialize %+v", nodes)
 
 	var prometheusMetrics *metrics.PrometheusMetrics
 	if n.cfg.Prometheus.Enabled {
@@ -119,14 +119,16 @@ func (n *Node) Initialize() {
 
 	idGenerator, err := snowflake.NewNode(1)
 	if err != nil {
-		log.Warn().Err(err).Msg("failed to create snowflake node")
+		log.Warn().Str("component", "node").Err(err).Msg("failed to create snowflake node")
 	}
 
 	n.idGenerator = idGenerator
 
 	raftNode, err := n.createRaftNode(nodeID, n.raftDir, n.raftAddr, queueManager)
 	if err != nil {
-		log.Fatal().Msgf("failed to create raft node: '%s' %s", n.raftAddr, err.Error())
+		log.Fatal().
+			Str("component", "node").
+			Msgf("failed to create raft node: '%s' %s", n.raftAddr, err.Error())
 	}
 
 	n.Raft = raftNode
@@ -144,7 +146,7 @@ func (n *Node) InitIDGenerator() error {
 	time.Sleep(2 * time.Second)
 	configFuture := n.Raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
-		log.Info().Msgf("failed to get raft configuration: %v", err)
+		log.Info().Str("component", "node").Msgf("failed to get raft configuration: %v", err)
 		return err
 	}
 
@@ -161,12 +163,14 @@ func (n *Node) InitIDGenerator() error {
 		}
 	}
 
-	log.Info().Msgf("Server configuration: %v Node indes: %d", configFuture.Configuration().Servers, index)
+	log.Info().
+		Str("component", "node").
+		Msgf("Server configuration: %v Node indes: %d", configFuture.Configuration().Servers, index)
 
 	// Create a new snowflake Node with a Node number
 	idGenerator, err := snowflake.NewNode(int64(index + 1))
 	if err != nil {
-		log.Warn().Err(err).Msg("failed to create snowflake node")
+		log.Warn().Str("component", "node").Err(err).Msg("failed to create snowflake node")
 		return err
 	}
 
@@ -178,11 +182,11 @@ func (n *Node) InitIDGenerator() error {
 func (n *Node) ListenToLeaderChanges() {
 	for isLeader := range n.Raft.LeaderCh() {
 		if isLeader {
-			log.Info().Msgf("Node %s has become a leader", n.id)
+			log.Info().Str("component", "node").Msgf("Node %s has become a leader", n.id)
 			// Notify the leader configuration
 			n.NotifyLeaderConfiguration()
 		} else {
-			log.Info().Msgf("Node %s lost leadership", n.id)
+			log.Info().Str("component", "node").Msgf("Node %s lost leadership", n.id)
 		}
 		n.leaderChangeFn(isLeader)
 	}
@@ -200,11 +204,13 @@ func (n *Node) IsNewNode() bool {
 }
 
 func (n *Node) Join(nodeID, addr string) error {
-	log.Info().Msgf("received join request for remote node %s at %s", nodeID, addr)
+	log.Info().
+		Str("component", "node").
+		Msgf("received join request for remote node %s at %s", nodeID, addr)
 
 	configFuture := n.Raft.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
-		log.Info().Msgf("failed to get raft configuration: %v", err)
+		log.Info().Str("component", "node").Msgf("failed to get raft configuration: %v", err)
 		return err
 	}
 
@@ -216,7 +222,13 @@ func (n *Node) Join(nodeID, addr string) error {
 			// However if *both* the ID and the address are the same, then nothing -- not even
 			// a join operation -- is needed.
 			if srv.Address == raft.ServerAddress(addr) && srv.ID == raft.ServerID(nodeID) {
-				log.Info().Msgf("node %s at %s already member of cluster, ignoring join request", nodeID, addr)
+				log.Info().
+					Str("component", "node").
+					Msgf(
+						"node %s at %s already member of cluster, ignoring join request",
+						nodeID,
+						addr,
+					)
 				return nil
 			}
 
@@ -233,7 +245,7 @@ func (n *Node) Join(nodeID, addr string) error {
 	if f.Error() != nil {
 		return f.Error()
 	}
-	log.Info().Msgf("node %s at %s joined successfully", nodeID, addr)
+	log.Info().Str("component", "node").Msgf("node %s at %s joined successfully", nodeID, addr)
 	return nil
 }
 
@@ -276,7 +288,7 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 	bindAddr := raftPort
 	transport, err := raft.NewTCPTransportWithLogger(bindAddr, nil, 3, 10*time.Second, config.Logger)
 	if err != nil {
-		log.Warn().Msgf("failed to create transport: %s", err)
+		log.Warn().Str("component", "node").Msgf("failed to create transport: %s", err)
 		return nil, err
 	}
 
@@ -288,7 +300,7 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 		raftstore.Options{},
 	)
 	if err != nil {
-		log.Warn().Msgf("failed to create store: %s", err)
+		log.Warn().Str("component", "node").Msgf("failed to create store: %s", err)
 		return nil, fmt.Errorf("new store: %s", err)
 	}
 	logStore = badgerDB
@@ -296,7 +308,7 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 
 	snapshots, err := raft.NewFileSnapshotStoreWithLogger(raftDir, 1, config.Logger)
 	if err != nil {
-		log.Warn().Msgf("failed to create snapshot store: %s", err)
+		log.Warn().Str("component", "node").Msgf("failed to create snapshot store: %s", err)
 		return nil, err
 	}
 
@@ -310,13 +322,13 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 
 	r, err := raft.NewRaft(config, fsm, logStore, stableStore, snapshots, transport)
 	if err != nil {
-		log.Warn().Msgf("failed to create raft: %s", err)
+		log.Warn().Str("component", "node").Msgf("failed to create raft: %s", err)
 		return nil, err
 	}
 
 	configFuture := r.GetConfiguration()
 	if err := configFuture.Error(); err != nil {
-		log.Info().Msgf("failed to get raft configuration: %v", err)
+		log.Info().Str("component", "node").Msgf("failed to get raft configuration: %v", err)
 	}
 
 	if len(configFuture.Configuration().Servers) == 0 {
@@ -324,7 +336,7 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 
 		host, _, err := net.SplitHostPort(string(config.LocalID))
 		if err != nil {
-			log.Warn().Msgf(
+			log.Warn().Str("component", "node").Msgf(
 				"Error splitting host and port for config.LocalID: %s %v\n", config.LocalID, err,
 			)
 			host = "localhost"
@@ -332,7 +344,7 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 
 		_, raftPort, err := net.SplitHostPort(string(transport.LocalAddr()))
 		if err != nil {
-			log.Warn().Msgf(
+			log.Warn().Str("component", "node").Msgf(
 				"Error splitting host and port for raftAddr: %s %v\n", transport.LocalAddr(), err,
 			)
 		}
@@ -342,13 +354,17 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 			Address: raft.ServerAddress(fmt.Sprintf("%s:%s", host, raftPort)),
 		})
 
-		log.Info().Msgf("BootstrapCluster %s joining peers: %v", nodeID, servers)
+		log.Info().
+			Str("component", "node").
+			Msgf("BootstrapCluster %s joining peers: %v", nodeID, servers)
 
 		configuration := raft.Configuration{Servers: servers}
 		r.BootstrapCluster(configuration)
 		n.newNode = true
 	} else {
-		log.Info().Msgf("Already bootstraped %s %v", nodeID, configFuture.Configuration().Servers)
+		log.Info().
+			Str("component", "node").
+			Msgf("Already bootstraped %s %v", nodeID, configFuture.Configuration().Servers)
 	}
 
 	return r, nil

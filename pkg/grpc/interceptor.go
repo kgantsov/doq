@@ -102,6 +102,7 @@ func UnaryInterceptor(prometheusEnabled bool, m *PrometheusMetrics) grpc.UnarySe
 		}
 
 		log.Debug().
+			Str("component", "grpc").
 			Dur("duration", duration).
 			Str("code", code.String()).
 			Msgf("[grpc] %s %s %s", info.FullMethod, code.String(), duration)
@@ -129,6 +130,7 @@ func StreamInterceptor(prometheusEnabled bool, m *PrometheusMetrics) grpc.Stream
 		}
 
 		log.Info().
+			Str("component", "grpc").
 			Dur("duration", duration).
 			Str("code", code.String()).
 			Msgf("[grpc] %s %s %s", info.FullMethod, code.String(), duration)

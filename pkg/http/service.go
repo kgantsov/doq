@@ -373,6 +373,6 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 
 // Start starts the service.
 func (s *Service) Start() error {
-	log.Info().Msg("Starting http server")
+	log.Info().Str("component", "http").Msg("Starting http server")
 	return s.router.Listen(fmt.Sprintf(":%s", s.addr))
 }

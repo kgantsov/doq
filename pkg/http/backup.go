@@ -21,11 +21,11 @@ func (h *Handler) Backup(ctx context.Context, input *BackupInput) (*huma.StreamR
 			writer := ctx.BodyWriter()
 			maxVersion, err := h.node.Backup(writer, uint64(0))
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to create a backup")
+				log.Error().Str("component", "http").Err(err).Msg("Failed to create a backup")
 				return
 			}
 
-			log.Info().Msgf("Backup created with version %d", maxVersion)
+			log.Info().Str("component", "http").Msgf("Backup created with version %d", maxVersion)
 
 			// ✅ Include version metadata in `Content-Disposition`
 			ctx.SetHeader("X-Last-Version", fmt.Sprintf("%d", maxVersion))

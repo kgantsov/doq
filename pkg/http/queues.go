@@ -22,7 +22,7 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 	})
 
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to create a queue: %s", queueName)
+		log.Error().Str("component", "http").Err(err).Msgf("Failed to create a queue: %s", queueName)
 		return nil, huma.Error409Conflict("Failed to enqueue a message", err)
 	}
 
@@ -54,7 +54,7 @@ func (h *Handler) UpdateQueue(ctx context.Context, input *UpdateQueueInput) (*Up
 	})
 
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to update a queue: %s", queueName)
+		log.Error().Str("component", "http").Err(err).Msgf("Failed to update a queue: %s", queueName)
 		return nil, huma.Error409Conflict("Failed to update a queue", err)
 	}
 
@@ -80,7 +80,7 @@ func (h *Handler) DeleteQueue(ctx context.Context, input *DeleteQueueInput) (*De
 	err := h.node.DeleteQueue(queueName)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to delete a queue: %s", queueName)
+		log.Error().Str("component", "http").Err(err).Msgf("Failed to delete a queue: %s", queueName)
 		return nil, huma.Error400BadRequest("Failed to dequeue a message from a queue", err)
 	}
 
@@ -133,7 +133,10 @@ func (h *Handler) QueueInfo(ctx context.Context, input *QueueInfoInput) (*QueueI
 	queueInfo, err := h.node.GetQueueInfo(queueName)
 
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to get stats for a queue: %s", queueName)
+		log.Error().
+			Str("component", "http").
+			Err(err).
+			Msgf("Failed to get stats for a queue: %s", queueName)
 		return nil, huma.Error400BadRequest("Failed to get stats for a queue", err)
 	}
 

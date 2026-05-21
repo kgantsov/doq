@@ -58,6 +58,7 @@ func (c *LeaderConfig) Set(nodeID, raftAddr, grpcAddr, httpAddr string) error {
 	c.leaderHttpAddr = net.JoinHostPort(leaderHostname, httpPortOnly)
 	c.leaderRaftAddr = net.JoinHostPort(leaderHostname, raftPortOnly)
 	log.Info().
+		Str("component", "leader_configuration").
 		Str("node_id", c.Id).
 		Str("raft_addr", c.RaftAddr).
 		Str("grpc_addr", c.GrpcAddr).
