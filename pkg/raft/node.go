@@ -165,7 +165,7 @@ func (n *Node) InitIDGenerator() error {
 
 	log.Info().
 		Str("component", "node").
-		Msgf("Server configuration: %v Node indes: %d", configFuture.Configuration().Servers, index)
+		Msgf("Server configuration: %v Node index: %d", configFuture.Configuration().Servers, index)
 
 	// Create a new snowflake Node with a Node number
 	idGenerator, err := snowflake.NewNode(int64(index + 1))
