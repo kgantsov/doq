@@ -42,6 +42,7 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 	msg, err := h.node.Enqueue(queueName, id, group, priority, content, metadata)
 
 	if err != nil {
+		log.Error().Err(err).Msgf("Failed to enqueue a message to a queue: %s", queueName)
 		return nil, huma.Error409Conflict("Failed to enqueue a message", err)
 	}
 
@@ -88,6 +89,7 @@ func (h *Handler) Get(ctx context.Context, input *GetInput) (*GetOutput, error) 
 	msg, err := h.node.Get(queueName, input.ID)
 
 	if err != nil {
+		log.Error().Err(err).Msgf("Failed to get a message from a queue: %s", queueName)
 		return nil, huma.Error400BadRequest("Failed to get a message from a queue", err)
 	}
 
@@ -111,6 +113,7 @@ func (h *Handler) Delete(ctx context.Context, input *DeleteInput) (*DeleteOutput
 	err := h.node.Delete(queueName, input.ID)
 
 	if err != nil {
+		log.Error().Err(err).Msgf("Failed to delete a message from a queue: %s", queueName)
 		return nil, huma.Error400BadRequest("Failed to delete a message from a queue", err)
 	}
 
@@ -126,6 +129,7 @@ func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) 
 	err := h.node.Ack(queueName, input.ID)
 
 	if err != nil {
+		log.Error().Err(err).Msgf("Failed to ack a message from a queue: %s", queueName)
 		return nil, huma.Error400BadRequest("Failed to ack a message from a queue", err)
 	}
 
@@ -147,6 +151,7 @@ func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, erro
 	err := h.node.Nack(queueName, input.ID, input.Body.Priority, metadata)
 
 	if err != nil {
+		log.Error().Err(err).Msgf("Failed to nack a message from a queue: %s", queueName)
 		return nil, huma.Error400BadRequest("Failed to nack a message from a queue", err)
 	}
 
@@ -168,7 +173,8 @@ func (h *Handler) Touch(ctx context.Context, input *TouchInput) (*TouchOutput, e
 	err := h.node.Touch(queueName, input.ID)
 
 	if err != nil {
-		return nil, huma.Error400BadRequest("Failed to ack a message from a queue", err)
+		log.Error().Err(err).Msgf("Failed to touch a message from a queue: %s", queueName)
+		return nil, huma.Error400BadRequest("Failed to touch a message from a queue", err)
 	}
 
 	res := &TouchOutput{
@@ -189,6 +195,9 @@ func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput
 	err := h.node.UpdatePriority(queueName, input.ID, priority)
 
 	if err != nil {
+		log.Error().Err(err).Msgf(
+			"Failed to update priority a message from a queue: %s", queueName,
+		)
 		return nil, huma.Error409Conflict("Failed to update priority a message", err)
 	}
 

@@ -45,6 +45,7 @@ func (p *GRPCProxy) CreateQueue(ctx context.Context, host string, req *pb.Create
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.CreateQueueResponse{Success: false}, err
 		}
 	}
@@ -56,6 +57,7 @@ func (p *GRPCProxy) UpdateQueue(ctx context.Context, host string, req *pb.Update
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.UpdateQueueResponse{Success: false}, err
 		}
 	}
@@ -67,6 +69,7 @@ func (p *GRPCProxy) DeleteQueue(ctx context.Context, host string, req *pb.Delete
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.DeleteQueueResponse{Success: false}, err
 		}
 	}
@@ -78,6 +81,7 @@ func (p *GRPCProxy) Enqueue(ctx context.Context, host string, req *pb.EnqueueReq
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.EnqueueResponse{Success: false}, err
 		}
 	}
@@ -89,6 +93,7 @@ func (p *GRPCProxy) Dequeue(ctx context.Context, host string, req *pb.DequeueReq
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.DequeueResponse{Success: false}, err
 		}
 	}
@@ -100,6 +105,7 @@ func (p *GRPCProxy) Get(ctx context.Context, host string, req *pb.GetRequest) (*
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.GetResponse{Success: false}, err
 		}
 	}
@@ -111,6 +117,7 @@ func (p *GRPCProxy) Delete(ctx context.Context, host string, req *pb.DeleteReque
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.DeleteResponse{Success: false}, err
 		}
 	}
@@ -122,6 +129,7 @@ func (p *GRPCProxy) Ack(ctx context.Context, host string, req *pb.AckRequest) (*
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.AckResponse{Success: false}, err
 		}
 	}
@@ -133,6 +141,7 @@ func (p *GRPCProxy) Nack(ctx context.Context, host string, req *pb.NackRequest) 
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.NackResponse{Success: false}, err
 		}
 	}
@@ -144,6 +153,7 @@ func (p *GRPCProxy) Touch(ctx context.Context, host string, req *pb.TouchRequest
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.TouchResponse{Success: false}, err
 		}
 	}
@@ -155,6 +165,7 @@ func (p *GRPCProxy) UpdatePriority(ctx context.Context, host string, req *pb.Upd
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return &pb.UpdatePriorityResponse{Success: false}, err
 		}
 	}
@@ -166,6 +177,7 @@ func (p *GRPCProxy) EnqueueStream(inStream pb.DOQ_EnqueueStreamServer, host stri
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return err
 		}
 	}
@@ -218,6 +230,7 @@ func (p *GRPCProxy) DequeueStream(outStream pb.DOQ_DequeueStreamServer, host str
 
 	if p.leader != host || p.client == nil {
 		if err := p.initClient(host); err != nil {
+			log.Error().Err(err).Msgf("Failed to initialize gRPC client for host: %s", host)
 			return err
 		}
 	}
