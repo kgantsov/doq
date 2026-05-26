@@ -36,6 +36,7 @@ func (c *LeaderConfig) Set(nodeID, raftAddr, grpcAddr, httpAddr string) error {
 	c.Id = nodeID
 	c.RaftAddr = raftAddr
 	c.GrpcAddr = grpcAddr
+	c.HttpAddr = httpAddr
 
 	leaderHostname, _, err := net.SplitHostPort(raftAddr)
 	if err != nil {

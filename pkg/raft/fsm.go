@@ -644,12 +644,19 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 				Str("grpc_addr", v.LeaderConfiguration.GrpcAddr).
 				Msg("Restoring leader configuration")
 
-			f.leaderConfig.Set(
+			err := f.leaderConfig.Set(
 				v.LeaderConfiguration.NodeId,
 				v.LeaderConfiguration.RaftAddr,
 				v.LeaderConfiguration.GrpcAddr,
 				v.LeaderConfiguration.HttpAddr,
 			)
+			if err != nil {
+				log.Error().
+					Str("component", "fsm").
+					Err(err).
+					Msg("Failed to restore leader configuration")
+				return err
+			}
 		case *pb.SnapshotItem_Queue:
 			log.Debug().Str("component", "fsm").Msgf("Restoring queue: %s", v.Queue.Name)
 			q, err = f.queueManager.CreateQueue(v.Queue.Type, v.Queue.Name, entity.QueueSettings{
@@ -706,6 +713,7 @@ func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
 				NodeId:   f.leaderConfig.Id,
 				RaftAddr: f.leaderConfig.RaftAddr,
 				GrpcAddr: f.leaderConfig.GrpcAddr,
+				HttpAddr: f.leaderConfig.HttpAddr,
 			},
 		},
 	}

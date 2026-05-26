@@ -94,16 +94,19 @@ func TestFSMPersistRestore(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, q1m3)
 
+	leaderConfig := NewLeaderConfig(
+		"node-1",
+		"localhost:9000",
+		"localhost:10000",
+	)
+	leaderConfig.Set("node-1", "localhost:9000", "localhost:10000", "localhost:8000")
+
 	fsm := &FSM{
 		queueManager: queueManager,
 		NodeID:       "node-1",
 		db:           db,
 		config:       cfg,
-		leaderConfig: NewLeaderConfig(
-			"node-1",
-			"raft-addr-1",
-			"grpc-addr-1",
-		),
+		leaderConfig: leaderConfig,
 	}
 
 	snap, err := fsm.Snapshot()
@@ -139,8 +142,11 @@ func TestFSMPersistRestore(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, "node-1", fsm.leaderConfig.Id)
-	assert.Equal(t, "raft-addr-1", fsm.leaderConfig.RaftAddr)
-	assert.Equal(t, "grpc-addr-1", fsm.leaderConfig.GrpcAddr)
+	assert.Equal(t, "localhost:9000", fsm.leaderConfig.RaftAddr)
+	assert.Equal(t, "localhost:10000", fsm.leaderConfig.GrpcAddr)
+	assert.Equal(t, "localhost:8000", fsm.leaderConfig.HttpAddr)
+	assert.Equal(t, "localhost:10000", fsm.leaderConfig.GetLeaderGrpcAddress())
+	assert.Equal(t, "localhost:8000", fsm.leaderConfig.GetLeaderHttpAddress())
 
 	queue1, err = queueManager.GetQueue("queue_1")
 	assert.Nil(t, err)
@@ -233,16 +239,17 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, q1m6)
 
+	leaderConfig := NewLeaderConfig(
+		"node-2", "localhost:9001", "localhost:10001",
+	)
+	leaderConfig.Set("node-2", "localhost:9001", "localhost:10001", "localhost:8001")
+
 	fsm := &FSM{
 		queueManager: queueManager,
 		NodeID:       "node-1",
 		db:           db,
 		config:       cfg,
-		leaderConfig: NewLeaderConfig(
-			"node-2",
-			"raft-addr-2",
-			"grpc-addr-2",
-		),
+		leaderConfig: leaderConfig,
 	}
 
 	snap, err := fsm.Snapshot()
@@ -270,23 +277,18 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 		NodeID:       "node-1",
 		db:           db,
 		config:       cfg,
-		leaderConfig: &LeaderConfig{
-			Id:       "node-1",
-			RaftAddr: "raft-addr-1",
-			GrpcAddr: "grpc-addr-1",
-		},
+		leaderConfig: &LeaderConfig{},
 	}
-
-	assert.Equal(t, "node-1", fsm.leaderConfig.Id)
-	assert.Equal(t, "raft-addr-1", fsm.leaderConfig.RaftAddr)
-	assert.Equal(t, "grpc-addr-1", fsm.leaderConfig.GrpcAddr)
 
 	err = fsm.Restore(sink)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "node-2", fsm.leaderConfig.Id)
-	assert.Equal(t, "raft-addr-2", fsm.leaderConfig.RaftAddr)
-	assert.Equal(t, "grpc-addr-2", fsm.leaderConfig.GrpcAddr)
+	assert.Equal(t, "localhost:9001", fsm.leaderConfig.RaftAddr)
+	assert.Equal(t, "localhost:10001", fsm.leaderConfig.GrpcAddr)
+	assert.Equal(t, "localhost:8001", fsm.leaderConfig.HttpAddr)
+	assert.Equal(t, "localhost:10001", fsm.leaderConfig.GetLeaderGrpcAddress())
+	assert.Equal(t, "localhost:8001", fsm.leaderConfig.GetLeaderHttpAddress())
 
 	queue1, err = queueManager.GetQueue("queue_1")
 	assert.Nil(t, err)
