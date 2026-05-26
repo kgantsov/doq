@@ -655,7 +655,7 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 					Str("component", "fsm").
 					Err(err).
 					Msg("Failed to restore leader configuration")
-				return err
+				continue
 			}
 		case *pb.SnapshotItem_Queue:
 			log.Debug().Str("component", "fsm").Msgf("Restoring queue: %s", v.Queue.Name)
