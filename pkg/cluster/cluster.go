@@ -82,6 +82,22 @@ func (c *Cluster) Init() error {
 		}
 	}
 
+	// On a fresh pod start the headless service SRV records may not yet
+	// include this pod itself (EndpointSlice propagation lags behind
+	// the container starting), so the loop above can fail to find us and leave
+	// nodeID empty. The node's own address is fully derivable from its
+	// hostname, service name and namespace, so construct it deterministically
+	// instead of crashing with an empty (":9000") Raft bind address.
+	if c.nodeID == "" {
+		c.nodeID = fmt.Sprintf(
+			"%s.%s-internal.%s.svc.cluster.local.:%s",
+			c.hostname, c.serviceName, c.namespace, c.httpAddr,
+		)
+		log.Warn().Msgf(
+			"Self not found in SRV discovery yet; derived nodeID=%s", c.nodeID,
+		)
+	}
+
 	_, raftPort, err := net.SplitHostPort(c.raftAddr)
 	if err != nil {
 		log.Warn().Msgf("Error splitting host and port for raftAddr: %s %v\n", c.raftAddr, err)

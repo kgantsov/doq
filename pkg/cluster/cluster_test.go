@@ -87,6 +87,31 @@ func TestCluster_InitError(t *testing.T) {
 	assert.ErrorIs(t, HostnameError, err)
 }
 
+// TestCluster_Init_SelfNotInSRV verifies that when the pod's own SRV record
+// has not propagated into DNS yet (the discovery loop can't find this host),
+// the nodeID and raftAddr are derived deterministically instead of being left
+// empty, which would otherwise produce an unadvertisable ":9000" bind address.
+func TestCluster_Init_SelfNotInSRV(t *testing.T) {
+	serviceDiscovery := createMockServiceDiscoverySRV()
+	// Hostname is doq-3, but the SRV records only contain doq-0/1/2.
+	serviceDiscovery.lookupHostnameFn = func() (string, error) {
+		return "doq-3", nil
+	}
+
+	c := NewCluster(
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
+	)
+	c.inClusterConfigFunc = mockInClusterConfig
+
+	err := c.Init()
+	assert.NoError(t, err)
+
+	assert.Equal(t, "doq-3.doq-internal.test-namespace.svc.cluster.local.:8000", c.NodeID())
+	assert.Equal(t, "doq-3.doq-internal.test-namespace.svc.cluster.local.:9000", c.RaftAddr())
+	// All discovered peers should be treated as peers, none consumed as self.
+	assert.Equal(t, []string{"doq-0:8000", "doq-1:8000", "doq-2:8000"}, c.Hosts())
+}
+
 // TestCluster_NodeID tests the NodeID method of the Cluster
 func TestCluster_NodeID(t *testing.T) {
 	serviceDiscovery := createMockServiceDiscoverySRV()
