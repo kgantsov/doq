@@ -16,6 +16,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+// emptyQueuePollInterval bounds how long DequeueStream blocks waiting for a
+// message before retrying. It is a safety net behind the enqueue notification
+// (NotifyChan): the consumer is normally woken the instant a message is
+// enqueued, and only falls back to this interval if a wake-up is missed.
+const emptyQueuePollInterval = 1 * time.Second
+
 type QueueServer struct {
 	pb.UnimplementedDOQServer
 	node http.Node
@@ -315,11 +321,23 @@ func (s *QueueServer) DequeueStream(stream pb.DOQ_DequeueStreamServer) error {
 			log.Info().Str("component", "grpc").Msgf("Dequeue stream for consumer closed")
 			return nil
 		default:
+			// Grab the wake channel before attempting the dequeue so an enqueue
+			// that races in between still wakes us instead of being missed.
+			notify := s.node.NotifyChan(queueName)
+
 			message, err := s.node.Dequeue(queueName, ack)
 			if err != nil {
 				log.Info().Str("component", "grpc").Err(err).Msg("Failed to dequeue message")
 
-				time.Sleep(1 * time.Second)
+				// Queue is empty (or unavailable): block until a message is
+				// enqueued, a safety timeout elapses, or the consumer
+				// disconnects — rather than a fixed poll sleep.
+				select {
+				case <-notify:
+				case <-time.After(emptyQueuePollInterval):
+				case <-stream.Context().Done():
+					return nil
+				}
 				continue
 			}
 

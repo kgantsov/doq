@@ -41,6 +41,9 @@ type Queue struct {
 
 	ackQueueMonitoringChan chan struct{}
 	ackQueue               memory.MemoryQueue
+
+	notifyMu sync.Mutex
+	notifyCh chan struct{}
 }
 
 func NewQueue(
@@ -53,6 +56,7 @@ func NewQueue(
 		ackQueue:          memory.NewDelayedQueue(false),
 		PrometheusMetrics: promMetrics,
 		stats:             metrics.NewQueueStats(cfg.Queue.QueueStats.WindowSide),
+		notifyCh:          make(chan struct{}),
 	}
 
 	return bpq
@@ -151,6 +155,7 @@ func (q *Queue) monitorAckQueue() {
 				}
 
 				q.queue.Enqueue(message.Group, queueItem)
+				q.notify()
 				log.Debug().Msgf("Re-enqueued message: %d", message.ID)
 			}
 		case <-q.ackQueueMonitoringChan:
@@ -166,6 +171,26 @@ func (q *Queue) StartAckQueueMonitoring() {
 
 func (q *Queue) StopAckQueueMonitoring() {
 	close(q.ackQueueMonitoringChan)
+}
+
+// notify wakes any goroutines blocked in NotifyChan by closing the current
+// channel and installing a fresh one. Called whenever a message becomes
+// available on the ready queue (enqueue, nack, or ack-timeout redelivery) so a
+// streaming consumer can react immediately instead of polling.
+func (q *Queue) notify() {
+	q.notifyMu.Lock()
+	close(q.notifyCh)
+	q.notifyCh = make(chan struct{})
+	q.notifyMu.Unlock()
+}
+
+// NotifyChan returns a channel that is closed the next time a message becomes
+// available on the ready queue. Callers should obtain the channel *before*
+// checking the queue so an enqueue that races in between still wakes them.
+func (q *Queue) NotifyChan() <-chan struct{} {
+	q.notifyMu.Lock()
+	defer q.notifyMu.Unlock()
+	return q.notifyCh
 }
 
 func (q *Queue) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
@@ -301,6 +326,7 @@ func (q *Queue) Enqueue(
 
 	log.Debug().Msgf("Enqueuing new item with ID %d", queueItem.ID)
 	q.queue.Enqueue(msg.Group, queueItem)
+	q.notify()
 
 	q.stats.IncrementEnqueue()
 
@@ -472,6 +498,7 @@ func (q *Queue) Nack(id uint64, priority int64, metadata map[string]string) erro
 	}
 
 	q.queue.Enqueue(message.Group, queueItem)
+	q.notify()
 	q.ackQueue.Delete("default", item.ID)
 
 	if metadata != nil || queueItem.Priority != message.Priority {

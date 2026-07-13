@@ -102,6 +102,12 @@ func (n *mockNode) Dequeue(QueueName string, ack bool) (*entity.Message, error) 
 	return args.Get(0).(*entity.Message), args.Error(1)
 }
 
+func (n *mockNode) NotifyChan(queueName string) <-chan struct{} {
+	// Tests drive Dequeue directly; a nil channel is never selected, so the
+	// streaming loop falls through to its timeout fallback.
+	return nil
+}
+
 func (n *mockNode) Ack(QueueName string, id uint64) error {
 	args := n.Called(QueueName, id)
 	return args.Error(0)

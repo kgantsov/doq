@@ -55,6 +55,7 @@ type Node interface {
 		metadata map[string]string,
 	) (*entity.Message, error)
 	Dequeue(QueueName string, ack bool) (*entity.Message, error)
+	NotifyChan(queueName string) <-chan struct{}
 	Get(QueueName string, id uint64) (*entity.Message, error)
 	Delete(QueueName string, id uint64) error
 	Ack(QueueName string, id uint64) error

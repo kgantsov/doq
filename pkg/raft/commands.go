@@ -168,6 +168,20 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
 	}, nil
 }
 
+// NotifyChan returns a channel that is closed when a message next becomes
+// available on this node's local replica of the queue. Enqueue is applied by
+// the FSM on every node, so this fires on followers too — letting a streaming
+// consumer wake the instant a producer enqueues (via any node or transport)
+// instead of waiting out a fixed poll interval. Returns nil when the queue is
+// not present locally; callers must pair it with a timeout fallback.
+func (n *Node) NotifyChan(queueName string) <-chan struct{} {
+	q, err := n.QueueManager.GetQueue(queueName)
+	if err != nil {
+		return nil
+	}
+	return q.NotifyChan()
+}
+
 func (n *Node) Get(QueueName string, id uint64) (*entity.Message, error) {
 	req := &pb.GetRequest{
 		QueueName: QueueName,
