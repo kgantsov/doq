@@ -47,6 +47,25 @@ func (pq *DelayedQueue) Dequeue(ack bool) *Item {
 	return heap.Pop(pq.queue).(*Item)
 }
 
+// PeekReady reports whether the head message is deliverable now, using the same
+// scheduled-time gating as Dequeue but without popping. When the head is
+// scheduled in the future, nextReadyIn is the time until it matures.
+func (pq *DelayedQueue) PeekReady() (bool, time.Duration) {
+	pq.mu.RLock()
+	defer pq.mu.RUnlock()
+
+	if pq.queue.Len() == 0 {
+		return false, 0
+	}
+
+	head := pq.queue.Peek().(*Item)
+	now := time.Now().UTC().Unix()
+	if head.Priority > now {
+		return false, time.Duration(head.Priority-now) * time.Second
+	}
+	return true, 0
+}
+
 func (pq *DelayedQueue) Get(group string, id uint64) *Item {
 	pq.mu.RLock()
 	defer pq.mu.RUnlock()

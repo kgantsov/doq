@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"math"
 	"sync"
+	"time"
 
 	avl "github.com/kgantsov/doq/pkg/weighted_avl"
 	"github.com/rs/zerolog/log"
@@ -15,7 +16,7 @@ type FairWeightedQueue struct {
 	weights        *avl.WeightedAVL
 	unackedByGroup map[string]int
 	queues         map[string]*PriorityMemoryQueue
-	mu             sync.Mutex
+	mu             sync.RWMutex
 }
 
 // CalculateWeight calculates the weight for a group based on unacked items and queue size.
@@ -88,13 +89,13 @@ func (q *FairWeightedQueue) Dequeue(ack bool) *Item {
 
 	selectedGroup = q.weights.Sample()
 	if selectedGroup == "" {
-		log.Info().Msgf("No group selected")
+		log.Debug().Msgf("No group selected")
 		return nil
 	}
 
 	item := heap.Pop(q.queues[selectedGroup]).(*Item)
 	if item == nil {
-		log.Info().Msgf("No item in queue for group %s", selectedGroup)
+		log.Debug().Msgf("No item in queue for group %s", selectedGroup)
 		return nil
 	}
 
@@ -115,6 +116,21 @@ func (q *FairWeightedQueue) Dequeue(ack bool) *Item {
 	}
 
 	return item
+}
+
+// PeekReady reports whether Dequeue would currently return a message: some group
+// must hold messages and sit under the unacked limit (i.e. carry a non-zero
+// weight). Readiness is event-based (an ack frees an unacked slot), so
+// nextReadyIn is always 0.
+func (q *FairWeightedQueue) PeekReady() (bool, time.Duration) {
+	q.mu.RLock()
+	defer q.mu.RUnlock()
+
+	// Each group's stored weight is CalculateWeight(...), which is always >= 0
+	// and is > 0 exactly when that group has a deliverable message under the
+	// unacked limit. The AVL keeps a running root sum, so a positive total means
+	// at least one group is ready — an O(1) check instead of scanning every group.
+	return q.weights.Sum() > 0, 0
 }
 
 func (q *FairWeightedQueue) Get(group string, id uint64) *Item {

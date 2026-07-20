@@ -3,6 +3,7 @@ package mocks
 import (
 	"io"
 	"sync"
+	"time"
 
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/queue"
@@ -106,6 +107,12 @@ func (n *mockNode) NotifyChan(queueName string) <-chan struct{} {
 	// Tests drive Dequeue directly; a nil channel is never selected, so the
 	// streaming loop falls through to its timeout fallback.
 	return nil
+}
+
+func (n *mockNode) PeekReady(queueName string) (bool, time.Duration) {
+	// Tests drive Dequeue directly; report "not ready" so the streaming loop
+	// uses its default poll interval rather than a computed delay.
+	return false, 0
 }
 
 func (n *mockNode) Ack(QueueName string, id uint64) error {

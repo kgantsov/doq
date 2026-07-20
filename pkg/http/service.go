@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ansrivas/fiberprometheus/v2"
 	"github.com/danielgtaylor/huma/v2"
@@ -56,6 +57,7 @@ type Node interface {
 	) (*entity.Message, error)
 	Dequeue(QueueName string, ack bool) (*entity.Message, error)
 	NotifyChan(queueName string) <-chan struct{}
+	PeekReady(queueName string) (bool, time.Duration)
 	Get(QueueName string, id uint64) (*entity.Message, error)
 	Delete(QueueName string, id uint64) error
 	Ack(QueueName string, id uint64) error

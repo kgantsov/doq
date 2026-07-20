@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/queue"
 )
 
@@ -120,7 +121,31 @@ func (n *Node) Enqueue(
 	}, nil
 }
 
+// PeekReady reports, from this node's local replica, whether a message is ready
+// to be dequeued right now and — when it is not and readiness is time-based —
+// how long until it matures. It is a read-only operation and never touches Raft.
+// Returns (false, 0) when the queue is not present locally.
+func (n *Node) PeekReady(queueName string) (bool, time.Duration) {
+	q, err := n.QueueManager.GetQueue(queueName)
+	if err != nil {
+		return false, 0
+	}
+	return q.PeekReady()
+}
+
 func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
+	// Fast read-only guard: if our local replica has no message ready to be
+	// delivered right now, return empty instead of replicating a no-op Dequeue
+	// through Raft (or proxying to the leader). This keeps idle streaming
+	// consumers — and delayed messages waiting out their delay — from growing
+	// the Raft log. A slightly stale follower self-corrects within one poll
+	// interval via the enqueue notification or the streaming timeout.
+	if q, err := n.QueueManager.GetQueue(QueueName); err == nil {
+		if ready, _ := q.PeekReady(); !ready {
+			return nil, errors.ErrEmptyQueue
+		}
+	}
+
 	req := &pb.DequeueRequest{
 		QueueName: QueueName,
 		Ack:       ack,

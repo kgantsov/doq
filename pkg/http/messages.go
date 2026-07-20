@@ -7,6 +7,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/kgantsov/doq/pkg/config"
+	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -29,7 +30,7 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 		id, _ = strconv.ParseUint(input.Body.ID, 10, 64)
 	}
 
-	log.Info().Str("component", "http").Msgf(
+	log.Debug().Str("component", "http").Msgf(
 		"Enqueue request %d, %s, %s, %d, %s %v",
 		id,
 		queueName,
@@ -66,6 +67,15 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 	msg, err := h.node.Dequeue(queueName, input.Ack)
 
 	if err != nil {
+		// An empty queue is an expected, high-frequency outcome; only genuine
+		// failures deserve an error log.
+		if err == errors.ErrEmptyQueue {
+			log.Debug().Str("component", "http").Err(err).Msgf("Queue %s is empty", queueName)
+		} else {
+			log.Error().Str("component", "http").Err(err).Msgf(
+				"Failed to dequeue a message from a queue: %s", queueName,
+			)
+		}
 		return nil, huma.Error400BadRequest("Failed to dequeue a message from a queue", err)
 	}
 

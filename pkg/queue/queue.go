@@ -378,6 +378,15 @@ func (q *Queue) Dequeue(ack bool) (*entity.Message, error) {
 	return msg, nil
 }
 
+// PeekReady reports, without mutating state, whether Dequeue would currently
+// return a message. Callers use it to avoid replicating a no-op Dequeue through
+// Raft while the queue is empty or a delayed message is waiting out its delay.
+// nextReadyIn is the time until the head becomes deliverable when that is
+// time-based and known (delayed queues), else 0.
+func (q *Queue) PeekReady() (bool, time.Duration) {
+	return q.queue.PeekReady()
+}
+
 func (q *Queue) Get(id uint64) (*entity.Message, error) {
 	return q.store.Get(q.config.Name, id)
 }

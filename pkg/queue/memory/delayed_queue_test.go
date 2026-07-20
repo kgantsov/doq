@@ -200,3 +200,32 @@ func TestDelayedQueue_MemoryCleanup(t *testing.T) {
 	assert.Equal(t, 0, cap(q.queue.items))
 	assert.Equal(t, 0, len(q.queue.idToIndex))
 }
+
+// TestDelayedQueuePeekReady verifies PeekReady mirrors Dequeue's scheduled-time
+// gating without mutating the queue, so an unmatured delayed message reports
+// not-ready (and never triggers a Raft-replicated no-op dequeue upstream).
+func TestDelayedQueuePeekReady(t *testing.T) {
+	q := NewDelayedQueue(true)
+
+	// Empty queue: not ready, no known wait.
+	ready, wait := q.PeekReady()
+	assert.False(t, ready)
+	assert.Equal(t, time.Duration(0), wait)
+
+	// Head scheduled in the future: not ready, wait ~= delta, and nothing popped.
+	future := time.Now().UTC().Add(30 * time.Second).Unix()
+	q.Enqueue("default", &Item{ID: 1, Priority: future})
+	ready, wait = q.PeekReady()
+	assert.False(t, ready)
+	assert.Greater(t, wait, time.Duration(0))
+	assert.LessOrEqual(t, wait, 30*time.Second)
+	assert.Equal(t, uint64(1), q.Len()) // read-only: still there
+
+	// A ready (past) message takes precedence at the head.
+	past := time.Now().UTC().Add(-1 * time.Second).Unix()
+	q.Enqueue("default", &Item{ID: 2, Priority: past})
+	ready, wait = q.PeekReady()
+	assert.True(t, ready)
+	assert.Equal(t, time.Duration(0), wait)
+	assert.Equal(t, uint64(2), q.Len())
+}

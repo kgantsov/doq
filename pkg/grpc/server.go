@@ -9,6 +9,7 @@ import (
 
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/http"
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -285,6 +286,17 @@ func (s *QueueServer) Dequeue(
 ) (*pb.DequeueResponse, error) {
 	message, err := s.node.Dequeue(req.QueueName, req.Ack)
 	if err != nil {
+		// An empty queue is an expected, high-frequency outcome; only genuine
+		// failures deserve an error log.
+		if err == errors.ErrEmptyQueue {
+			log.Debug().Str("component", "grpc").Err(err).Msgf(
+				"Queue %s is empty", req.QueueName,
+			)
+		} else {
+			log.Error().Str("component", "grpc").Err(err).Msgf(
+				"Failed to dequeue a message from queue %s", req.QueueName,
+			)
+		}
 		return &pb.DequeueResponse{Success: false}, fmt.Errorf("failed to dequeue a message")
 	}
 
@@ -327,21 +339,34 @@ func (s *QueueServer) DequeueStream(stream pb.DOQ_DequeueStreamServer) error {
 
 			message, err := s.node.Dequeue(queueName, ack)
 			if err != nil {
-				log.Info().Str("component", "grpc").Err(err).Msg("Failed to dequeue message")
+				// An empty queue is the expected case here (we block and wait);
+				// a real failure should still surface at error level.
+				if err == errors.ErrEmptyQueue {
+					log.Debug().Str("component", "grpc").Err(err).Msg("Queue empty, waiting for a message")
+				} else {
+					log.Error().Str("component", "grpc").Err(err).Msg("Failed to dequeue message")
+				}
 
 				// Queue is empty (or unavailable): block until a message is
 				// enqueued, a safety timeout elapses, or the consumer
-				// disconnects — rather than a fixed poll sleep.
+				// disconnects — rather than a fixed poll sleep. For a delayed
+				// message maturing sooner than the poll interval, wake exactly
+				// when it becomes ready; cap at emptyQueuePollInterval so a
+				// stale follower clock still gets re-checked.
+				wait := emptyQueuePollInterval
+				if _, nextReadyIn := s.node.PeekReady(queueName); nextReadyIn > 0 && nextReadyIn < wait {
+					wait = nextReadyIn
+				}
 				select {
 				case <-notify:
-				case <-time.After(emptyQueuePollInterval):
+				case <-time.After(wait):
 				case <-stream.Context().Done():
 					return nil
 				}
 				continue
 			}
 
-			log.Info().
+			log.Debug().
 				Str("component", "grpc").
 				Msgf("Dequeued message %d from queue %s", message.ID, queueName)
 

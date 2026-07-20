@@ -3,6 +3,7 @@ package memory
 import (
 	"math/rand"
 	"runtime"
+	"strconv"
 	"testing"
 	"time"
 
@@ -420,4 +421,29 @@ func TestFairWeightedQueue_MemoryCleanup(t *testing.T) {
 	assert.Equal(t, 0, len(q.queues))
 	assert.Equal(t, 0, len(q.unackedByGroup))
 	assert.Equal(t, 0, q.weights.Sum())
+}
+
+// BenchmarkFairWeightedQueuePeekReady measures the readiness check across many
+// groups. The old implementation scanned every group recomputing CalculateWeight;
+// the new one reads the AVL's cached root sum in O(1). A large group count makes
+// the difference visible.
+func BenchmarkFairWeightedQueuePeekReady(b *testing.B) {
+	q := NewFairWeightedQueue(1)
+
+	// 1000 groups, each pushed to its unacked limit while still holding a message
+	// (enqueue two, dequeue one un-acked). Every group's weight is 0, so nothing
+	// is ready and the old per-group scan had to inspect all 1000 groups.
+	for i := 0; i < 1000; i++ {
+		group := "customer-" + strconv.Itoa(i)
+		q.Enqueue(group, &Item{ID: uint64(2 * i), Priority: 10})
+		q.Enqueue(group, &Item{ID: uint64(2*i + 1), Priority: 10})
+		q.Dequeue(false)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		q.PeekReady()
+	}
 }
