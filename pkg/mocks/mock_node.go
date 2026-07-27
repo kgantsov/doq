@@ -53,6 +53,12 @@ func (n *mockNode) IsLeader() bool {
 	return args.Bool(0)
 }
 
+// Ready reports the node as ready in tests. Real readiness is exercised in the
+// raft package; HTTP tests only need a stable value so the /readyz probe passes.
+func (n *mockNode) Ready() bool {
+	return true
+}
+
 func (n *mockNode) GenerateID() uint64 {
 	if n.NextIDFunc != nil {
 		return n.NextIDFunc()

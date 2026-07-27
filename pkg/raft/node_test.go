@@ -609,3 +609,69 @@ func TestBackupRestore(t *testing.T) {
 		assert.Equal(t, int64(10), m.Priority)
 	}
 }
+
+// TestNodeNonSeedDoesNotBootstrap verifies that a fresh node with bootstrap
+// disabled does NOT form its own single-node cluster. It must start with an
+// empty Raft configuration, never elect itself leader, report itself as a new
+// node that still needs to Join, and report not-ready so Kubernetes keeps it
+// out of the service endpoints until it is admitted to the real cluster. This
+// guards against the split-brain regression where every pod self-bootstrapped.
+func TestNodeNonSeedDoesNotBootstrap(t *testing.T) {
+	tmpStoreDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpStoreDir)
+
+	tmpRaftDir, _ := os.MkdirTemp("", "raft*")
+	defer os.RemoveAll(tmpRaftDir)
+
+	tmpStableStoreDir, _ := os.MkdirTemp("", "stable_store*")
+	defer os.RemoveAll(tmpStableStoreDir)
+
+	db, err := badger.Open(badger.DefaultOptions(tmpStoreDir))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	defer db.Close()
+	raftDB, err := badger.Open(badger.DefaultOptions(tmpStableStoreDir))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	defer raftDB.Close()
+
+	cfg := &config.Config{
+		Cluster: config.ClusterConfig{
+			NodeID: "localhost",
+		},
+		Http: config.HttpConfig{
+			Port: "9160",
+		},
+		Raft: config.RaftConfig{
+			Address: "localhost:9161",
+		},
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		},
+	}
+
+	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
+	n.SetBootstrap(false)
+	n.Initialize()
+
+	// Give Raft ample time to (wrongly) elect itself if the gating is broken.
+	time.Sleep(2 * time.Second)
+
+	// A non-seed node with no peers must remain a follower with no known leader.
+	assert.False(t, n.IsLeader(), "non-seed node must not become leader on its own")
+	assert.False(t, n.Ready(), "non-seed node without an elected leader must be not-ready")
+
+	// It had no prior state, so it must still Join the real cluster.
+	assert.True(t, n.IsNewNode(), "non-seed fresh node must be flagged as needing to Join")
+
+	// It must not have bootstrapped a configuration containing itself.
+	future := n.Raft.GetConfiguration()
+	assert.Nil(t, future.Error())
+	assert.Equal(
+		t, 0, len(future.Configuration().Servers),
+		"non-seed node must start with an empty Raft configuration",
+	)
+}

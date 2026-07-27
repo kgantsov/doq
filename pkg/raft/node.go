@@ -56,6 +56,13 @@ type Node struct {
 	// newNode is true when this node had no prior Raft state and was freshly
 	// bootstrapped. Nodes with existing state do not need to call Join.
 	newNode bool
+
+	// bootstrap indicates this node is the designated seed that forms the
+	// initial single-node Raft cluster. Every other fresh node starts with an
+	// empty configuration and is admitted through Join, so exactly one Raft
+	// group is ever created. Defaults to true so standalone/single-node use and
+	// tests keep bootstrapping themselves.
+	bootstrap bool
 }
 
 func NewNode(db *badger.DB, raftDB *badger.DB, raftDir string, cfg *config.Config, peers []string) *Node {
@@ -68,6 +75,7 @@ func NewNode(db *badger.DB, raftDB *badger.DB, raftDir string, cfg *config.Confi
 		db:             db,
 		raftDB:         raftDB,
 		raftDir:        raftDir,
+		bootstrap:      true,
 		leaderChangeFn: func(bool) {},
 
 		leaderConfig: NewLeaderConfig(
@@ -92,6 +100,26 @@ func (n *Node) PrometheusRegistry() prometheus.Registerer {
 
 func (n *Node) SetLeaderChangeFunc(leaderChangeFn func(bool)) {
 	n.leaderChangeFn = leaderChangeFn
+}
+
+// SetBootstrap controls whether this node seeds the Raft cluster. Exactly one
+// node in a fresh cluster must be the seed; all others start with an empty
+// configuration and join the seed. Must be called before Initialize.
+func (n *Node) SetBootstrap(bootstrap bool) {
+	n.bootstrap = bootstrap
+}
+
+// Ready reports whether this node can safely serve client traffic. It requires
+// the node to be part of a Raft cluster that currently has an elected leader.
+// A node that never joined a cluster (empty configuration) or one that lost
+// quorum has no known leader and reports not-ready, so Kubernetes keeps it out
+// of the load-balanced service instead of silently routing traffic to an
+// isolated or orphaned pod.
+func (n *Node) Ready() bool {
+	if n.Raft == nil {
+		return false
+	}
+	return n.Raft.Leader() != ""
 }
 
 func (n *Node) Initialize() {
@@ -332,39 +360,52 @@ func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *qu
 	}
 
 	if len(configFuture.Configuration().Servers) == 0 {
-		servers := make([]raft.Server, 0)
+		if n.bootstrap {
+			servers := make([]raft.Server, 0)
 
-		host, _, err := net.SplitHostPort(string(config.LocalID))
-		if err != nil {
-			log.Warn().Str("component", "node").Msgf(
-				"Error splitting host and port for config.LocalID: %s %v\n", config.LocalID, err,
-			)
-			host = "localhost"
+			host, _, err := net.SplitHostPort(string(config.LocalID))
+			if err != nil {
+				log.Warn().Str("component", "node").Msgf(
+					"Error splitting host and port for config.LocalID: %s %v\n", config.LocalID, err,
+				)
+				host = "localhost"
+			}
+
+			_, raftPort, err := net.SplitHostPort(string(transport.LocalAddr()))
+			if err != nil {
+				log.Warn().Str("component", "node").Msgf(
+					"Error splitting host and port for raftAddr: %s %v\n", transport.LocalAddr(), err,
+				)
+			}
+
+			servers = append(servers, raft.Server{
+				ID:      config.LocalID,
+				Address: raft.ServerAddress(fmt.Sprintf("%s:%s", host, raftPort)),
+			})
+
+			log.Info().
+				Str("component", "node").
+				Msgf("BootstrapCluster %s as cluster seed: %v", nodeID, servers)
+
+			configuration := raft.Configuration{Servers: servers}
+			r.BootstrapCluster(configuration)
+			// The seed forms the cluster on its own; it must not call Join.
+			n.newNode = false
+		} else {
+			// Fresh non-seed node: start with an empty configuration and wait to
+			// be admitted by the leader via Join/AddVoter. Bootstrapping here
+			// would create a second, isolated Raft group that can never be merged
+			// with the rest of the cluster.
+			log.Info().
+				Str("component", "node").
+				Msgf("No existing Raft state for %s; will join an existing cluster", nodeID)
+			n.newNode = true
 		}
-
-		_, raftPort, err := net.SplitHostPort(string(transport.LocalAddr()))
-		if err != nil {
-			log.Warn().Str("component", "node").Msgf(
-				"Error splitting host and port for raftAddr: %s %v\n", transport.LocalAddr(), err,
-			)
-		}
-
-		servers = append(servers, raft.Server{
-			ID:      config.LocalID,
-			Address: raft.ServerAddress(fmt.Sprintf("%s:%s", host, raftPort)),
-		})
-
-		log.Info().
-			Str("component", "node").
-			Msgf("BootstrapCluster %s joining peers: %v", nodeID, servers)
-
-		configuration := raft.Configuration{Servers: servers}
-		r.BootstrapCluster(configuration)
-		n.newNode = true
 	} else {
 		log.Info().
 			Str("component", "node").
 			Msgf("Already bootstraped %s %v", nodeID, configFuture.Configuration().Servers)
+		n.newNode = false
 	}
 
 	return r, nil

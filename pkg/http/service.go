@@ -41,6 +41,7 @@ type Node interface {
 	GetServers() ([]*entity.Server, error)
 	PrometheusRegistry() prometheus.Registerer
 	IsLeader() bool
+	Ready() bool
 	GenerateID() uint64
 	CreateQueue(queueType, queueName string, settings entity.QueueSettings) error
 	UpdateQueue(queueName string, settings entity.QueueSettings) error
@@ -114,7 +115,16 @@ func NewHttpService(config *config.Config, node Node, indexHtmlFS embed.FS, fron
 func (h *Handler) ConfigureMiddleware(router *fiber.App) {
 	router.Use(logger.ZeroHCLLoggerMiddleware())
 
-	router.Use(healthcheck.New())
+	router.Use(healthcheck.New(healthcheck.Config{
+		// Liveness only reflects that the process is up and serving HTTP.
+		LivenessProbe:    func(c *fiber.Ctx) bool { return true },
+		LivenessEndpoint: "/livez",
+		// Readiness reflects Raft health: the node must be part of a cluster
+		// with an elected leader before it receives client traffic. This keeps
+		// isolated or orphaned pods out of the load-balanced service endpoints.
+		ReadinessProbe:    func(c *fiber.Ctx) bool { return h.node.Ready() },
+		ReadinessEndpoint: "/readyz",
+	}))
 	router.Use(helmet.New())
 
 	router.Use(requestid.New())

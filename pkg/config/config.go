@@ -93,6 +93,12 @@ type ClusterConfig struct {
 	NodeID      string `mapstructure:"node_id"`
 	ServiceName string `mapstructure:"service_name"`
 	JoinAddr    string `mapstructure:"join_addr"`
+	// Bootstrap controls which node seeds the Raft cluster. Exactly one node in
+	// a fresh cluster must bootstrap; all others start empty and join it.
+	// Values: "auto" (default) derives it (Kubernetes ordinal-0 pod, or the node
+	// without a join address); "true" forces this node to be the seed; "false"
+	// forces it to join an existing cluster.
+	Bootstrap string `mapstructure:"bootstrap"`
 }
 
 type Config struct {
@@ -165,6 +171,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	rootCmd.PersistentFlags().String("cluster.node_id", "node-0", "Node ID. If not set, same as Raft bind address")
 	rootCmd.Flags().String("cluster.service_name", "", "Name of the service in Kubernetes")
 	rootCmd.Flags().String("cluster.join_addr", "", "Set join address, if any")
+	rootCmd.Flags().String("cluster.bootstrap", "auto", "Whether this node seeds the Raft cluster: auto, true, or false")
 	rootCmd.Flags().Int64("queue.acknowledgement_check_interval", 1, "Acknowledgement check interval in seconds")
 	rootCmd.Flags().Int64("queue.default_acknowledgement_timeout", 1800, "Default acknowledgement timeout in seconds")
 	rootCmd.Flags().Int("queue.stats.window_side", 10, "Window side for queue stats in seconds")
@@ -197,6 +204,7 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	viper.BindPFlag("cluster.node_id", rootCmd.PersistentFlags().Lookup("cluster.node_id"))
 	viper.BindPFlag("cluster.service_name", rootCmd.Flags().Lookup("cluster.service_name"))
 	viper.BindPFlag("cluster.join_addr", rootCmd.Flags().Lookup("cluster.join_addr"))
+	viper.BindPFlag("cluster.bootstrap", rootCmd.Flags().Lookup("cluster.bootstrap"))
 	viper.BindPFlag("queue.acknowledgement_check_interval", rootCmd.Flags().Lookup("queue.acknowledgement_check_interval"))
 	viper.BindPFlag("queue.default_acknowledgement_timeout", rootCmd.Flags().Lookup("queue.default_acknowledgement_timeout"))
 	viper.BindPFlag("queue.stats.window_side", rootCmd.Flags().Lookup("queue.stats.window_side"))

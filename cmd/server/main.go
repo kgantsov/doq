@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	netHttp "net/http"
@@ -122,6 +123,11 @@ func RunServer(cmd *cobra.Command, args []string) {
 		node.SetLeaderChangeFunc(cl.LeaderChanged)
 	}
 
+	// Decide whether this node seeds the Raft cluster. Exactly one node may
+	// bootstrap; every other node joins it. Otherwise each pod forms its own
+	// isolated Raft group that can never be merged.
+	node.SetBootstrap(shouldBootstrap(config))
+
 	node.Initialize()
 
 	// Only call Join for nodes that have no prior Raft state. Nodes that are
@@ -166,6 +172,29 @@ func RunServer(cmd *cobra.Command, args []string) {
 	if err := h.Start(); err != nil {
 		log.Error().Msgf("failed to start HTTP service: %s", err.Error())
 	}
+}
+
+// shouldBootstrap decides whether this node seeds the Raft cluster. The
+// cluster.bootstrap config value takes precedence: "true"/"false" force the
+// decision, while "auto" (the default) derives it. In Kubernetes the ordinal-0
+// pod of the StatefulSet is the deterministic seed; outside Kubernetes a node
+// with no explicit join address seeds, and a node with one joins.
+func shouldBootstrap(config *config.Config) bool {
+	switch strings.ToLower(strings.TrimSpace(config.Cluster.Bootstrap)) {
+	case "true":
+		return true
+	case "false":
+		return false
+	}
+
+	if config.Cluster.ServiceName != "" {
+		// Kubernetes StatefulSet: the ordinal-0 pod is the deterministic seed;
+		// all other pods start empty and join it.
+		hostname, err := os.Hostname()
+		return err == nil && strings.HasSuffix(hostname, "-0")
+	}
+	// An explicit join address means this node is not the seed.
+	return config.Cluster.JoinAddr == ""
 }
 
 func RunValueLogGC(config *config.Config, db *badger.DB) {

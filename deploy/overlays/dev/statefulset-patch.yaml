@@ -14,6 +14,9 @@ spec:
             - "konstantin"
             - "--cluster.service_name"
             - "doq"
+            # Seed the Raft cluster from the ordinal-0 pod; all others join it.
+            - "--cluster.bootstrap"
+            - "auto"
             - "--http.port"
             - "8000"
             - "--grpc.address"

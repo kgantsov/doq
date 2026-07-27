@@ -67,19 +67,41 @@ func (c *Cluster) Init() error {
 		return err
 	}
 
+	seen := make(map[string]bool)
 	for _, addr := range addrs {
 		host, port, err := net.SplitHostPort(addr)
-		if err == nil && port == "0" {
+		if err != nil {
+			log.Warn().Msgf("Error splitting host and port for discovered addr %s: %v", addr, err)
+			continue
+		}
+		if port == "0" {
 			addr = fmt.Sprintf("%s:%s", host, c.httpAddr)
 		}
 
 		log.Debug().Msgf("Discovered address: %s Current host: %s", addr, c.hostname)
 
-		if strings.HasPrefix(addr, c.hostname) {
+		// Identify our own SRV record by the host label, matching either a bare
+		// hostname ("doq-0") or an FQDN ("doq-0.doq-internal...."). Comparing the
+		// full label (rather than a raw prefix) avoids "doq-1" also matching
+		// "doq-10". A headless service publishes one SRV record per named port,
+		// so this pod may appear multiple times; keep it as the nodeID and skip.
+		if host == c.hostname || strings.HasPrefix(host, c.hostname+".") {
 			c.nodeID = addr
-		} else {
-			c.hosts = append(c.hosts, addr)
+			continue
 		}
+
+		// A headless service publishes one SRV record per named port (raft,
+		// grpc, http), so the discovered port may not be the HTTP API port that
+		// serves the join endpoint. Peers are always joined over HTTP, so
+		// normalise every peer to the configured HTTP port and de-duplicate;
+		// otherwise joins target the raft/grpc port and fail, fragmenting the
+		// cluster into isolated Raft groups.
+		peer := fmt.Sprintf("%s:%s", host, c.httpAddr)
+		if seen[peer] {
+			continue
+		}
+		seen[peer] = true
+		c.hosts = append(c.hosts, peer)
 	}
 
 	// On a fresh pod start the headless service SRV records may not yet
