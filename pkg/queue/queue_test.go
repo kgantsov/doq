@@ -623,6 +623,57 @@ func TestQueueNack(t *testing.T) {
 	assert.EqualError(t, err, errors.ErrEmptyQueue.Error())
 }
 
+// TestQueueNackDoesNotLeakUnacked is a regression test for the fair-queue
+// unacked leak: Nack (like ack-timeout re-delivery) returns an in-flight
+// message to the queue, and must release the group's unacked slot. Before the
+// fix, Nack re-enqueued without releasing the slot, so after MaxUnacked cycles
+// the group's weight was pinned to 0, Sample() returned no group, and Dequeue
+// started returning ErrEmptyQueue — permanently starving the group even though
+// it still held messages ("No group selected" log spam).
+func TestQueueNackDoesNotLeakUnacked(t *testing.T) {
+	for _, strategy := range []string{"WEIGHTED", "ROUND_ROBIN"} {
+		t.Run(strategy, func(t *testing.T) {
+			db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+			require.NoError(t, err)
+			defer db.Close()
+
+			pq := NewQueue(
+				storage.NewBadgerStore(db),
+				&config.Config{Queue: config.QueueConfig{
+					AcknowledgementCheckInterval: 1,
+					QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+				}},
+				nil,
+			)
+			err = pq.CreateQueue("fair", "fair_"+strategy, entity.QueueSettings{
+				Strategy:   strategy,
+				MaxUnacked: 2,
+				AckTimeout: 3600,
+			})
+			require.NoError(t, err)
+
+			_, err = pq.Enqueue(1, "g1", 10, "msg", nil)
+			require.NoError(t, err)
+
+			// Dequeue-without-ack then nack far more times than MaxUnacked. If
+			// Nack leaked the unacked counter, cycle number MaxUnacked+1 would
+			// fail with ErrEmptyQueue because the group's weight hit 0.
+			for i := 0; i < 5; i++ {
+				m, err := pq.Dequeue(false)
+				require.NoErrorf(t, err, "dequeue starved on cycle %d (unacked leaked)", i)
+				require.Equal(t, uint64(1), m.ID)
+
+				require.NoError(t, pq.Nack(m.ID, 0, nil))
+
+				// The nacked message is back in the queue and its slot released,
+				// so the group must be deliverable again.
+				ready, _ := pq.PeekReady()
+				require.Truef(t, ready, "group starved after nack on cycle %d (unacked leaked)", i)
+			}
+		})
+	}
+}
+
 func TestQueueTouch(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "db*")
 	defer os.RemoveAll(tmpDir)

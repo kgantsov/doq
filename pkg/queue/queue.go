@@ -155,6 +155,15 @@ func (q *Queue) monitorAckQueue() {
 				}
 
 				q.queue.Enqueue(message.Group, queueItem)
+				// An ack-timeout re-delivery moves the message out of the
+				// in-flight (unacked) state, so release its unacked slot for
+				// fair queues. Otherwise the per-group unacked counter leaks
+				// upward on every timeout and eventually pins the group's
+				// weight to 0, permanently starving it (see "No group selected"
+				// log spam).
+				if q.config.Type == "fair" {
+					q.queue.UpdateWeights(message.Group, message.ID)
+				}
 				q.notify()
 				log.Debug().Msgf("Re-enqueued message: %d", message.ID)
 			}
@@ -507,6 +516,13 @@ func (q *Queue) Nack(id uint64, priority int64, metadata map[string]string) erro
 	}
 
 	q.queue.Enqueue(message.Group, queueItem)
+	// A nacked message leaves the in-flight (unacked) state, so release its
+	// unacked slot for fair queues. Otherwise the per-group unacked counter
+	// leaks upward on every nack and eventually pins the group's weight to 0,
+	// permanently starving it (see "No group selected" log spam).
+	if q.config.Type == "fair" {
+		q.queue.UpdateWeights(message.Group, message.ID)
+	}
 	q.notify()
 	q.ackQueue.Delete("default", item.ID)
 
