@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func TestJoiner(t *testing.T) {
 	host := server.URL[len("http://"):]
 
 	hosts := []string{host}
-	j := NewJoiner("node0", "raftAddr", hosts)
+	j := NewJoiner("node0", "raftAddr", hosts, nil)
 
 	assert.NotNil(t, j)
 
@@ -75,7 +76,8 @@ func TestJoinerRetry(t *testing.T) {
 	host2 := server2.URL[len("http://"):]
 
 	hosts := []string{host1, host2}
-	j := NewJoiner("node0", "raftAddr", hosts)
+	j := NewJoiner("node0", "raftAddr", hosts, nil)
+	j.retryInterval = time.Millisecond
 
 	assert.NotNil(t, j)
 
@@ -83,9 +85,11 @@ func TestJoinerRetry(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestJoinerNoHosts covers the non-Kubernetes case: no peers and no resolver
+// means there is nothing to join, so Join is a no-op.
 func TestJoinerNoHosts(t *testing.T) {
 	hosts := []string{}
-	j := NewJoiner("node0", "raftAddr", hosts)
+	j := NewJoiner("node0", "raftAddr", hosts, nil)
 
 	assert.NotNil(t, j)
 
@@ -96,11 +100,43 @@ func TestJoinerNoHosts(t *testing.T) {
 
 func TestJoinerHostsUnavailable(t *testing.T) {
 	hosts := []string{"host1", "host2"}
-	j := NewJoiner("node0", "raftAddr", hosts)
+	j := NewJoiner("node0", "raftAddr", hosts, nil)
+	j.maxAttempts = 3
+	j.retryInterval = time.Millisecond
 
 	assert.NotNil(t, j)
 
 	err := j.Join()
 
-	assert.Contains(t, err.Error(), "failed to join node at")
+	assert.Contains(t, err.Error(), "failed to join cluster")
+}
+
+// TestJoinerResolvesLatePeer reproduces the Parallel-start bug: the node starts
+// with no peers in DNS (empty snapshot) and must keep re-resolving until the
+// seed appears, then join it — instead of giving up immediately as it used to.
+func TestJoinerResolvesLatePeer(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Write([]byte(`OK`))
+	}))
+	defer server.Close()
+
+	host := server.URL[len("http://"):]
+
+	// Simulate SRV records converging: the first two lookups return nothing,
+	// then the peer appears.
+	calls := 0
+	resolve := func() ([]string, error) {
+		calls++
+		if calls < 3 {
+			return nil, nil
+		}
+		return []string{host}, nil
+	}
+
+	j := NewJoiner("node0", "raftAddr", nil, resolve)
+	j.retryInterval = time.Millisecond
+
+	err := j.Join()
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, calls, 3)
 }

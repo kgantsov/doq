@@ -135,7 +135,15 @@ func RunServer(cmd *cobra.Command, args []string) {
 	// rejoin automatically through Raft's peer discovery and must not call
 	// Join, otherwise they attempt AddVoter on a non-leader and crash-loop.
 	if node.IsNewNode() {
-		j = cluster.NewJoiner(config.Cluster.NodeID, config.Raft.Address, hosts)
+		// Re-resolve peers on every join retry so a node that started before its
+		// peers (or before the ordinal-0 seed became leader) still finds them,
+		// instead of looping over the stale snapshot captured at startup. Only
+		// available in Kubernetes mode, where cl performs SRV discovery.
+		var resolve func() ([]string, error)
+		if cl != nil {
+			resolve = cl.DiscoverPeers
+		}
+		j = cluster.NewJoiner(config.Cluster.NodeID, config.Raft.Address, hosts, resolve)
 
 		if err := j.Join(); err != nil {
 			log.Fatal().Msg(err.Error())

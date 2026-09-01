@@ -4,6 +4,12 @@ metadata:
   name: doq
 spec:
   serviceName: doq-internal
+  # Start all pods at once. Raft needs a quorum (2 of 3) to elect a leader, and
+  # readiness (/readyz) depends on having a leader. With the default OrderedReady
+  # policy the controller waits for doq-0 to become Ready before creating doq-1,
+  # which deadlocks on a cold start (e.g. all pods killed together): doq-0 can
+  # never reach quorum alone, so the peers are never created. Parallel avoids it.
+  podManagementPolicy: Parallel
   replicas: 3
   selector:
     matchLabels:
