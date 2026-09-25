@@ -30,5 +30,11 @@ cmd/server/vite.svg
 cmd/server/index.html
 cmd/server/data/
 cmd/server/assets/
+cmd/server/doq
+cmd/server/server
 
 prometheus_data
+
+# Generated artifacts produced by running the examples/ programs
+examples/*/*.pprof
+examples/*/*.svg
