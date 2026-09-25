@@ -112,6 +112,43 @@ func TestCluster_Init_SelfNotInSRV(t *testing.T) {
 	assert.Equal(t, []string{"doq-0:8000", "doq-1:8000", "doq-2:8000"}, c.Hosts())
 }
 
+// TestCluster_Init_SelfNormalizedToHTTPPort verifies that when the pod's own
+// SRV records are published on the raft/grpc ports (a headless service exposes
+// one record per named port, in arbitrary DNS order), the nodeID is still
+// normalised to the HTTP port. The nodeID is the Raft ServerID and names the
+// on-disk data directory, so it must be stable regardless of which port's SRV
+// record discovery happens to see first — otherwise the same member adopts a
+// different ServerID/data dir per restart and strands itself in the peer list.
+func TestCluster_Init_SelfNormalizedToHTTPPort(t *testing.T) {
+	serviceDiscovery := createMockServiceDiscoverySRV()
+	// This pod (doq-2) is advertised on the raft (9000) and grpc (10000)
+	// ports and, deliberately, never on the http (8000) port, so a
+	// non-normalised implementation would adopt :9000 or :10000.
+	serviceDiscovery.lookupSRVFn = func(service, proto, name string) (string, []*net.SRV, error) {
+		return "", []*net.SRV{
+			{Target: "doq-0", Port: 8000},
+			{Target: "doq-1", Port: 8000},
+			{Target: "doq-2", Port: 9000},
+			{Target: "doq-2", Port: 10000},
+		}, nil
+	}
+
+	c := NewCluster(
+		serviceDiscovery, "test-namespace", "doq", "localhost:9000", "8000",
+	)
+	c.inClusterConfigFunc = mockInClusterConfig
+
+	err := c.Init()
+	assert.NoError(t, err)
+
+	// nodeID is normalised to the HTTP port regardless of the discovered port.
+	assert.Equal(t, "doq-2:8000", c.NodeID())
+	// The raft address keeps the configured raft port on the same host.
+	assert.Equal(t, "doq-2:9000", c.RaftAddr())
+	// Our own records are consumed as self, not surfaced as peers.
+	assert.Equal(t, []string{"doq-0:8000", "doq-1:8000"}, c.Hosts())
+}
+
 // TestCluster_NodeID tests the NodeID method of the Cluster
 func TestCluster_NodeID(t *testing.T) {
 	serviceDiscovery := createMockServiceDiscoverySRV()

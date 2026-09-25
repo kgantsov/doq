@@ -143,7 +143,17 @@ func (c *Cluster) lookupPeers() (peers []string, self string, err error) {
 		// "doq-10". A headless service publishes one SRV record per named port,
 		// so this pod may appear multiple times; record it as self and skip.
 		if host == c.hostname || strings.HasPrefix(host, c.hostname+".") {
-			self = addr
+			// A headless service publishes one SRV record per named port
+			// (raft, grpc, http) and DNS returns them in arbitrary order, so
+			// our own record may arrive on any of those ports. The nodeID must
+			// be stable across restarts: it is the Raft ServerID and it names
+			// the on-disk data directory (DataDir/<nodeID>/raft). If we adopted
+			// the raw discovered port, the same member could take a different
+			// ServerID (and a different data directory) on each restart,
+			// stranding it in the leader's peer list and leaving orphaned
+			// snapshots behind. Normalise self to the HTTP port, exactly as we
+			// do for peers below.
+			self = fmt.Sprintf("%s:%s", host, c.httpAddr)
 			continue
 		}
 
