@@ -53,6 +53,9 @@ export const DequeueMessage = async ({
       },
     }
   );
+  if (!response.ok) {
+    throw new Error(`Failed to dequeue message: ${response.statusText}`);
+  }
   return await response.json();
 };
 
@@ -70,5 +73,8 @@ export const NackMessage = async (queueName: string, id: string) => {
       }),
     }
   );
+  if (!response.ok) {
+    throw new Error(`Failed to nack message: ${response.statusText}`);
+  }
   return await response.json();
 };

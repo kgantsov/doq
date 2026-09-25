@@ -55,17 +55,39 @@ export const createQueue = async ({
 
   settings["ack_timeout"] = ackTimeout;
 
-  await fetch("/API/v1/queues", {
+  const response = await fetch("/API/v1/queues", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ name, type, settings }),
   });
+
+  if (!response.ok) {
+    let message = `Error ${response.status}`;
+    try {
+      const body = await response.json();
+      message = body?.errors?.[0]?.message || message;
+    } catch (err) {
+      console.error(err);
+    }
+    throw new Error(message);
+  }
 };
 
 export const deleteQueue = async ({ name }: { name: string }) => {
-  await fetch(`/API/v1/queues/${name}`, {
+  const response = await fetch(`/API/v1/queues/${name}`, {
     method: "DELETE",
   });
+
+  if (!response.ok) {
+    let message = `Error ${response.status}`;
+    try {
+      const body = await response.json();
+      message = body?.errors?.[0]?.message || message;
+    } catch (err) {
+      console.error(err);
+    }
+    throw new Error(message);
+  }
 };

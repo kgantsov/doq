@@ -81,53 +81,55 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
           </form>
         </Card.Body>
       </Card.Root>
-      {mutation.isError
-        ? () => <Text>Failed to dequeue message</Text>
-        : dequeuedMessage?.content && (
-            <Card.Root mt={4}>
-              <Card.Header>
-                <Heading size="sm" textTransform="uppercase">
-                  Message #{dequeuedMessage.id}
-                </Heading>
-              </Card.Header>
-              <Card.Body>
-                <Stack gap="4">
-                  <Box>
-                    <Heading size="xs" textTransform="uppercase">
-                      Group
-                    </Heading>
-                    <Text pt="2" fontSize="sm">
-                      {dequeuedMessage.group}
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Heading size="xs" textTransform="uppercase">
-                      Priority
-                    </Heading>
-                    <Text pt="2" fontSize="sm">
-                      {dequeuedMessage.priority}
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Heading size="xs" textTransform="uppercase">
-                      Content
-                    </Heading>
-                    <Text pt="2" fontSize="sm">
-                      {dequeuedMessage.content}
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Heading size="xs" textTransform="uppercase">
-                      Dequeued at
-                    </Heading>
-                    <Text pt="2" fontSize="sm">
-                      {dequeuedAt}
-                    </Text>
-                  </Box>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-          )}
+      {mutation.isError ? (
+        <Text>Failed to dequeue message</Text>
+      ) : (
+        dequeuedMessage?.content && (
+          <Card.Root mt={4}>
+            <Card.Header>
+              <Heading size="sm" textTransform="uppercase">
+                Message #{dequeuedMessage.id}
+              </Heading>
+            </Card.Header>
+            <Card.Body>
+              <Stack gap="4">
+                <Box>
+                  <Heading size="xs" textTransform="uppercase">
+                    Group
+                  </Heading>
+                  <Text pt="2" fontSize="sm">
+                    {dequeuedMessage.group}
+                  </Text>
+                </Box>
+                <Box>
+                  <Heading size="xs" textTransform="uppercase">
+                    Priority
+                  </Heading>
+                  <Text pt="2" fontSize="sm">
+                    {dequeuedMessage.priority}
+                  </Text>
+                </Box>
+                <Box>
+                  <Heading size="xs" textTransform="uppercase">
+                    Content
+                  </Heading>
+                  <Text pt="2" fontSize="sm">
+                    {dequeuedMessage.content}
+                  </Text>
+                </Box>
+                <Box>
+                  <Heading size="xs" textTransform="uppercase">
+                    Dequeued at
+                  </Heading>
+                  <Text pt="2" fontSize="sm">
+                    {dequeuedAt}
+                  </Text>
+                </Box>
+              </Stack>
+            </Card.Body>
+          </Card.Root>
+        )
+      )}
     </>
   );
 };

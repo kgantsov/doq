@@ -44,6 +44,15 @@ const CreateQueueModal = ({
       setStrategy(["weighted"]);
       setMaxUnacked(0);
       setAckTimeout(1800);
+      onClose();
+    },
+    onError: (error) => {
+      toaster.create({
+        title: "Failed to create queue.",
+        description: error.message,
+        type: "error",
+        duration: 9000,
+      });
     },
   });
 
@@ -60,7 +69,6 @@ const CreateQueueModal = ({
       strategy: strategy[0],
       ackTimeout: ackTimeout,
     });
-    onClose();
   };
 
   const isError = name === "";

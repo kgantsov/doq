@@ -39,13 +39,22 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
   const mutation = useMutation({
     mutationFn: deleteQueue,
     onSuccess: () => {
-      setIsOpen(true);
+      setIsOpen(false);
       navigate(`/`);
       queryClient.invalidateQueries({ queryKey: ["queues"] });
       toaster.create({
         title: "Queue deleted.",
         description: `The queue '${queueName}' has been deleted successfully.`,
         type: "success",
+        duration: 9000,
+      });
+    },
+    onError: (error) => {
+      setIsOpen(false);
+      toaster.create({
+        title: "Failed to delete queue.",
+        description: error.message,
+        type: "error",
         duration: 9000,
       });
     },
