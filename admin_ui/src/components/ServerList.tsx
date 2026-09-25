@@ -144,6 +144,7 @@ const ServerList = () => {
             {props.row.original.is_leader && (
               <Tooltip content="Step down as leader (transfer leadership)">
                 <Button
+                  aria-label="Transfer leadership"
                   variant="subtle"
                   colorPalette="purple"
                   size="xs"
@@ -155,6 +156,7 @@ const ServerList = () => {
             )}
             <Tooltip content="Leave cluster">
               <Button
+                aria-label="Leave cluster"
                 variant="subtle"
                 colorPalette="red"
                 size="xs"
