@@ -38,6 +38,11 @@ func (n *mockNode) GetServers() ([]*entity.Server, error) {
 	return args.Get(0).([]*entity.Server), args.Error(1)
 }
 
+func (n *mockNode) TransferLeadership() error {
+	args := n.Called()
+	return args.Error(0)
+}
+
 func (n *mockNode) Backup(w io.Writer, since uint64) (uint64, error) {
 	args := n.Called(w, since)
 	return args.Get(0).(uint64), args.Error(1)

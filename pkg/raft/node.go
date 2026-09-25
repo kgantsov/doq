@@ -224,6 +224,15 @@ func (n *Node) IsLeader() bool {
 	return n.Raft.State() == raft.Leader
 }
 
+// TransferLeadership gracefully hands off leadership to another voter in the
+// cluster. The current leader stops accepting new writes, replicates its log
+// to the target, then steps down; it becomes a follower once the new leader
+// is elected. Returns an error if this node is not the leader or no suitable
+// target is available.
+func (n *Node) TransferLeadership() error {
+	return n.Raft.LeadershipTransfer().Error()
+}
+
 // IsNewNode returns true if this node had no prior Raft state when it started.
 // A new node must call Join to be admitted into the cluster; a restarting node
 // already exists in the persisted Raft configuration and must not re-join.

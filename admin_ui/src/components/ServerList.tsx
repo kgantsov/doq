@@ -11,12 +11,12 @@ import {
 import { Badge } from "@chakra-ui/react";
 import { Server, Suffrage } from "../types/servers";
 import { useState } from "react";
-import { getServers, leaveCluster } from "../api/servers";
+import { getServers, leaveCluster, transferLeadership } from "../api/servers";
 import { toaster } from "./ui/toaster";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import { DataTable } from "./DataTable";
-import { LogOut } from "lucide-react";
+import { LogOut, ArrowRightLeft } from "lucide-react";
 // arrow-big-up-dash
 
 import { Tooltip } from "./ui/tooltip";
@@ -38,6 +38,7 @@ const ServerList = () => {
     id: "",
     isOpen: false,
   });
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
   const { isPending, data } = useQuery({
     queryKey: ["servers"],
     queryFn: getServers,
@@ -55,6 +56,42 @@ const ServerList = () => {
         title: "Server left the cluster.",
         description: `The server has left the cluster successfully.`,
         type: "success",
+        duration: 9000,
+      });
+    },
+    onError: (error: Error) => {
+      setIsOpen({ id: "", isOpen: false });
+      toaster.create({
+        title: "Failed to leave the cluster.",
+        description:
+          error.message ||
+          "This action can only be performed on the leader node.",
+        type: "error",
+        duration: 9000,
+      });
+    },
+  });
+
+  const transferMutation = useMutation({
+    mutationFn: transferLeadership,
+    onSuccess: () => {
+      setIsTransferOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["servers"] });
+      toaster.create({
+        title: "Leadership transferred.",
+        description: `The leader has stepped down and handed off leadership.`,
+        type: "success",
+        duration: 9000,
+      });
+    },
+    onError: (error: Error) => {
+      setIsTransferOpen(false);
+      toaster.create({
+        title: "Failed to transfer leadership.",
+        description:
+          error.message ||
+          "This action can only be performed on the leader node.",
+        type: "error",
         duration: 9000,
       });
     },
@@ -103,18 +140,32 @@ const ServerList = () => {
       id: "actions",
       cell: (props) => {
         return (
-          <Tooltip content="Leave cluster">
-            <Button
-              variant="subtle"
-              colorPalette="red"
-              size="xs"
-              onClick={() =>
-                setIsOpen({ id: props.row.original.id, isOpen: true })
-              }
-            >
-              <LogOut />
-            </Button>
-          </Tooltip>
+          <Flex gap={2} justifyContent="flex-end">
+            {props.row.original.is_leader && (
+              <Tooltip content="Step down as leader (transfer leadership)">
+                <Button
+                  variant="subtle"
+                  colorPalette="purple"
+                  size="xs"
+                  onClick={() => setIsTransferOpen(true)}
+                >
+                  <ArrowRightLeft />
+                </Button>
+              </Tooltip>
+            )}
+            <Tooltip content="Leave cluster">
+              <Button
+                variant="subtle"
+                colorPalette="red"
+                size="xs"
+                onClick={() =>
+                  setIsOpen({ id: props.row.original.id, isOpen: true })
+                }
+              >
+                <LogOut />
+              </Button>
+            </Tooltip>
+          </Flex>
         );
       },
       header: "Actions",
@@ -175,7 +226,37 @@ const ServerList = () => {
                 }}
                 ml={3}
               >
-                Delete
+                Leave
+              </Button>
+            </Dialog.Footer>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Dialog.Root>
+
+      <Dialog.Root open={isTransferOpen}>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content>
+            <Dialog.Header fontSize="lg" fontWeight="bold">
+              Transfer leadership?
+            </Dialog.Header>
+
+            <Dialog.Body>
+              Are you sure you want the current leader to step down? Raft
+              will gracefully hand off leadership to another voter, and this
+              node will become a follower.
+            </Dialog.Body>
+
+            <Dialog.Footer>
+              <Button variant="outline" onClick={() => setIsTransferOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                colorPalette="purple"
+                onClick={() => transferMutation.mutate()}
+                ml={3}
+              >
+                Transfer
               </Button>
             </Dialog.Footer>
           </Dialog.Content>

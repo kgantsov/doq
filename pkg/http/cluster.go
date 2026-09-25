@@ -58,3 +58,15 @@ func (h *Handler) Servers(ctx context.Context, input *ServersInput) (*ServersOut
 
 	return res, nil
 }
+
+func (h *Handler) TransferLeadership(ctx context.Context, input *TransferLeadershipInput) (*TransferLeadershipOutput, error) {
+	if err := h.node.TransferLeadership(); err != nil {
+		log.Error().Str("component", "http").Err(err).Msg("Failed to transfer leadership")
+		return &TransferLeadershipOutput{}, err
+	}
+
+	res := &TransferLeadershipOutput{}
+	res.Body.Success = true
+
+	return res, nil
+}

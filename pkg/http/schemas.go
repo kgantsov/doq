@@ -51,6 +51,17 @@ type ServersOutput struct {
 	Body ServersOutputBody
 }
 
+type TransferLeadershipInput struct {
+}
+
+type TransferLeadershipOutputBody struct {
+	Success bool `json:"success" example:"true" doc:"Indicates if leadership was transferred successfully"`
+}
+
+type TransferLeadershipOutput struct {
+	Body TransferLeadershipOutputBody
+}
+
 type BackupInput struct {
 	Body struct {
 		Since uint64 `json:"since" example:"0" doc:"Minimum version of the log to include in the backup"`

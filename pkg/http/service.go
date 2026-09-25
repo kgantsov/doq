@@ -39,6 +39,7 @@ type Node interface {
 	Join(nodeID string, addr string) error
 	Leave(nodeID string) error
 	GetServers() ([]*entity.Server, error)
+	TransferLeadership() error
 	PrometheusRegistry() prometheus.Registerer
 	IsLeader() bool
 	Ready() bool
@@ -177,6 +178,18 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 			Tags:        []string{"Cluster"},
 		},
 		h.Servers,
+	)
+	huma.Register(
+		api,
+		huma.Operation{
+			OperationID: "cluster-transfer-leadership",
+			Method:      http.MethodPost,
+			Path:        "/API/v1/cluster/transfer-leadership",
+			Summary:     "Transfer leadership",
+			Description: "An admin endpoint that makes the current leader gracefully hand off leadership to another voter and step down to follower",
+			Tags:        []string{"Cluster"},
+		},
+		h.TransferLeadership,
 	)
 
 	huma.Register(
