@@ -99,11 +99,7 @@ const CreateQueueModal = ({
             <form onSubmit={handleSubmit}>
               <Field.Root invalid={isError}>
                 <Field.Label>Name</Field.Label>
-                <Input
-                  onChange={handleNameChange}
-                  value={name}
-                  autoFocus
-                ></Input>
+                <Input onChange={handleNameChange} value={name}></Input>
               </Field.Root>
 
               <Field.Root invalid={isError}>
