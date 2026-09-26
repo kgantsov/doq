@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/snowflake"
@@ -63,6 +64,10 @@ type Node struct {
 	// group is ever created. Defaults to true so standalone/single-node use and
 	// tests keep bootstrapping themselves.
 	bootstrap bool
+
+	// shutdownOnce guards Shutdown so it is safe to call from both the signal
+	// handler and any deferred cleanup path.
+	shutdownOnce sync.Once
 }
 
 func NewNode(db *badger.DB, raftDB *badger.DB, raftDir string, cfg *config.Config, peers []string) *Node {
@@ -248,6 +253,45 @@ func (n *Node) LeaderHttpAddress() string {
 // target is available.
 func (n *Node) TransferLeadership() error {
 	return n.Raft.LeadershipTransfer().Error()
+}
+
+// Shutdown gracefully stops the Raft subsystem. If this node is the leader it
+// first hands leadership off to another voter so a successor is elected
+// immediately, sparing clients the election-timeout gap that a hard leader
+// death would cause. It then shuts Raft down, letting in-progress log/snapshot
+// work flush to the stable store. Callers must stop serving client traffic
+// (gRPC/HTTP) before calling this, and must close the BadgerDB stores only
+// after it returns. Safe to call multiple times; only the first call acts.
+func (n *Node) Shutdown() error {
+	var shutdownErr error
+
+	n.shutdownOnce.Do(func() {
+		if n.Raft == nil {
+			return
+		}
+
+		if n.Raft.State() == raft.Leader {
+			log.Info().Str("component", "node").Msg("Transferring leadership before shutdown")
+			if err := n.Raft.LeadershipTransfer().Error(); err != nil {
+				// Not fatal: with no other voter (single-node cluster) or a
+				// transient error, fall back to a plain shutdown and let the
+				// cluster re-elect on its own.
+				log.Warn().Str("component", "node").Err(err).Msg(
+					"Leadership transfer failed; proceeding with shutdown",
+				)
+			} else {
+				log.Info().Str("component", "node").Msg("Leadership transferred")
+			}
+		}
+
+		log.Info().Str("component", "node").Msg("Shutting down Raft")
+		if err := n.Raft.Shutdown().Error(); err != nil {
+			log.Error().Str("component", "node").Err(err).Msg("Error shutting down Raft")
+			shutdownErr = err
+		}
+	})
+
+	return shutdownErr
 }
 
 // IsNewNode returns true if this node had no prior Raft state when it started.

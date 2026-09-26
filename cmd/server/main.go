@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -182,27 +183,77 @@ func RunServer(cmd *cobra.Command, args []string) {
 
 	h := http.NewHttpService(config, node, indexHtmlFS, frontendFS)
 
-	// On SIGINT/SIGTERM (e.g. a Kubernetes rolling restart or leadership
-	// hand-off) stop the gRPC server gracefully. GracefulStop sends a GOAWAY to
-	// connected clients, prompting them to reconnect and re-resolve to a live
-	// node instead of hanging on this one, then drains in-flight RPCs. Finally
-	// shut the HTTP server down so Start returns and the process exits.
+	// Graceful shutdown on SIGINT/SIGTERM (e.g. a Kubernetes rolling restart).
+	// Ordering matters:
+	//   1. Stop the gRPC and HTTP edges concurrently, draining in-flight
+	//      requests. GracefulStop sends a GOAWAY so clients reconnect and
+	//      re-resolve to a live node; it is time-bounded so a stuck RPC cannot
+	//      hold shutdown past the Kubernetes termination grace period.
+	//   2. Once no new requests can arrive, shut Raft down - transferring
+	//      leadership first so a successor is elected immediately instead of
+	//      after an election timeout.
+	//   3. Only then does RunServer return and the deferred BadgerDB closes run,
+	//      so the stores are flushed strictly after Raft has stopped touching
+	//      them.
+	shutdownDone := make(chan struct{})
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		sig := <-sigCh
 		log.Info().Msgf("Received signal %s, shutting down gracefully", sig)
 
+		var wg sync.WaitGroup
 		if grpcServer != nil {
-			grpcServer.GracefulStop()
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				stopGRPCGracefully(grpcServer, 10*time.Second)
+			}()
 		}
-		if err := h.Shutdown(); err != nil {
-			log.Error().Msgf("failed to shut down HTTP service: %s", err.Error())
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := h.Shutdown(); err != nil {
+				log.Error().Msgf("failed to shut down HTTP service: %s", err.Error())
+			}
+		}()
+		wg.Wait()
+
+		if err := node.Shutdown(); err != nil {
+			log.Error().Msgf("failed to shut down Raft: %s", err.Error())
 		}
+
+		close(shutdownDone)
 	}()
 
 	if err := h.Start(); err != nil {
+		// A genuine startup failure (e.g. the port is already in use). No
+		// graceful sequence is in flight, so return and let the deferred store
+		// closes run.
 		log.Error().Msgf("failed to start HTTP service: %s", err.Error())
+		return
+	}
+
+	// Start returned nil, which for Fiber means Shutdown was called - i.e. the
+	// graceful sequence above is running. Wait for it (including Raft shutdown)
+	// to finish before RunServer returns and the deferred DB closes execute.
+	<-shutdownDone
+}
+
+// stopGRPCGracefully drains in-flight RPCs, but forces a stop after timeout so a
+// stuck RPC cannot hold shutdown past the Kubernetes termination grace period.
+func stopGRPCGracefully(s *grpcpkg.Server, timeout time.Duration) {
+	stopped := make(chan struct{})
+	go func() {
+		s.GracefulStop()
+		close(stopped)
+	}()
+
+	select {
+	case <-stopped:
+	case <-time.After(timeout):
+		log.Warn().Msg("gRPC graceful stop timed out; forcing stop")
+		s.Stop()
 	}
 }
 

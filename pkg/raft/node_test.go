@@ -11,6 +11,7 @@ import (
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNodeSingleNode(t *testing.T) {
@@ -674,4 +675,56 @@ func TestNodeNonSeedDoesNotBootstrap(t *testing.T) {
 		t, 0, len(future.Configuration().Servers),
 		"non-seed node must start with an empty Raft configuration",
 	)
+}
+
+func TestNodeShutdown(t *testing.T) {
+	tmpStoreDir, _ := os.MkdirTemp("", "db*")
+	defer os.RemoveAll(tmpStoreDir)
+
+	tmpRaftDir, _ := os.MkdirTemp("", "raft*")
+	defer os.RemoveAll(tmpRaftDir)
+
+	tmpStableStoreDir, _ := os.MkdirTemp("", "stable_store*")
+	defer os.RemoveAll(tmpStableStoreDir)
+
+	db, err := badger.Open(badger.DefaultOptions(tmpStoreDir))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	defer db.Close()
+	raftDB, err := badger.Open(badger.DefaultOptions(tmpStableStoreDir))
+	if err != nil {
+		log.Fatal().Msg(err.Error())
+	}
+	defer raftDB.Close()
+
+	cfg := &config.Config{
+		Cluster: config.ClusterConfig{NodeID: "localhost"},
+		Http:    config.HttpConfig{Port: "9310"},
+		Raft:    config.RaftConfig{Address: "localhost:9311"},
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		},
+	}
+
+	n := NewNode(db, raftDB, tmpRaftDir, cfg, []string{})
+	n.Initialize()
+
+	// Ensure this single node has become the leader before we shut it down.
+	require.Eventually(t, n.IsLeader, 5*time.Second, 20*time.Millisecond)
+
+	// Shutdown succeeds even though leadership transfer has no target (single
+	// node): it logs a warning and falls back to a plain Raft shutdown.
+	err = n.Shutdown()
+	assert.Nil(t, err)
+
+	// After shutdown the node is no longer the leader.
+	assert.False(t, n.IsLeader())
+
+	// Shutdown is idempotent: a second call is a no-op and does not panic.
+	assert.NotPanics(t, func() {
+		err = n.Shutdown()
+		assert.Nil(t, err)
+	})
 }
