@@ -58,6 +58,30 @@ func (n *mockNode) IsLeader() bool {
 	return args.Bool(0)
 }
 
+func (n *mockNode) LeaderGrpcAddress() string {
+	// Called on every RPC by the leader-hint interceptor. Default to an empty
+	// address (no leader known) unless a test explicitly sets an expectation,
+	// so tests that don't care about the hint don't need to register one.
+	for _, c := range n.ExpectedCalls {
+		if c.Method == "LeaderGrpcAddress" {
+			return n.Called().String(0)
+		}
+	}
+	return ""
+}
+
+func (n *mockNode) LeaderHttpAddress() string {
+	// Called on every HTTP response by the leader-hint middleware. Default to an
+	// empty address (no leader known) unless a test explicitly sets an
+	// expectation, so tests that don't care about the hint don't need one.
+	for _, c := range n.ExpectedCalls {
+		if c.Method == "LeaderHttpAddress" {
+			return n.Called().String(0)
+		}
+	}
+	return ""
+}
+
 // Ready reports the node as ready in tests. Real readiness is exercised in the
 // raft package; HTTP tests only need a stable value so the /readyz probe passes.
 func (n *mockNode) Ready() bool {

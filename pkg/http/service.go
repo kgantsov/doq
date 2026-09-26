@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,6 +28,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	// HeaderLeader carries the current leader's client-routable HTTP address
+	// (<host>:<port>) on every response. A client talking to a follower (see
+	// HeaderIsLeader) can use it to prefer the leader and avoid the
+	// follower->leader proxy hop. Mirrors the gRPC leader-hint metadata.
+	HeaderLeader = "X-Doq-Leader"
+	// HeaderIsLeader is "true" when the node that served the response is itself
+	// the leader, "false" when it proxied to the leader on the client's behalf.
+	HeaderIsLeader = "X-Doq-Is-Leader"
+)
+
 // Service provides HTTP service.
 type Service struct {
 	api    huma.API
@@ -42,6 +54,8 @@ type Node interface {
 	TransferLeadership() error
 	PrometheusRegistry() prometheus.Registerer
 	IsLeader() bool
+	LeaderGrpcAddress() string
+	LeaderHttpAddress() string
 	Ready() bool
 	GenerateID() uint64
 	CreateQueue(queueType, queueName string, settings entity.QueueSettings) error
@@ -115,6 +129,18 @@ func NewHttpService(config *config.Config, node Node, indexHtmlFS embed.FS, fron
 
 func (h *Handler) ConfigureMiddleware(router *fiber.App) {
 	router.Use(logger.ZeroHCLLoggerMiddleware())
+
+	// Advertise the current leader on every response so HTTP clients can prefer
+	// the leader and skip the follower->leader proxy hop. Set before the handler
+	// runs so the headers are in place even for streamed responses (e.g. the
+	// backup/restore endpoints). Omitted while no leader is known.
+	router.Use(func(c *fiber.Ctx) error {
+		if addr := h.node.LeaderHttpAddress(); addr != "" {
+			c.Set(HeaderLeader, addr)
+			c.Set(HeaderIsLeader, strconv.FormatBool(h.node.IsLeader()))
+		}
+		return c.Next()
+	})
 
 	router.Use(healthcheck.New(healthcheck.Config{
 		// Liveness only reflects that the process is up and serving HTTP.
@@ -401,4 +427,11 @@ func (h *Handler) RegisterRoutes(api huma.API) {
 func (s *Service) Start() error {
 	log.Info().Str("component", "http").Msg("Starting http server")
 	return s.router.Listen(fmt.Sprintf(":%s", s.addr))
+}
+
+// Shutdown gracefully stops the HTTP server, letting in-flight requests finish
+// within the timeout. It causes the blocking Start call to return.
+func (s *Service) Shutdown() error {
+	log.Info().Str("component", "http").Msg("Shutting down http server")
+	return s.router.ShutdownWithTimeout(5 * time.Second)
 }

@@ -95,3 +95,53 @@ func TestNew(t *testing.T) {
 	require.Equal(t, "none", resp.Header.Get("X-Permitted-Cross-Domain-Policies"))
 	require.NotEqual(t, "", resp.Header.Get("X-Request-Id"))
 }
+
+func TestLeaderHintHeaders(t *testing.T) {
+	cfg := &config.Config{
+		Http: config.HttpConfig{Port: "8080"},
+	}
+
+	t.Run("follower advertises leader", func(t *testing.T) {
+		node := mocks.NewMockNode()
+		node.On("LeaderHttpAddress").Return("doq-1.doq-internal:8000")
+		node.On("IsLeader").Return(false)
+
+		service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
+
+		req := httptest.NewRequest("GET", "/readyz", nil)
+		resp, err := service.router.Test(req)
+		require.NoError(t, err)
+
+		assert.Equal(t, "doq-1.doq-internal:8000", resp.Header.Get(HeaderLeader))
+		assert.Equal(t, "false", resp.Header.Get(HeaderIsLeader))
+	})
+
+	t.Run("leader advertises itself", func(t *testing.T) {
+		node := mocks.NewMockNode()
+		node.On("LeaderHttpAddress").Return("doq-0.doq-internal:8000")
+		node.On("IsLeader").Return(true)
+
+		service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
+
+		req := httptest.NewRequest("GET", "/readyz", nil)
+		resp, err := service.router.Test(req)
+		require.NoError(t, err)
+
+		assert.Equal(t, "doq-0.doq-internal:8000", resp.Header.Get(HeaderLeader))
+		assert.Equal(t, "true", resp.Header.Get(HeaderIsLeader))
+	})
+
+	t.Run("no leader known omits the headers", func(t *testing.T) {
+		node := mocks.NewMockNode()
+		node.On("LeaderHttpAddress").Return("")
+
+		service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
+
+		req := httptest.NewRequest("GET", "/readyz", nil)
+		resp, err := service.router.Test(req)
+		require.NoError(t, err)
+
+		assert.Empty(t, resp.Header.Get(HeaderLeader))
+		assert.Empty(t, resp.Header.Get(HeaderIsLeader))
+	})
+}

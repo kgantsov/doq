@@ -224,6 +224,23 @@ func (n *Node) IsLeader() bool {
 	return n.Raft.State() == raft.Leader
 }
 
+// LeaderGrpcAddress returns the current leader's client-routable gRPC address
+// (<leader-host>:<grpc-port>). It is the same address followers use to proxy
+// requests to the leader, and is advertised to clients as response metadata so
+// they can re-pin their connection directly to the leader and skip the proxy
+// hop. Returns an empty string while no leader is known.
+func (n *Node) LeaderGrpcAddress() string {
+	return n.leaderConfig.GetLeaderGrpcAddress()
+}
+
+// LeaderHttpAddress returns the current leader's client-routable HTTP address
+// (<leader-host>:<http-port>). It is advertised to HTTP clients as a response
+// header so they can prefer the leader and skip the follower->leader proxy hop.
+// Returns an empty string while no leader is known.
+func (n *Node) LeaderHttpAddress() string {
+	return n.leaderConfig.GetLeaderHttpAddress()
+}
+
 // TransferLeadership gracefully hands off leadership to another voter in the
 // cluster. The current leader stops accepting new writes, replicates its log
 // to the target, then steps down; it becomes a follower once the new leader

@@ -17,6 +17,7 @@ go run ./examples/consumer -address localhost:10000 -queue my-queue
 | `simulate_load_producer` | FAIR/ROUND_ROBIN | high-volume streaming load generator (up to 1M messages, skewed group distribution) | |
 | `delayed_producer` / `delayed_consumer` | DELAYED | producer enqueues messages with random priorities; consumer streams them back out lowest-priority-number-first, showing the binary-heap ordering | |
 | `generate_ids` | — | loops the `GenerateIDs` RPC to exercise Snowflake ID generation | |
+| `leader_aware_consumer` | FAIR/ROUND_ROBIN | unary `Dequeue` consumer that survives leader failover: keepalive dial, reads the `x-doq-leader`/`x-doq-is-leader` response trailer to re-pin directly to the leader, and reconnects via a bootstrap address list (`-addresses n1:10000,n2:10000,n3:10000`) on `UNAVAILABLE` | reference for the language clients |
 
 ## HTTP client
 

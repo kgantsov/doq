@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	netHttp "net/http"
@@ -19,6 +21,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	grpcpkg "google.golang.org/grpc"
 
 	"github.com/kgantsov/doq/pkg/cluster"
 	"github.com/kgantsov/doq/pkg/config"
@@ -152,6 +155,7 @@ func RunServer(cmd *cobra.Command, args []string) {
 
 	node.InitIDGenerator()
 
+	var grpcServer *grpcpkg.Server
 	if config.Grpc.Address != "" {
 		lis, err := net.Listen("tcp", config.Grpc.Address)
 		if err != nil {
@@ -160,7 +164,7 @@ func RunServer(cmd *cobra.Command, args []string) {
 
 		port := lis.Addr().(*net.TCPAddr).Port
 
-		grpcServer, err := grpc.NewGRPCServer(config, node, port)
+		grpcServer, err = grpc.NewGRPCServer(config, node, port)
 		if err != nil {
 			log.Fatal().Msgf("failed to create GRPC server: %v", err)
 		}
@@ -177,6 +181,26 @@ func RunServer(cmd *cobra.Command, args []string) {
 	}
 
 	h := http.NewHttpService(config, node, indexHtmlFS, frontendFS)
+
+	// On SIGINT/SIGTERM (e.g. a Kubernetes rolling restart or leadership
+	// hand-off) stop the gRPC server gracefully. GracefulStop sends a GOAWAY to
+	// connected clients, prompting them to reconnect and re-resolve to a live
+	// node instead of hanging on this one, then drains in-flight RPCs. Finally
+	// shut the HTTP server down so Start returns and the process exits.
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		sig := <-sigCh
+		log.Info().Msgf("Received signal %s, shutting down gracefully", sig)
+
+		if grpcServer != nil {
+			grpcServer.GracefulStop()
+		}
+		if err := h.Shutdown(); err != nil {
+			log.Error().Msgf("failed to shut down HTTP service: %s", err.Error())
+		}
+	}()
+
 	if err := h.Start(); err != nil {
 		log.Error().Msgf("failed to start HTTP service: %s", err.Error())
 	}

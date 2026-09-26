@@ -2,14 +2,53 @@ package grpc
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+const (
+	// MetadataKeyLeader carries the current leader's client-routable gRPC
+	// address (<host>:<port>) on every response. A client that finds itself
+	// talking to a follower (see MetadataKeyIsLeader) uses this to re-pin its
+	// connection directly to the leader and avoid the proxy hop.
+	MetadataKeyLeader = "x-doq-leader"
+	// MetadataKeyIsLeader is "true" when the node that served the response is
+	// itself the leader, "false" when it proxied to the leader on the client's
+	// behalf.
+	MetadataKeyIsLeader = "x-doq-is-leader"
+)
+
+// LeaderInfoProvider exposes the current Raft leadership state so the gRPC
+// layer can advertise it to clients as response metadata.
+type LeaderInfoProvider interface {
+	IsLeader() bool
+	LeaderGrpcAddress() string
+}
+
+// leaderMetadata builds the leader-hint metadata for a response, or nil if the
+// provider is unset or no leader is known yet.
+func leaderMetadata(leader LeaderInfoProvider) metadata.MD {
+	if leader == nil {
+		return nil
+	}
+
+	addr := leader.LeaderGrpcAddress()
+	if addr == "" {
+		return nil
+	}
+
+	return metadata.Pairs(
+		MetadataKeyLeader, addr,
+		MetadataKeyIsLeader, strconv.FormatBool(leader.IsLeader()),
+	)
+}
 
 type PrometheusMetrics struct {
 	RequestsTotal   *prometheus.CounterVec
@@ -83,7 +122,7 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 	return m
 }
 
-func UnaryInterceptor(prometheusEnabled bool, m *PrometheusMetrics) grpc.UnaryServerInterceptor {
+func UnaryInterceptor(leader LeaderInfoProvider, prometheusEnabled bool, m *PrometheusMetrics) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
@@ -93,6 +132,13 @@ func UnaryInterceptor(prometheusEnabled bool, m *PrometheusMetrics) grpc.UnarySe
 		start := time.Now()
 		resp, err = handler(ctx, req)
 		duration := time.Since(start)
+
+		// Stamp the current leader on the response (even on error) so the
+		// client can re-pin to the leader and skip the proxy hop. Read after
+		// the handler runs so it reflects any leadership change during the call.
+		if md := leaderMetadata(leader); md != nil {
+			_ = grpc.SetTrailer(ctx, md)
+		}
 
 		code := status.Code(err)
 
@@ -111,13 +157,20 @@ func UnaryInterceptor(prometheusEnabled bool, m *PrometheusMetrics) grpc.UnarySe
 	}
 }
 
-func StreamInterceptor(prometheusEnabled bool, m *PrometheusMetrics) grpc.StreamServerInterceptor {
+func StreamInterceptor(leader LeaderInfoProvider, prometheusEnabled bool, m *PrometheusMetrics) grpc.StreamServerInterceptor {
 	return func(
 		srv interface{},
 		ss grpc.ServerStream,
 		info *grpc.StreamServerInfo,
 		handler grpc.StreamHandler,
 	) error {
+		// Best-effort leader hint sent as a header at stream start. Long-lived
+		// streams keep working across a leadership change via the proxy; the
+		// unary path is what lets a client re-pin promptly.
+		if md := leaderMetadata(leader); md != nil {
+			_ = ss.SetHeader(md)
+		}
+
 		start := time.Now()
 		err := handler(srv, ss)
 		duration := time.Since(start)

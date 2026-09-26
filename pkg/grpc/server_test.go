@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -764,4 +765,81 @@ func TestGetQueue(t *testing.T) {
 	assert.Equal(t, float64(2.5), resp.Stats.DequeueRPS)
 	assert.Equal(t, float64(1.2), resp.Stats.AckRPS)
 	assert.Equal(t, float64(2.3), resp.Stats.NackRPS)
+}
+
+func TestLeaderHintMetadata(t *testing.T) {
+	tests := []struct {
+		name        string
+		leaderAddr  string
+		isLeader    bool
+		wantPresent bool
+	}{
+		{
+			name:        "served by follower advertises leader",
+			leaderAddr:  "doq-1.doq-internal:10000",
+			isLeader:    false,
+			wantPresent: true,
+		},
+		{
+			name:        "served by leader advertises itself",
+			leaderAddr:  "doq-0.doq-internal:10000",
+			isLeader:    true,
+			wantPresent: true,
+		},
+		{
+			name:        "no leader known yet omits the hint",
+			leaderAddr:  "",
+			isLeader:    false,
+			wantPresent: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockNode := mocks.NewMockNode()
+			mockNode.On("LeaderGrpcAddress").Return(tt.leaderAddr)
+			mockNode.On("IsLeader").Return(tt.isLeader)
+
+			var idCounter uint64 = 0
+			mockNode.NextIDFunc = func() uint64 {
+				idCounter++
+				return idCounter
+			}
+
+			startTestServer(mockNode)
+
+			ctx := context.Background()
+			conn, err := grpc.DialContext(
+				ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+			)
+			require.NoError(t, err)
+			defer conn.Close()
+
+			client := pb.NewDOQClient(conn)
+
+			var trailer metadata.MD
+			_, err = client.GenerateIDs(
+				ctx, &pb.GenerateIDsRequest{Number: 1}, grpc.Trailer(&trailer),
+			)
+			require.NoError(t, err)
+
+			leader := trailer.Get(MetadataKeyLeader)
+			isLeader := trailer.Get(MetadataKeyIsLeader)
+
+			if !tt.wantPresent {
+				assert.Empty(t, leader, "leader hint should be omitted when no leader is known")
+				assert.Empty(t, isLeader)
+				return
+			}
+
+			require.Len(t, leader, 1)
+			assert.Equal(t, tt.leaderAddr, leader[0])
+			require.Len(t, isLeader, 1)
+			if tt.isLeader {
+				assert.Equal(t, "true", isLeader[0])
+			} else {
+				assert.Equal(t, "false", isLeader[0])
+			}
+		})
+	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 // emptyQueuePollInterval bounds how long DequeueStream blocks waiting for a
@@ -45,8 +46,22 @@ func NewGRPCServer(config *config.Config, node http.Node, port int) (*grpc.Serve
 	}
 
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(UnaryInterceptor(config.Prometheus.Enabled, prometheusMetrics)),
-		grpc.StreamInterceptor(StreamInterceptor(config.Prometheus.Enabled, prometheusMetrics)),
+		// Permit clients to send keepalive pings so a dead node (e.g. a
+		// hard-killed leader that never sent a TCP FIN) is detected in seconds
+		// instead of never. MinTime must be <= the client's keepalive interval,
+		// and PermitWithoutStream allows pinging on idle connections.
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             10 * time.Second,
+			PermitWithoutStream: true,
+		}),
+		// Server-side keepalive so the server also detects dead clients and
+		// reclaims their connections/streams.
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    20 * time.Second,
+			Timeout: 5 * time.Second,
+		}),
+		grpc.UnaryInterceptor(UnaryInterceptor(node, config.Prometheus.Enabled, prometheusMetrics)),
+		grpc.StreamInterceptor(StreamInterceptor(node, config.Prometheus.Enabled, prometheusMetrics)),
 	)
 	pb.RegisterDOQServer(grpcServer, NewQueueServer(node, port))
 
