@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
-	"github.com/kgantsov/doq/pkg/errors"
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/kgantsov/doq/pkg/storage"
@@ -108,7 +107,7 @@ func (f *FSM) applyEnqueue(payload *pb.RaftCommand_Enqueue) *FSMResponse {
 			Msgf("Failed to get a queue: %s", payload.Enqueue.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Enqueue.QueueName,
-			error:     fmt.Errorf("Failed to get a queue: %s", payload.Enqueue.QueueName),
+			error:     fmt.Errorf("queue %q: %w", payload.Enqueue.QueueName, err),
 		}
 	}
 
@@ -130,7 +129,7 @@ func (f *FSM) applyEnqueue(payload *pb.RaftCommand_Enqueue) *FSMResponse {
 		return &FSMResponse{
 			QueueName: payload.Enqueue.QueueName,
 			error: fmt.Errorf(
-				"Failed to enqueue a message to a queue: %s", payload.Enqueue.QueueName,
+				"enqueue message to queue %q: %w", payload.Enqueue.QueueName, err,
 			),
 		}
 	}
@@ -155,7 +154,7 @@ func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue) *FSMResponse {
 			Msgf("Failed to get a queue: %s", payload.Dequeue.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Dequeue.QueueName,
-			error:     fmt.Errorf("Failed to get a queue: %s", payload.Dequeue.QueueName),
+			error:     fmt.Errorf("queue %q: %w", payload.Dequeue.QueueName, err),
 		}
 	}
 
@@ -164,12 +163,6 @@ func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue) *FSMResponse {
 	log.Debug().Str("component", "fsm").Msgf("Node %s Dequeued a message: %+v %v", f.NodeID, msg, err)
 
 	if err != nil {
-		if err == errors.ErrEmptyQueue {
-			return &FSMResponse{
-				QueueName: payload.Dequeue.QueueName,
-				error:     fmt.Errorf("Queue is empty: %s", payload.Dequeue.QueueName),
-			}
-		}
 		log.Error().
 			Str("component", "fsm").
 			Err(err).
@@ -177,7 +170,7 @@ func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue) *FSMResponse {
 		return &FSMResponse{
 			QueueName: payload.Dequeue.QueueName,
 			error: fmt.Errorf(
-				"Failed to dequeue a message from a queue: %s", payload.Dequeue.QueueName,
+				"dequeue message from queue %q: %w", payload.Dequeue.QueueName, err,
 			),
 		}
 	}
@@ -202,7 +195,7 @@ func (f *FSM) applyGet(payload *pb.RaftCommand_Get) *FSMResponse {
 			Msgf("Failed to get a queue: %s", payload.Get.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Get.QueueName,
-			error:     fmt.Errorf("Failed to get a queue: %s", payload.Get.QueueName),
+			error:     fmt.Errorf("queue %q: %w", payload.Get.QueueName, err),
 		}
 	}
 
@@ -211,12 +204,6 @@ func (f *FSM) applyGet(payload *pb.RaftCommand_Get) *FSMResponse {
 	log.Debug().Str("component", "fsm").Msgf("Node %s got a message: %+v %v", f.NodeID, msg, err)
 
 	if err != nil {
-		if err == errors.ErrEmptyQueue {
-			return &FSMResponse{
-				QueueName: payload.Get.QueueName,
-				error:     fmt.Errorf("Queue is empty: %s", payload.Get.QueueName),
-			}
-		}
 		log.Error().
 			Str("component", "fsm").
 			Err(err).
@@ -224,7 +211,7 @@ func (f *FSM) applyGet(payload *pb.RaftCommand_Get) *FSMResponse {
 		return &FSMResponse{
 			QueueName: payload.Get.QueueName,
 			error: fmt.Errorf(
-				"Failed to get a message from a queue: %s", payload.Get.QueueName,
+				"get message from queue %q: %w", payload.Get.QueueName, err,
 			),
 		}
 	}
@@ -249,20 +236,13 @@ func (f *FSM) applyDelete(payload *pb.RaftCommand_Delete) *FSMResponse {
 			Msgf("Failed to get a queue: %s", payload.Delete.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Delete.QueueName,
-			error:     fmt.Errorf("Failed to get a queue: %s", payload.Delete.QueueName),
+			error:     fmt.Errorf("queue %q: %w", payload.Delete.QueueName, err),
 		}
 	}
 
 	err = q.Delete(payload.Delete.Id)
 
 	if err != nil {
-		if err == errors.ErrEmptyQueue {
-			return &FSMResponse{
-				QueueName: payload.Delete.QueueName,
-				error:     fmt.Errorf("Queue is empty: %s", payload.Delete.QueueName),
-			}
-		}
-
 		log.Error().
 			Str("component", "fsm").
 			Err(err).
@@ -270,7 +250,7 @@ func (f *FSM) applyDelete(payload *pb.RaftCommand_Delete) *FSMResponse {
 		return &FSMResponse{
 			QueueName: payload.Delete.QueueName,
 			error: fmt.Errorf(
-				"Failed to delete a message from a queue: %s", payload.Delete.QueueName,
+				"delete message from queue %q: %w", payload.Delete.QueueName, err,
 			),
 		}
 	}
@@ -291,7 +271,7 @@ func (f *FSM) applyAck(payload *pb.RaftCommand_Ack) *FSMResponse {
 			Msgf("Failed to get a queue: %s", payload.Ack.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Ack.QueueName,
-			error:     fmt.Errorf("Failed to get a queue: %s", payload.Ack.QueueName),
+			error:     fmt.Errorf("queue %q: %w", payload.Ack.QueueName, err),
 		}
 	}
 
@@ -300,21 +280,6 @@ func (f *FSM) applyAck(payload *pb.RaftCommand_Ack) *FSMResponse {
 	log.Debug().Str("component", "fsm").Msgf("Node %s Acked a message: %v", f.NodeID, err)
 
 	if err != nil {
-		if err == errors.ErrEmptyQueue {
-			return &FSMResponse{
-				QueueName: payload.Ack.QueueName,
-				error:     fmt.Errorf("Queue is empty: %s", payload.Ack.QueueName),
-			}
-		} else if err == errors.ErrMessageNotFound {
-			log.Error().
-				Str("component", "fsm").
-				Err(err).
-				Msgf("Message not found in queue: %s", payload.Ack.QueueName)
-			return &FSMResponse{
-				QueueName: payload.Ack.QueueName,
-				error:     fmt.Errorf("Message not found: %s", payload.Ack.QueueName),
-			}
-		}
 		log.Error().
 			Str("component", "fsm").
 			Err(err).
@@ -322,7 +287,7 @@ func (f *FSM) applyAck(payload *pb.RaftCommand_Ack) *FSMResponse {
 		return &FSMResponse{
 			QueueName: payload.Ack.QueueName,
 			error: fmt.Errorf(
-				"Failed to ack a message from a queue: %s", payload.Ack.QueueName,
+				"ack message in queue %q: %w", payload.Ack.QueueName, err,
 			),
 		}
 	}
@@ -343,7 +308,7 @@ func (f *FSM) applyNack(payload *pb.RaftCommand_Nack) *FSMResponse {
 			Msgf("Failed to get a queue: %s", payload.Nack.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Nack.QueueName,
-			error:     fmt.Errorf("Failed to get a queue: %s", payload.Nack.QueueName),
+			error:     fmt.Errorf("queue %q: %w", payload.Nack.QueueName, err),
 		}
 	}
 
@@ -352,21 +317,6 @@ func (f *FSM) applyNack(payload *pb.RaftCommand_Nack) *FSMResponse {
 	log.Debug().Str("component", "fsm").Msgf("Node %s Nacked a message: %v", f.NodeID, err)
 
 	if err != nil {
-		if err == errors.ErrEmptyQueue {
-			return &FSMResponse{
-				QueueName: payload.Nack.QueueName,
-				error:     fmt.Errorf("Queue is empty: %s", payload.Nack.QueueName),
-			}
-		} else if err == errors.ErrMessageNotFound {
-			log.Error().
-				Str("component", "fsm").
-				Err(err).
-				Msgf("Message not found in queue: %s", payload.Nack.QueueName)
-			return &FSMResponse{
-				QueueName: payload.Nack.QueueName,
-				error:     fmt.Errorf("Message not found: %s", payload.Nack.QueueName),
-			}
-		}
 		log.Error().
 			Str("component", "fsm").
 			Err(err).
@@ -374,7 +324,7 @@ func (f *FSM) applyNack(payload *pb.RaftCommand_Nack) *FSMResponse {
 		return &FSMResponse{
 			QueueName: payload.Nack.QueueName,
 			error: fmt.Errorf(
-				"Failed to nack a message from a queue: %s", payload.Nack.QueueName,
+				"nack message in queue %q: %w", payload.Nack.QueueName, err,
 			),
 		}
 	}
@@ -396,7 +346,7 @@ func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch) *FSMResponse {
 			Msgf("Failed to get a queue: %s", payload.Touch.QueueName)
 		return &FSMResponse{
 			QueueName: payload.Touch.QueueName,
-			error:     fmt.Errorf("Failed to get a queue: %s", payload.Touch.QueueName),
+			error:     fmt.Errorf("queue %q: %w", payload.Touch.QueueName, err),
 		}
 	}
 
@@ -405,21 +355,6 @@ func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch) *FSMResponse {
 	log.Debug().Str("component", "fsm").Msgf("Node %s Touched a message: %v", f.NodeID, err)
 
 	if err != nil {
-		if err == errors.ErrEmptyQueue {
-			return &FSMResponse{
-				QueueName: payload.Touch.QueueName,
-				error:     fmt.Errorf("Queue is empty: %s", payload.Touch.QueueName),
-			}
-		} else if err == errors.ErrMessageNotFound {
-			log.Error().
-				Str("component", "fsm").
-				Err(err).
-				Msgf("Message not found in queue: %s", payload.Touch.QueueName)
-			return &FSMResponse{
-				QueueName: payload.Touch.QueueName,
-				error:     fmt.Errorf("Message not found: %s", payload.Touch.QueueName),
-			}
-		}
 		log.Error().
 			Str("component", "fsm").
 			Err(err).
@@ -427,7 +362,7 @@ func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch) *FSMResponse {
 		return &FSMResponse{
 			QueueName: payload.Touch.QueueName,
 			error: fmt.Errorf(
-				"Failed to touch a message from a queue: %s", payload.Touch.QueueName,
+				"touch message in queue %q: %w", payload.Touch.QueueName, err,
 			),
 		}
 	}
@@ -448,7 +383,7 @@ func (f *FSM) applyUpdatePriority(payload *pb.RaftCommand_UpdatePriority) *FSMRe
 			Msgf("Failed to get a queue: %s", payload.UpdatePriority.QueueName)
 		return &FSMResponse{
 			QueueName: payload.UpdatePriority.QueueName,
-			error:     fmt.Errorf("Failed to get a queue: %s", payload.UpdatePriority.QueueName),
+			error:     fmt.Errorf("queue %q: %w", payload.UpdatePriority.QueueName, err),
 		}
 	}
 
@@ -463,12 +398,6 @@ func (f *FSM) applyUpdatePriority(payload *pb.RaftCommand_UpdatePriority) *FSMRe
 	)
 
 	if err != nil {
-		if err == errors.ErrEmptyQueue {
-			return &FSMResponse{
-				QueueName: payload.UpdatePriority.QueueName,
-				error:     fmt.Errorf("Queue is empty: %s", payload.UpdatePriority.QueueName),
-			}
-		}
 		log.Error().
 			Str("component", "fsm").
 			Err(err).
@@ -479,7 +408,7 @@ func (f *FSM) applyUpdatePriority(payload *pb.RaftCommand_UpdatePriority) *FSMRe
 		return &FSMResponse{
 			QueueName: payload.UpdatePriority.QueueName,
 			error: fmt.Errorf(
-				"Failed to dequeue a message from a queue: %s", payload.UpdatePriority.QueueName,
+				"update priority for message in queue %q: %w", payload.UpdatePriority.QueueName, err,
 			),
 		}
 	}
@@ -518,7 +447,7 @@ func (f *FSM) applyCreateQueue(payload *pb.RaftCommand_CreateQueue) *FSMResponse
 			Msgf("Failed to create a queue: %s", payload.CreateQueue.Name)
 		return &FSMResponse{
 			QueueName: payload.CreateQueue.Name,
-			error:     fmt.Errorf("Failed to create a queue: %s", payload.CreateQueue.Name),
+			error:     fmt.Errorf("create queue %q: %w", payload.CreateQueue.Name, err),
 		}
 	}
 
@@ -555,7 +484,7 @@ func (f *FSM) applyUpdateQueue(payload *pb.RaftCommand_UpdateQueue) *FSMResponse
 			Msgf("Failed to update a queue: %s", payload.UpdateQueue.Name)
 		return &FSMResponse{
 			QueueName: payload.UpdateQueue.Name,
-			error:     fmt.Errorf("Failed to update a queue: %s", payload.UpdateQueue.Name),
+			error:     fmt.Errorf("update queue %q: %w", payload.UpdateQueue.Name, err),
 		}
 	}
 
@@ -578,7 +507,7 @@ func (f *FSM) applyDeleteQueue(payload *pb.RaftCommand_DeleteQueue) *FSMResponse
 			Msgf("Failed to delete a queue: %s", payload.DeleteQueue.Name)
 		return &FSMResponse{
 			QueueName: payload.DeleteQueue.Name,
-			error:     fmt.Errorf("Failed to delete a queue: %s", payload.DeleteQueue.Name),
+			error:     fmt.Errorf("delete queue %q: %w", payload.DeleteQueue.Name, err),
 		}
 	}
 

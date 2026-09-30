@@ -15,7 +15,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/status"
 )
 
 // emptyQueuePollInterval bounds how long DequeueStream blocks waiting for a
@@ -74,7 +76,9 @@ func (s *QueueServer) GenerateIDs(
 ) (*pb.GenerateIDsResponse, error) {
 
 	if req.Number <= 0 || req.Number > 1000 {
-		return &pb.GenerateIDsResponse{Success: false}, fmt.Errorf("number must be between 1 and 1000")
+		return &pb.GenerateIDsResponse{Success: false}, status.Error(
+			codes.InvalidArgument, "number must be between 1 and 1000",
+		)
 	}
 
 	ids := make([]uint64, 0, req.Number)
@@ -92,7 +96,9 @@ func (s *QueueServer) CreateQueue(
 	req *pb.CreateQueueRequest,
 ) (*pb.CreateQueueResponse, error) {
 	if req.Settings == nil {
-		return &pb.CreateQueueResponse{Success: false}, fmt.Errorf("invalid settings provided")
+		return &pb.CreateQueueResponse{Success: false}, status.Error(
+			codes.InvalidArgument, "invalid settings provided",
+		)
 	}
 
 	err := s.node.CreateQueue(
@@ -106,8 +112,8 @@ func (s *QueueServer) CreateQueue(
 	)
 	if err != nil {
 		log.Error().Str("component", "grpc").Err(err).Msgf("Failed to create a queue %s", req.Name)
-		return &pb.CreateQueueResponse{Success: false}, fmt.Errorf(
-			"failed to create a queue %s", req.Name,
+		return &pb.CreateQueueResponse{Success: false}, mapError(
+			fmt.Sprintf("failed to create a queue %s", req.Name), err,
 		)
 	}
 
@@ -120,8 +126,8 @@ func (s *QueueServer) UpdateQueue(
 	req *pb.UpdateQueueRequest,
 ) (*pb.UpdateQueueResponse, error) {
 	if req.Settings == nil {
-		return &pb.UpdateQueueResponse{Success: false}, fmt.Errorf(
-			"queue settings are required",
+		return &pb.UpdateQueueResponse{Success: false}, status.Error(
+			codes.InvalidArgument, "queue settings are required",
 		)
 	}
 
@@ -135,8 +141,8 @@ func (s *QueueServer) UpdateQueue(
 	)
 	if err != nil {
 		log.Error().Str("component", "grpc").Err(err).Msgf("Failed to update a queue %s", req.Name)
-		return &pb.UpdateQueueResponse{Success: false}, fmt.Errorf(
-			"failed to update a queue %s", req.Name,
+		return &pb.UpdateQueueResponse{Success: false}, mapError(
+			fmt.Sprintf("failed to update a queue %s", req.Name), err,
 		)
 	}
 
@@ -152,8 +158,8 @@ func (s *QueueServer) DeleteQueue(
 
 	if err != nil {
 		log.Error().Str("component", "grpc").Err(err).Msgf("Failed to delete a queue %s", req.Name)
-		return &pb.DeleteQueueResponse{Success: false}, fmt.Errorf(
-			"failed to delete a queue %s", req.Name,
+		return &pb.DeleteQueueResponse{Success: false}, mapError(
+			fmt.Sprintf("failed to delete a queue %s", req.Name), err,
 		)
 	}
 
@@ -205,7 +211,7 @@ func (s *QueueServer) GetQueue(
 			Str("component", "grpc").
 			Err(err).
 			Msgf("Failed to get a queue %s", req.Name)
-		return nil, fmt.Errorf("failed to get a queue %s", req.Name)
+		return nil, mapError(fmt.Sprintf("failed to get a queue %s", req.Name), err)
 	}
 
 	return &pb.GetQueueResponse{
@@ -242,7 +248,7 @@ func (s *QueueServer) Enqueue(
 			Str("component", "grpc").
 			Err(err).
 			Msgf("Failed to enqueue a message to queue %s", req.QueueName)
-		return &pb.EnqueueResponse{Success: false}, fmt.Errorf("failed to enqueue a message")
+		return &pb.EnqueueResponse{Success: false}, mapError("failed to enqueue a message", err)
 	}
 
 	return &pb.EnqueueResponse{
@@ -274,7 +280,7 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 			log.Error().Str("component", "grpc").Err(err).Msgf(
 				"Failed to enqueue a message to queue %s", req.QueueName,
 			)
-			return fmt.Errorf("failed to enqueue a message")
+			return mapError("failed to enqueue a message", err)
 		}
 
 		err = stream.Send(&pb.EnqueueResponse{
@@ -312,7 +318,7 @@ func (s *QueueServer) Dequeue(
 				"Failed to dequeue a message from queue %s", req.QueueName,
 			)
 		}
-		return &pb.DequeueResponse{Success: false}, fmt.Errorf("failed to dequeue a message")
+		return &pb.DequeueResponse{Success: false}, mapError("failed to dequeue a message", err)
 	}
 
 	return &pb.DequeueResponse{
@@ -419,7 +425,7 @@ func (s *QueueServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespo
 		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to get a message %d from queue %s", req.Id, req.QueueName,
 		)
-		return &pb.GetResponse{Success: false}, fmt.Errorf("failed to get a message")
+		return &pb.GetResponse{Success: false}, mapError("failed to get a message", err)
 	}
 
 	return &pb.GetResponse{
@@ -443,7 +449,7 @@ func (s *QueueServer) Delete(
 		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to delete a message %d from queue %s", req.Id, req.QueueName,
 		)
-		return &pb.DeleteResponse{Success: false}, fmt.Errorf("failed to delete a message")
+		return &pb.DeleteResponse{Success: false}, mapError("failed to delete a message", err)
 	}
 
 	return &pb.DeleteResponse{
@@ -458,7 +464,7 @@ func (s *QueueServer) Ack(ctx context.Context, req *pb.AckRequest) (*pb.AckRespo
 		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to ack a message %d from queue %s", req.Id, req.QueueName,
 		)
-		return &pb.AckResponse{Success: false}, fmt.Errorf("failed to ack a message")
+		return &pb.AckResponse{Success: false}, mapError("failed to ack a message", err)
 	}
 
 	return &pb.AckResponse{Success: true}, nil
@@ -472,7 +478,7 @@ func (s *QueueServer) Nack(ctx context.Context, req *pb.NackRequest) (*pb.NackRe
 		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to nack a message %d from queue %s", req.Id, req.QueueName,
 		)
-		return &pb.NackResponse{Success: false}, fmt.Errorf("failed to ack a message")
+		return &pb.NackResponse{Success: false}, mapError("failed to nack a message", err)
 	}
 
 	return &pb.NackResponse{Success: true}, nil
@@ -485,7 +491,7 @@ func (s *QueueServer) Touch(ctx context.Context, req *pb.TouchRequest) (*pb.Touc
 		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to touch a message %d from queue %s", req.Id, req.QueueName,
 		)
-		return &pb.TouchResponse{Success: false}, fmt.Errorf("failed to touch a message")
+		return &pb.TouchResponse{Success: false}, mapError("failed to touch a message", err)
 	}
 
 	return &pb.TouchResponse{Success: true}, nil
@@ -501,8 +507,8 @@ func (s *QueueServer) UpdatePriority(
 		log.Error().Str("component", "grpc").Err(err).Msgf(
 			"Failed to update priority of a message %d from queue %s", req.Id, req.QueueName,
 		)
-		return &pb.UpdatePriorityResponse{Success: false}, fmt.Errorf(
-			"failed to update prioprity of a message",
+		return &pb.UpdatePriorityResponse{Success: false}, mapError(
+			"failed to update priority of a message", err,
 		)
 	}
 

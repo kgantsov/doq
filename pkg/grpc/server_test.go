@@ -114,7 +114,7 @@ func TestCreateQueue(t *testing.T) {
 			queueName:     "test-queue",
 			queueType:     "delayed",
 			queueSettings: nil,
-			error:         fmt.Errorf("rpc error: code = Unknown desc = invalid settings provided"),
+			error:         fmt.Errorf("rpc error: code = InvalidArgument desc = invalid settings provided"),
 		},
 		{
 			name:          "Delayed Queue Empty Settings",
@@ -128,7 +128,7 @@ func TestCreateQueue(t *testing.T) {
 			queueName:     "test-queue",
 			queueType:     "fair",
 			queueSettings: nil,
-			error:         fmt.Errorf("rpc error: code = Unknown desc = invalid settings provided"),
+			error:         fmt.Errorf("rpc error: code = InvalidArgument desc = invalid settings provided"),
 		},
 		{
 			name:          "Fair Queue Empty Settings",

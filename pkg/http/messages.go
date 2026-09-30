@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/danielgtaylor/huma/v2"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -44,7 +43,7 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 
 	if err != nil {
 		log.Error().Str("component", "http").Err(err).Msgf("Failed to enqueue a message to a queue: %s", queueName)
-		return nil, huma.Error409Conflict("Failed to enqueue a message", err)
+		return nil, mapError("Failed to enqueue a message", err)
 	}
 
 	res := &EnqueueOutput{
@@ -76,7 +75,7 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 				"Failed to dequeue a message from a queue: %s", queueName,
 			)
 		}
-		return nil, huma.Error400BadRequest("Failed to dequeue a message from a queue", err)
+		return nil, mapError("Failed to dequeue a message from a queue", err)
 	}
 
 	res := &DequeueOutput{
@@ -100,7 +99,7 @@ func (h *Handler) Get(ctx context.Context, input *GetInput) (*GetOutput, error) 
 
 	if err != nil {
 		log.Error().Str("component", "http").Err(err).Msgf("Failed to get a message from a queue: %s", queueName)
-		return nil, huma.Error400BadRequest("Failed to get a message from a queue", err)
+		return nil, mapError("Failed to get a message from a queue", err)
 	}
 
 	res := &GetOutput{
@@ -124,7 +123,7 @@ func (h *Handler) Delete(ctx context.Context, input *DeleteInput) (*DeleteOutput
 
 	if err != nil {
 		log.Error().Str("component", "http").Err(err).Msgf("Failed to delete a message from a queue: %s", queueName)
-		return nil, huma.Error400BadRequest("Failed to delete a message from a queue", err)
+		return nil, mapError("Failed to delete a message from a queue", err)
 	}
 
 	res := &DeleteOutput{
@@ -140,7 +139,7 @@ func (h *Handler) Ack(ctx context.Context, input *AckInput) (*AckOutput, error) 
 
 	if err != nil {
 		log.Error().Str("component", "http").Err(err).Msgf("Failed to ack a message from a queue: %s", queueName)
-		return nil, huma.Error400BadRequest("Failed to ack a message from a queue", err)
+		return nil, mapError("Failed to ack a message from a queue", err)
 	}
 
 	res := &AckOutput{
@@ -162,7 +161,7 @@ func (h *Handler) Nack(ctx context.Context, input *NackInput) (*NackOutput, erro
 
 	if err != nil {
 		log.Error().Str("component", "http").Err(err).Msgf("Failed to nack a message from a queue: %s", queueName)
-		return nil, huma.Error400BadRequest("Failed to nack a message from a queue", err)
+		return nil, mapError("Failed to nack a message from a queue", err)
 	}
 
 	res := &NackOutput{
@@ -186,7 +185,7 @@ func (h *Handler) Touch(ctx context.Context, input *TouchInput) (*TouchOutput, e
 		log.Error().
 			Str("component", "http").
 			Err(err).Msgf("Failed to touch a message from a queue: %s", queueName)
-		return nil, huma.Error400BadRequest("Failed to touch a message from a queue", err)
+		return nil, mapError("Failed to touch a message from a queue", err)
 	}
 
 	res := &TouchOutput{
@@ -210,7 +209,7 @@ func (h *Handler) UpdatePriority(ctx context.Context, input *UpdatePriorityInput
 		log.Error().Str("component", "http").Err(err).Msgf(
 			"Failed to update priority a message from a queue: %s", queueName,
 		)
-		return nil, huma.Error409Conflict("Failed to update priority a message", err)
+		return nil, mapError("Failed to update priority a message", err)
 	}
 
 	res := &UpdatePriorityOutput{
