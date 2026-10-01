@@ -1,15 +1,20 @@
-import { Flex, Box, Heading, Stack, Spacer } from "@chakra-ui/react";
+import { Flex, Box, Image, Stack, Spacer } from "@chakra-ui/react";
 import { NavLink as RouterLink } from "react-router-dom";
-import { ColorModeButton } from "./ui/color-mode";
+import { ColorModeButton, useColorModeValue } from "./ui/color-mode";
 
 const Navbar = () => {
+  const logoSrc = useColorModeValue(
+    "/assets/logo/doq-wordmark-on-light.svg",
+    "/assets/logo/doq-wordmark-on-dark.svg",
+  );
+
   return (
     <header>
       <Flex padding="10px" alignItems="center">
         <Box>
-          <Heading size="lg">
-            <RouterLink to="/">DOQ</RouterLink>
-          </Heading>
+          <RouterLink to="/" aria-label="DOQ home">
+            <Image src={logoSrc} alt="DOQ" height="24px" />
+          </RouterLink>
         </Box>
 
         <Stack

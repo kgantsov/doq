@@ -26,7 +26,6 @@ __pycache__
 
 .DS_Store
 
-cmd/server/vite.svg
 cmd/server/index.html
 cmd/server/data/
 cmd/server/assets/

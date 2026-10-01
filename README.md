@@ -1,4 +1,15 @@
-# DOQ [![Build Status](https://drone.coroutine.dev/api/badges/kgantsov/doq/status.svg)](https://drone.coroutine.dev/kgantsov/doq) [![Go Report](https://goreportcard.com/badge/github.com/kgantsov/doq)](https://goreportcard.com/report/github.com/kgantsov/doq) [![codecov](https://codecov.io/gh/kgantsov/doq/graph/badge.svg?token=GMSIM3WYVX)](https://codecov.io/gh/kgantsov/doq)
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doq-logo/svg/doq-wordmark-on-dark.svg">
+    <img src="doq-logo/svg/doq-wordmark-on-light.svg" alt="DOQ" height="60">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="https://drone.coroutine.dev/kgantsov/doq"><img src="https://drone.coroutine.dev/api/badges/kgantsov/doq/status.svg" alt="Build Status"></a>
+  <a href="https://goreportcard.com/report/github.com/kgantsov/doq"><img src="https://goreportcard.com/badge/github.com/kgantsov/doq" alt="Go Report"></a>
+  <a href="https://codecov.io/gh/kgantsov/doq"><img src="https://codecov.io/gh/kgantsov/doq/graph/badge.svg?token=GMSIM3WYVX" alt="codecov"></a>
+</p>
 
 **DOQ** (Distributed Ordered Queue) is a distributed, consensus-based message
 queue. Every write is replicated through the [Raft](https://raft.github.io/)
