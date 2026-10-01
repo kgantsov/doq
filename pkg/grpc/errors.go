@@ -26,6 +26,8 @@ func mapError(detail string, err error) error {
 		errors.Is(err, doqerrors.ErrInvalidMaxUnacked),
 		errors.Is(err, doqerrors.ErrInvalidQueueSettings):
 		return status.Error(codes.InvalidArgument, fmt.Sprintf("%s: %s", detail, err))
+	case errors.Is(err, doqerrors.ErrNoRaftLeader):
+		return status.Error(codes.Unavailable, fmt.Sprintf("%s: %s", detail, err))
 	}
 
 	// A non-leader node proxies writes to the leader over gRPC (see

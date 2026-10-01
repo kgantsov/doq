@@ -63,6 +63,28 @@ func (n *Node) NotifyLeaderConfiguration() error {
 	return nil
 }
 
+// leaderGrpcAddr returns the gRPC address to proxy this request to, or
+// ErrNoRaftLeader if none is usable. leaderConfig is only ever updated by a
+// LeaderConfigChange command committed through Raft, which requires quorum.
+// So a node that was leader and then lost quorum keeps its own address
+// cached indefinitely: proxying to it would just send the request back to
+// this same non-leader node, recursing forever. Treat that stale
+// self-address, same as an empty one, as "no leader known".
+func (n *Node) leaderGrpcAddr() (string, error) {
+	addr := n.leaderConfig.GetLeaderGrpcAddress()
+	if addr == "" || n.leaderConfig.Id == n.cfg.Cluster.NodeID {
+		return "", errors.ErrNoRaftLeader
+	}
+	return addr, nil
+}
+
+// proxyContext returns a bounded context for a leader-proxy RPC, so a
+// request forwarded to another node can't hang past the same deadline a
+// local Raft Apply would be held to.
+func (n *Node) proxyContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
+}
+
 func (n *Node) Enqueue(
 	queueName string, id uint64, group string, priority int64, content string, metadata map[string]string,
 ) (*entity.Message, error) {
@@ -76,9 +98,15 @@ func (n *Node) Enqueue(
 	}
 
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return nil, err
+		}
 
-		msg, err := n.proxy.Enqueue(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		msg, err := n.proxy.Enqueue(ctx, leaderGrpcAddr, req)
 		if err != nil {
 			return nil, err
 		}
@@ -152,9 +180,15 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
 	}
 
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return nil, err
+		}
 
-		msg, err := n.proxy.Dequeue(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		msg, err := n.proxy.Dequeue(ctx, leaderGrpcAddr, req)
 		if err != nil {
 			return nil, err
 		}
@@ -214,9 +248,15 @@ func (n *Node) Get(QueueName string, id uint64) (*entity.Message, error) {
 	}
 
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return nil, err
+		}
 
-		msg, err := n.proxy.Get(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		msg, err := n.proxy.Get(ctx, leaderGrpcAddr, req)
 		if err != nil {
 			return nil, err
 		}
@@ -261,9 +301,15 @@ func (n *Node) Delete(QueueName string, id uint64) error {
 	}
 
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return err
+		}
 
-		_, err := n.proxy.Delete(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		_, err = n.proxy.Delete(ctx, leaderGrpcAddr, req)
 		return err
 	}
 
@@ -294,9 +340,15 @@ func (n *Node) Ack(QueueName string, id uint64) error {
 	}
 
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return err
+		}
 
-		_, err := n.proxy.Ack(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		_, err = n.proxy.Ack(ctx, leaderGrpcAddr, req)
 		return err
 	}
 
@@ -328,9 +380,15 @@ func (n *Node) Nack(QueueName string, id uint64, priority int64, metadata map[st
 	}
 
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return err
+		}
 
-		_, err := n.proxy.Nack(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		_, err = n.proxy.Nack(ctx, leaderGrpcAddr, req)
 		return err
 	}
 
@@ -360,9 +418,15 @@ func (n *Node) Touch(QueueName string, id uint64) error {
 	}
 
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return err
+		}
 
-		_, err := n.proxy.Touch(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		_, err = n.proxy.Touch(ctx, leaderGrpcAddr, req)
 		return err
 	}
 
@@ -393,9 +457,15 @@ func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error
 	}
 
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return err
+		}
 
-		_, err := n.proxy.UpdatePriority(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		_, err = n.proxy.UpdatePriority(ctx, leaderGrpcAddr, req)
 		return err
 	}
 
@@ -446,9 +516,15 @@ func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSet
 	}
 
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return err
+		}
 
-		_, err := n.proxy.CreateQueue(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		_, err = n.proxy.CreateQueue(ctx, leaderGrpcAddr, req)
 		return err
 	}
 
@@ -483,9 +559,15 @@ func (n *Node) UpdateQueue(queueName string, settings entity.QueueSettings) erro
 		},
 	}
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return err
+		}
 
-		_, err := n.proxy.UpdateQueue(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		_, err = n.proxy.UpdateQueue(ctx, leaderGrpcAddr, req)
 		return err
 	}
 
@@ -514,9 +596,15 @@ func (n *Node) DeleteQueue(queueName string) error {
 	}
 
 	if n.Raft.State() != raft.Leader {
-		leaderGrpcAddr := n.leaderConfig.GetLeaderGrpcAddress()
+		leaderGrpcAddr, err := n.leaderGrpcAddr()
+		if err != nil {
+			return err
+		}
 
-		_, err := n.proxy.DeleteQueue(context.Background(), leaderGrpcAddr, req)
+		ctx, cancel := n.proxyContext()
+		defer cancel()
+
+		_, err = n.proxy.DeleteQueue(ctx, leaderGrpcAddr, req)
 		return err
 	}
 

@@ -25,6 +25,8 @@ func mapError(detail string, err error) error {
 		errors.Is(err, doqerrors.ErrInvalidMaxUnacked),
 		errors.Is(err, doqerrors.ErrInvalidQueueSettings):
 		return huma.Error422UnprocessableEntity(detail, err)
+	case errors.Is(err, doqerrors.ErrNoRaftLeader):
+		return huma.Error503ServiceUnavailable(detail, err)
 	}
 
 	// A non-leader node proxies writes to the leader over gRPC (see
