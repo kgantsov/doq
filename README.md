@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="doq-logo/svg/doq-wordmark-on-dark.svg">
-    <img src="doq-logo/svg/doq-wordmark-on-light.svg" alt="DOQ" height="60">
+    <source media="(prefers-color-scheme: dark)" srcset="admin_ui/public/assets/logo/doq-wordmark-on-dark.svg">
+    <img src="admin_ui/public/assets/logo/doq-wordmark-on-light.svg" alt="DOQ" height="60">
   </picture>
 </p>
 
