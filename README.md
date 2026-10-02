@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/doq-lockup-stacked-on-dark.svg">
-    <img src="docs/doq-lockup-stacked-on-light.svg" alt="DOQ" height="60">
+    <img src="docs/doq-lockup-stacked-on-light.svg" alt="DOQ" height="120">
   </picture>
 </p>
 
