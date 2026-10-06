@@ -10,9 +10,13 @@ import (
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 type GRPCProxy struct {
+	conn   *grpc.ClientConn
 	client pb.DOQClient
 	leader string
 	mu     sync.Mutex
@@ -22,8 +26,15 @@ func NewGRPCProxy() *GRPCProxy {
 	return &GRPCProxy{}
 }
 
-// getClient returns the gRPC client for the given host, (re)creating the connection if the
-// leader address changed. Safe for concurrent use.
+// getClient returns the gRPC client for the given host, (re)creating the
+// connection when the leader address changes or the cached connection has been
+// torn down. Safe for concurrent use.
+//
+// The connection uses client-side keepalive so that when the leader pod
+// restarts with a new IP behind the same DNS name, the dead connection is
+// detected within seconds and gRPC transparently re-resolves the name and
+// reconnects. Without it the cached connection keeps pointing at the old IP and
+// relayed requests fail with Unavailable until the OS-level TCP timeout (~30s).
 func (p *GRPCProxy) getClient(host string) (pb.DOQClient, error) {
 	if host == "" {
 		return nil, fmt.Errorf("leader address is empty")
@@ -32,14 +43,35 @@ func (p *GRPCProxy) getClient(host string) (pb.DOQClient, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if p.leader != host || p.client == nil {
-		conn, err := grpc.Dial(host, grpc.WithInsecure())
-		if err != nil {
-			log.Fatal().Str("component", "proxy").Msgf("Failed to connect: %v", err)
-		}
-		p.leader = host
-		p.client = pb.NewDOQClient(conn)
+	if p.client != nil && p.leader == host &&
+		(p.conn == nil || p.conn.GetState() != connectivity.Shutdown) {
+		return p.client, nil
 	}
+
+	if p.conn != nil {
+		p.conn.Close()
+	}
+
+	conn, err := grpc.NewClient(
+		host,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		// Time must be >= the server's KeepaliveEnforcementPolicy.MinTime (10s)
+		// or the leader will GOAWAY us for pinging too aggressively.
+		// PermitWithoutStream pings even on idle connections so a dead leader is
+		// noticed before the next write arrives.
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                15 * time.Second,
+			Timeout:             5 * time.Second,
+			PermitWithoutStream: true,
+		}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to leader %s: %w", host, err)
+	}
+
+	p.conn = conn
+	p.leader = host
+	p.client = pb.NewDOQClient(conn)
 
 	return p.client, nil
 }

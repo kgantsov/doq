@@ -9,7 +9,38 @@ import (
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 )
+
+func TestProxyGetClientCachesAndRedials(t *testing.T) {
+	proxy := NewGRPCProxy()
+
+	// Empty host is rejected.
+	_, err := proxy.getClient("")
+	assert.Error(t, err)
+
+	// First call dials and caches the connection.
+	c1, err := proxy.getClient("localhost:10001")
+	assert.NoError(t, err)
+	assert.NotNil(t, c1)
+	conn1 := proxy.conn
+	assert.NotNil(t, conn1)
+
+	// Same host reuses the cached client and connection.
+	c2, err := proxy.getClient("localhost:10001")
+	assert.NoError(t, err)
+	assert.Same(t, c1, c2)
+	assert.Same(t, conn1, proxy.conn)
+
+	// A different leader address re-dials: new connection, old one closed.
+	c3, err := proxy.getClient("localhost:10002")
+	assert.NoError(t, err)
+	assert.NotSame(t, c1, c3)
+	assert.NotSame(t, conn1, proxy.conn)
+	assert.Equal(t, connectivity.Shutdown, conn1.GetState())
+
+	proxy.conn.Close()
+}
 
 func TestProxyCreateQueue(t *testing.T) {
 	mockNode := mocks.NewMockNode()
