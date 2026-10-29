@@ -7,12 +7,17 @@ import (
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/dgraph-io/badger/v4"
+	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/errors"
+	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/kgantsov/doq/pkg/queue"
 	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 )
 
 type MockSink struct {
@@ -68,6 +73,7 @@ func TestFSMPersistRestore(t *testing.T) {
 	queueManager := queue.NewQueueManager(
 		storage.NewBadgerStore(db),
 		cfg,
+		nil,
 		nil,
 	)
 
@@ -127,6 +133,7 @@ func TestFSMPersistRestore(t *testing.T) {
 	queueManager = queue.NewQueueManager(
 		storage.NewBadgerStore(db),
 		cfg,
+		nil,
 		nil,
 	)
 
@@ -191,6 +198,7 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 	queueManager := queue.NewQueueManager(
 		storage.NewBadgerStore(db),
 		cfg,
+		nil,
 		nil,
 	)
 
@@ -270,6 +278,7 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 		storage.NewBadgerStore(db),
 		cfg,
 		nil,
+		nil,
 	)
 
 	fsm = &FSM{
@@ -326,4 +335,85 @@ func TestFSMPersistRestoreFairQueue(t *testing.T) {
 	m, err = queue1.Dequeue(true)
 	assert.Error(t, err)
 	assert.Nil(t, m)
+}
+
+func raftLog(t *testing.T, index uint64, cmd *pb.RaftCommand) *raft.Log {
+	data, err := proto.Marshal(cmd)
+	require.NoError(t, err)
+	return &raft.Log{Index: index, Term: 1, Type: raft.LogCommand, Data: data}
+}
+
+func newTestFSM(db *badger.DB, cfg *config.Config) *FSM {
+	return &FSM{
+		queueManager: queue.NewQueueManager(storage.NewBadgerStore(db), cfg, nil, nil),
+		NodeID:       "node-1",
+		db:           db,
+		config:       cfg,
+		leaderConfig: NewLeaderConfig("node-1", "localhost:9000", "localhost:10000"),
+	}
+}
+
+// TestFSMReplayAfterAckTimeout replays the log of "dequeue without ack, ack
+// deadline passes, dequeue with ack" on top of the same data dir, as Raft does
+// on restart when there is no snapshot. The ack timeout is in the log, so the
+// replay must end with an empty queue instead of resurrecting the message.
+func TestFSMReplayAfterAckTimeout(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfg := &config.Config{
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		},
+	}
+
+	const queueName = "queue_1"
+	const msgID = uint64(42)
+	logs := []*raft.Log{
+		raftLog(t, 1, &pb.RaftCommand{Cmd: &pb.RaftCommand_CreateQueue{CreateQueue: &pb.CreateQueueRequest{
+			Type: "delayed", Name: queueName, Settings: &pb.QueueSettings{AckTimeout: 60},
+		}}}),
+		raftLog(t, 2, &pb.RaftCommand{Cmd: &pb.RaftCommand_Enqueue{Enqueue: &pb.EnqueueRequest{
+			QueueName: queueName, Id: msgID, Group: "default", Priority: 10, Content: "message",
+		}}}),
+		raftLog(t, 3, &pb.RaftCommand{Cmd: &pb.RaftCommand_Dequeue{Dequeue: &pb.DequeueRequest{
+			QueueName: queueName, Ack: false,
+		}}}),
+		raftLog(t, 4, &pb.RaftCommand{Cmd: &pb.RaftCommand_AckTimeout{AckTimeout: &pb.AckTimeoutRequest{
+			QueueName: queueName, Id: msgID,
+		}}}),
+		raftLog(t, 5, &pb.RaftCommand{Cmd: &pb.RaftCommand_Dequeue{Dequeue: &pb.DequeueRequest{
+			QueueName: queueName, Ack: true,
+		}}}),
+	}
+
+	assertEmpty := func(t *testing.T, fsm *FSM) {
+		q, err := fsm.queueManager.GetQueue(queueName)
+		require.NoError(t, err)
+		stats := q.GetStats()
+		assert.Equal(t, int64(0), stats.Ready)
+		assert.Equal(t, int64(0), stats.Unacked)
+		_, err = q.Get(msgID)
+		assert.ErrorIs(t, err, errors.ErrMessageNotFound)
+	}
+
+	db, err := badger.Open(badger.DefaultOptions(tmpDir))
+	require.NoError(t, err)
+	fsm := newTestFSM(db, cfg)
+	for _, l := range logs {
+		resp := fsm.Apply(l).(*FSMResponse)
+		require.NoError(t, resp.error, "log index %d", l.Index)
+	}
+	assertEmpty(t, fsm)
+	require.NoError(t, db.Close())
+
+	// Restart: same data dir, fresh in-memory state, replay the whole log.
+	db, err = badger.Open(badger.DefaultOptions(tmpDir))
+	require.NoError(t, err)
+	defer db.Close()
+	fsm = newTestFSM(db, cfg)
+	for _, l := range logs {
+		resp := fsm.Apply(l).(*FSMResponse)
+		require.NoError(t, resp.error, "replayed log index %d", l.Index)
+	}
+	assertEmpty(t, fsm)
 }

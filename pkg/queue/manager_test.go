@@ -32,6 +32,7 @@ func TestNewQueueManager(t *testing.T) {
 			},
 		},
 		nil,
+		nil,
 	)
 
 	queue1, err := queueManager.CreateQueue("delayed", "queue_1", entity.QueueSettings{})
@@ -98,6 +99,7 @@ func TestQueueManagerGetQueue(t *testing.T) {
 				QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 			},
 		},
+		nil,
 		nil,
 	)
 
@@ -166,6 +168,7 @@ func TestQueueManagerGetQueues(t *testing.T) {
 				QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
 			},
 		},
+		nil,
 		nil,
 	)
 

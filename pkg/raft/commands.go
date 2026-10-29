@@ -449,6 +449,38 @@ func (n *Node) Touch(QueueName string, id uint64) error {
 	return nil
 }
 
+// proposeAckTimeout is the queues' ack timeout handler. Only the leader
+// replicates the expiry through Raft; followers return ErrNotRaftLeader and keep
+// the message unacked until the leader's AckTimeout command reaches them.
+func (n *Node) proposeAckTimeout(queueName string, id uint64) error {
+	r := n.raftRef.Load()
+	if r == nil || r.State() != raft.Leader {
+		return errors.ErrNotRaftLeader
+	}
+
+	cmd := &pb.RaftCommand{Cmd: &pb.RaftCommand_AckTimeout{AckTimeout: &pb.AckTimeoutRequest{
+		QueueName: queueName,
+		Id:        id,
+	}}}
+	data, err := proto.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+
+	f := r.Apply(data, time.Duration(n.cfg.Raft.ApplyTimeout)*time.Second)
+	if f.Error() != nil {
+		return f.Error()
+	}
+
+	// The command is committed, so the message has left the ack queue on every
+	// replica even if applying it failed (e.g. its data was already gone).
+	if resp := f.Response().(*FSMResponse); resp.error != nil {
+		log.Warn().Str("component", "commands").Err(resp.error).Msg("Ack timeout applied with an error")
+	}
+
+	return nil
+}
+
 func (n *Node) UpdatePriority(queueName string, id uint64, priority int64) error {
 	req := &pb.UpdatePriorityRequest{
 		QueueName: queueName,

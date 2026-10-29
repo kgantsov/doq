@@ -65,6 +65,8 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 		return f.applyNack(command)
 	case *pb.RaftCommand_Touch:
 		return f.applyTouch(command)
+	case *pb.RaftCommand_AckTimeout:
+		return f.applyAckTimeout(command)
 	case *pb.RaftCommand_UpdatePriority:
 		return f.applyUpdatePriority(command)
 	case *pb.RaftCommand_CreateQueue:
@@ -295,6 +297,45 @@ func (f *FSM) applyAck(payload *pb.RaftCommand_Ack) *FSMResponse {
 	return &FSMResponse{
 		QueueName: payload.Ack.QueueName,
 		ID:        payload.Ack.Id,
+		error:     nil,
+	}
+}
+
+func (f *FSM) applyAckTimeout(payload *pb.RaftCommand_AckTimeout) *FSMResponse {
+	q, err := f.queueManager.GetQueue(payload.AckTimeout.QueueName)
+	if err != nil {
+		log.Error().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to get a queue: %s", payload.AckTimeout.QueueName)
+		return &FSMResponse{
+			QueueName: payload.AckTimeout.QueueName,
+			error:     fmt.Errorf("queue %q: %w", payload.AckTimeout.QueueName, err),
+		}
+	}
+
+	err = q.AckTimeout(payload.AckTimeout.Id)
+
+	log.Debug().Str("component", "fsm").Msgf("Node %s Expired ack of a message: %v", f.NodeID, err)
+
+	if err != nil {
+		// Not found is expected when an Ack or Nack for the same message was
+		// committed before this command.
+		log.Debug().
+			Str("component", "fsm").
+			Err(err).
+			Msgf("Failed to expire ack of a message from a queue: %s", payload.AckTimeout.QueueName)
+		return &FSMResponse{
+			QueueName: payload.AckTimeout.QueueName,
+			error: fmt.Errorf(
+				"expire ack of message in queue %q: %w", payload.AckTimeout.QueueName, err,
+			),
+		}
+	}
+
+	return &FSMResponse{
+		QueueName: payload.AckTimeout.QueueName,
+		ID:        payload.AckTimeout.Id,
 		error:     nil,
 	}
 }

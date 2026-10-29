@@ -66,6 +66,24 @@ func (pq *DelayedQueue) PeekReady() (bool, time.Duration) {
 	return true, 0
 }
 
+// PeekReadyItem returns the head item if it is deliverable now, without popping
+// it. It returns nil when the queue is empty or the head is scheduled in the
+// future.
+func (pq *DelayedQueue) PeekReadyItem() *Item {
+	pq.mu.RLock()
+	defer pq.mu.RUnlock()
+
+	if pq.queue.Len() == 0 {
+		return nil
+	}
+
+	head := pq.queue.Peek().(*Item)
+	if head.Priority > time.Now().UTC().Unix() {
+		return nil
+	}
+	return head
+}
+
 func (pq *DelayedQueue) Get(group string, id uint64) *Item {
 	pq.mu.RLock()
 	defer pq.mu.RUnlock()

@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/bwmarrin/snowflake"
@@ -38,7 +39,11 @@ type Node struct {
 
 	Raft         *raft.Raft
 	QueueManager *queue.QueueManager
-	leader       string
+	// raftRef mirrors Raft for the queues' ack monitor goroutines, which start
+	// while Raft is still being constructed (snapshot restore creates queues)
+	// and so can't read the plain field without a data race.
+	raftRef atomic.Pointer[raft.Raft]
+	leader  string
 
 	leaderChangeFn func(bool)
 
@@ -146,7 +151,7 @@ func (n *Node) Initialize() {
 		promRegistry.Register(collectors.NewGoCollector())
 	}
 	store := storage.NewBadgerStore(n.db)
-	queueManager := queue.NewQueueManager(store, n.cfg, prometheusMetrics)
+	queueManager := queue.NewQueueManager(store, n.cfg, prometheusMetrics, n.proposeAckTimeout)
 
 	os.MkdirAll(n.raftDir, 0700)
 
@@ -165,6 +170,7 @@ func (n *Node) Initialize() {
 	}
 
 	n.Raft = raftNode
+	n.raftRef.Store(raftNode)
 	n.QueueManager = queueManager
 
 	// go n.monitorLeadership()

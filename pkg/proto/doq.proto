@@ -244,6 +244,15 @@ message TouchResponse {
     bool success = 1;
 }
 
+// AckTimeoutRequest is an internal Raft command proposed by the leader when an
+// unacked message's ack deadline passes. Replicating it (instead of each node
+// re-queueing on its own timer) keeps every replica, and every log replay on
+// restart, in the same state.
+message AckTimeoutRequest {
+    string queueName = 1;
+    uint64 id = 2;
+}
+
 
 message RaftCommand {
   oneof cmd {
@@ -263,5 +272,6 @@ message RaftCommand {
 
     LeaderConfigChange leaderConfigChange = 13;
     TouchRequest touch = 14;
+    AckTimeoutRequest ackTimeout = 15;
   }
 }

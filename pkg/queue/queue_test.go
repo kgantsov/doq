@@ -839,3 +839,59 @@ func TestFairDequeue(t *testing.T) {
 	assert.Equal(t, 3, items["customer-3"])
 	assert.Equal(t, 1, items["customer-4"])
 }
+
+func TestQueueAckTimeoutGoesThroughHandler(t *testing.T) {
+	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+	require.NoError(t, err)
+	defer db.Close()
+
+	pq := NewQueue(
+		storage.NewBadgerStore(db),
+		&config.Config{Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		}},
+		nil,
+	)
+
+	// Behave like a follower: refuse to apply the expiry.
+	var handled []uint64
+	pq.ackTimeoutHandler = func(queueName string, id uint64) error {
+		assert.Equal(t, "test_queue", queueName)
+		handled = append(handled, id)
+		return errors.ErrNotRaftLeader
+	}
+
+	require.NoError(t, pq.CreateQueue("delayed", "test_queue", entity.QueueSettings{AckTimeout: 60}))
+	pq.StopAckQueueMonitoring() // drive expireAcks by hand
+
+	m, err := pq.Enqueue(1, "default", 10, "test 1", nil)
+	require.NoError(t, err)
+
+	m, err = pq.Dequeue(false)
+	require.NoError(t, err)
+
+	// Not expired yet: the handler is not called.
+	pq.expireAcks()
+	assert.Empty(t, handled)
+
+	pq.ackQueue.UpdatePriority("default", m.ID, time.Now().UTC().Unix()-1)
+
+	// Expired, but the handler refuses: the monitor must not re-queue locally.
+	pq.expireAcks()
+	assert.Equal(t, []uint64{m.ID}, handled)
+	stats := pq.GetStats()
+	assert.Equal(t, int64(0), stats.Ready)
+	assert.Equal(t, int64(1), stats.Unacked)
+
+	// Applying the replicated command moves it back to ready.
+	require.NoError(t, pq.AckTimeout(m.ID))
+	stats = pq.GetStats()
+	assert.Equal(t, int64(1), stats.Ready)
+	assert.Equal(t, int64(0), stats.Unacked)
+
+	// A second expiry of the same message (e.g. an Ack was committed first) is
+	// a no-op.
+	assert.ErrorIs(t, pq.AckTimeout(m.ID), errors.ErrMessageNotFound)
+}
+

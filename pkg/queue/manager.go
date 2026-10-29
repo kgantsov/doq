@@ -20,15 +20,33 @@ type QueueManager struct {
 
 	queues map[string]*Queue
 	mu     sync.Mutex
+
+	ackTimeoutHandler AckTimeoutHandler
 }
 
-func NewQueueManager(store storage.Store, cfg *config.Config, metrics *metrics.PrometheusMetrics) *QueueManager {
+// NewQueueManager creates a queue manager. ackTimeoutHandler is called for every
+// unacked message whose ack deadline passes (see AckTimeoutHandler); under Raft
+// it must replicate an AckTimeout command. With a nil handler, ack deadlines
+// never expire.
+func NewQueueManager(
+	store storage.Store,
+	cfg *config.Config,
+	metrics *metrics.PrometheusMetrics,
+	ackTimeoutHandler AckTimeoutHandler,
+) *QueueManager {
 	return &QueueManager{
 		store:             store,
 		config:            cfg,
 		queues:            make(map[string]*Queue),
 		PrometheusMetrics: metrics,
+		ackTimeoutHandler: ackTimeoutHandler,
 	}
+}
+
+func (qm *QueueManager) newQueue() *Queue {
+	q := NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
+	q.ackTimeoutHandler = qm.ackTimeoutHandler
+	return q
 }
 
 func (qm *QueueManager) PersistSnapshot(sink raft.SnapshotSink, txn *badger.Txn) error {
@@ -55,7 +73,7 @@ func (qm *QueueManager) CreateQueue(queueType, queueName string, settings entity
 		return q, nil
 	}
 
-	q = NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
+	q = qm.newQueue()
 	err := q.CreateQueue(queueType, queueName, settings)
 
 	if err != nil {
@@ -73,7 +91,7 @@ func (qm *QueueManager) UpdateQueue(queueName string, settings entity.QueueSetti
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
+		q = qm.newQueue()
 		q.Load(queueName)
 	}
 
@@ -93,7 +111,7 @@ func (qm *QueueManager) DeleteQueue(queueName string) error {
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
+		q = qm.newQueue()
 		q.Load(queueName)
 	}
 
@@ -113,7 +131,7 @@ func (qm *QueueManager) GetQueue(queueName string) (*Queue, error) {
 
 	q, ok := qm.queues[queueName]
 	if !ok {
-		q = NewQueue(qm.store, qm.config, qm.PrometheusMetrics)
+		q = qm.newQueue()
 		err := q.Load(queueName)
 		if err != nil {
 			return nil, errors.ErrQueueNotFound

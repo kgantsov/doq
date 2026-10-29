@@ -545,6 +545,9 @@ func TestBackupRestore(t *testing.T) {
 	_, err = n.Backup(sink, 0)
 	assert.Nil(t, err)
 
+	// Stop raft before closing its DB, or its background goroutines panic on the
+	// closed DB later in the test run.
+	assert.Nil(t, n.Shutdown())
 	db.Close()
 
 	tmpStoreDir1, _ := os.MkdirTemp("", "db*")
@@ -727,4 +730,89 @@ func TestNodeShutdown(t *testing.T) {
 		err = n.Shutdown()
 		assert.Nil(t, err)
 	})
+}
+
+// TestNodeAckTimeoutSurvivesRestart reproduces the "resurrected message" bug:
+// dequeue without ack, let the ack deadline pass, dequeue again with ack, then
+// restart the node. Raft replays the log on restart, so the ack timeout must be
+// in the log for the replay to end with an empty queue.
+func TestNodeAckTimeoutSurvivesRestart(t *testing.T) {
+	storeDir := t.TempDir()
+	raftDir := t.TempDir()
+	stableStoreDir := t.TempDir()
+
+	cfg := &config.Config{
+		Cluster: config.ClusterConfig{NodeID: "localhost"},
+		Http:    config.HttpConfig{Port: "9170"},
+		Raft:    config.RaftConfig{Address: "localhost:9171"},
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		},
+	}
+
+	// The DBs stay open across the restart: raft's log store metrics goroutine
+	// can briefly outlive Shutdown and panics on a closed DB. The restarted node
+	// still starts from empty in-memory queues and replays the Raft log.
+	db, err := badger.Open(badger.DefaultOptions(storeDir))
+	require.NoError(t, err)
+	defer db.Close()
+	raftDB, err := badger.Open(badger.DefaultOptions(stableStoreDir))
+	require.NoError(t, err)
+	defer raftDB.Close()
+
+	startNode := func() (*Node, func()) {
+		n := NewNode(db, raftDB, raftDir, cfg, []string{})
+		n.Initialize()
+		require.Eventually(t, n.IsLeader, 10*time.Second, 20*time.Millisecond)
+		// Wait until every committed entry has been applied to the FSM.
+		require.NoError(t, n.Raft.Barrier(10*time.Second).Error())
+
+		return n, func() { require.NoError(t, n.Shutdown()) }
+	}
+
+	const queueName = "ack_timeout_restart"
+	// 10s is the smallest ack timeout a queue accepts.
+	const ackTimeout = 10
+
+	n, stop := startNode()
+
+	require.NoError(t, n.CreateQueue("delayed", queueName, entity.QueueSettings{AckTimeout: ackTimeout}))
+
+	m, err := n.Enqueue(queueName, 0, "default", 10, "message", nil)
+	require.NoError(t, err)
+
+	got, err := n.Dequeue(queueName, false)
+	require.NoError(t, err)
+	assert.Equal(t, m.ID, got.ID)
+
+	// The leader's ack monitor replicates the expiry and the message is ready
+	// again.
+	require.Eventually(t, func() bool {
+		info, err := n.GetQueueInfo(queueName)
+		return err == nil && info.Ready == 1 && info.Unacked == 0
+	}, (ackTimeout+5)*time.Second, 100*time.Millisecond)
+
+	got, err = n.Dequeue(queueName, true)
+	require.NoError(t, err)
+	assert.Equal(t, m.ID, got.ID)
+
+	info, err := n.GetQueueInfo(queueName)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), info.Ready)
+	assert.Equal(t, int64(0), info.Unacked)
+
+	stop()
+
+	n, stop = startNode()
+	defer stop()
+
+	info, err = n.GetQueueInfo(queueName)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), info.Ready)
+	assert.Equal(t, int64(0), info.Unacked)
+	assert.Equal(t, int64(0), info.Total)
+
+	_, err = n.Dequeue(queueName, true)
+	assert.Error(t, err)
 }

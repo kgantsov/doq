@@ -12,3 +12,4 @@ var ErrInvalidMaxUnacked = fmt.Errorf("invalid max unacked")
 var ErrInvalidQueueSettings = fmt.Errorf("invalid queue settings")
 
 var ErrNoRaftLeader = fmt.Errorf("no raft leader available")
+var ErrNotRaftLeader = fmt.Errorf("node is not the raft leader")

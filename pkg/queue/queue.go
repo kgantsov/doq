@@ -27,6 +27,11 @@ type QueueInfo struct {
 	Total    int64
 }
 
+// AckTimeoutHandler handles an expired ack deadline for message id in queue
+// queueName. Returning an error (e.g. because this node is not the leader)
+// leaves the message unacked; the monitor retries on its next tick.
+type AckTimeoutHandler func(queueName string, id uint64) error
+
 type Queue struct {
 	config *entity.QueueConfig
 	cfg    *config.Config
@@ -40,7 +45,12 @@ type Queue struct {
 	mu sync.Mutex
 
 	ackQueueMonitoringChan chan struct{}
-	ackQueue               memory.MemoryQueue
+	ackQueue               *memory.DelayedQueue
+	// ackTimeoutHandler is called by the ack monitor for every message whose
+	// ack deadline has passed. It must arrange for AckTimeout to be applied,
+	// e.g. by replicating an AckTimeout command through Raft. When nil, ack
+	// deadlines never expire.
+	ackTimeoutHandler AckTimeoutHandler
 
 	notifyMu sync.Mutex
 	notifyCh chan struct{}
@@ -136,41 +146,79 @@ func (q *Queue) monitorAckQueue() {
 	for {
 		select {
 		case <-ticker.C:
-			for {
-				item := q.ackQueue.Dequeue(false)
-				if item == nil {
-					break
-				}
-
-				message, err := q.Get(item.ID)
-				if err != nil {
-					log.Error().Err(err).Msgf("Failed to get message by ID: %d", item.ID)
-					continue
-				}
-
-				queueItem := &memory.Item{
-					ID:       message.ID,
-					Priority: message.Priority,
-					Group:    message.Group,
-				}
-
-				q.queue.Enqueue(message.Group, queueItem)
-				// An ack-timeout re-delivery moves the message out of the
-				// in-flight (unacked) state, so release its unacked slot for
-				// fair queues. Otherwise the per-group unacked counter leaks
-				// upward on every timeout and eventually pins the group's
-				// weight to 0, permanently starving it (see "No group selected"
-				// log spam).
-				if q.config.Type == "fair" {
-					q.queue.UpdateWeights(message.Group, message.ID)
-				}
-				q.notify()
-				log.Debug().Msgf("Re-enqueued message: %d", message.ID)
-			}
+			q.expireAcks()
 		case <-q.ackQueueMonitoringChan:
 			return
 		}
 	}
+}
+
+// expireAcks hands every message whose ack deadline has passed to the ack
+// timeout handler. The monitor never re-queues a message on its own: the move
+// back to the ready queue only happens when AckTimeout is applied, which under
+// Raft is a replicated command. That keeps followers, and log replay on
+// restart, consistent with what the leader actually did.
+func (q *Queue) expireAcks() {
+	handler := q.ackTimeoutHandler
+	if handler == nil {
+		return
+	}
+
+	for {
+		item := q.ackQueue.PeekReadyItem()
+		if item == nil {
+			return
+		}
+
+		if err := handler(q.config.Name, item.ID); err != nil {
+			log.Debug().Err(err).Msgf("Ack timeout for message %d not applied", item.ID)
+			return
+		}
+
+		// The handler succeeded but the message is still at the head (e.g. the
+		// command was applied but failed); stop until the next tick instead of
+		// spinning on it.
+		if next := q.ackQueue.PeekReadyItem(); next != nil && next.ID == item.ID {
+			return
+		}
+	}
+}
+
+// AckTimeout moves an unacked message whose ack deadline has passed back to the
+// ready queue. It is applied through the FSM so every replica re-queues the
+// same message at the same point in the log.
+func (q *Queue) AckTimeout(id uint64) error {
+	if q.ackQueue.Delete("default", id) == nil {
+		return errors.ErrMessageNotFound
+	}
+
+	message, err := q.Get(id)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to get message by ID: %d", id)
+		return err
+	}
+
+	q.queue.Enqueue(message.Group, &memory.Item{
+		ID:       message.ID,
+		Priority: message.Priority,
+		Group:    message.Group,
+	})
+	// An ack-timeout re-delivery moves the message out of the in-flight
+	// (unacked) state, so release its unacked slot for fair queues. Otherwise
+	// the per-group unacked counter leaks upward on every timeout and
+	// eventually pins the group's weight to 0, permanently starving it (see
+	// "No group selected" log spam).
+	if q.config.Type == "fair" {
+		q.queue.UpdateWeights(message.Group, message.ID)
+	}
+	q.notify()
+	log.Debug().Msgf("Re-enqueued message: %d", message.ID)
+
+	if q.cfg.Prometheus.Enabled {
+		q.updatePrometheusQueueSizes()
+	}
+
+	return nil
 }
 
 func (q *Queue) StartAckQueueMonitoring() {
