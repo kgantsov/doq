@@ -40,9 +40,7 @@ func TestNodeSingleNode(t *testing.T) {
 		Http: config.HttpConfig{
 			Port: "9110",
 		},
-		Raft: config.RaftConfig{
-			Address: "localhost:9111",
-		},
+		Raft: testRaftConfig("localhost:9111"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -188,9 +186,7 @@ func TestNodeUpdateDeleteQueue(t *testing.T) {
 		Http: config.HttpConfig{
 			Port: "9120",
 		},
-		Raft: config.RaftConfig{
-			Address: "localhost:9121",
-		},
+		Raft: testRaftConfig("localhost:9121"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -268,9 +264,7 @@ func TestNodeSingleNodeAck(t *testing.T) {
 		Http: config.HttpConfig{
 			Port: "9130",
 		},
-		Raft: config.RaftConfig{
-			Address: "localhost:9131",
-		},
+		Raft: testRaftConfig("localhost:9131"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -336,9 +330,7 @@ func TestNodeSingleNodeNack(t *testing.T) {
 		Http: config.HttpConfig{
 			Port: "9150",
 		},
-		Raft: config.RaftConfig{
-			Address: "localhost:9151",
-		},
+		Raft: testRaftConfig("localhost:9151"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -407,9 +399,7 @@ func TestNodeSingleNodeUpdatePriority(t *testing.T) {
 		Http: config.HttpConfig{
 			Port: "9140",
 		},
-		Raft: config.RaftConfig{
-			Address: "localhost:9141",
-		},
+		Raft: testRaftConfig("localhost:9141"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -500,9 +490,7 @@ func TestBackupRestore(t *testing.T) {
 		Http: config.HttpConfig{
 			Port: "9100",
 		},
-		Raft: config.RaftConfig{
-			Address: "localhost:9101",
-		},
+		Raft: testRaftConfig("localhost:9101"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -575,9 +563,7 @@ func TestBackupRestore(t *testing.T) {
 		Http: config.HttpConfig{
 			Port: "9000",
 		},
-		Raft: config.RaftConfig{
-			Address: "localhost:9001",
-		},
+		Raft: testRaftConfig("localhost:9001"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -648,9 +634,7 @@ func TestNodeNonSeedDoesNotBootstrap(t *testing.T) {
 		Http: config.HttpConfig{
 			Port: "9160",
 		},
-		Raft: config.RaftConfig{
-			Address: "localhost:9161",
-		},
+		Raft: testRaftConfig("localhost:9161"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -704,7 +688,7 @@ func TestNodeShutdown(t *testing.T) {
 	cfg := &config.Config{
 		Cluster: config.ClusterConfig{NodeID: "localhost"},
 		Http:    config.HttpConfig{Port: "9310"},
-		Raft:    config.RaftConfig{Address: "localhost:9311"},
+		Raft:    testRaftConfig("localhost:9311"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -744,7 +728,7 @@ func TestNodeAckTimeoutSurvivesRestart(t *testing.T) {
 	cfg := &config.Config{
 		Cluster: config.ClusterConfig{NodeID: "localhost"},
 		Http:    config.HttpConfig{Port: "9170"},
-		Raft:    config.RaftConfig{Address: "localhost:9171"},
+		Raft:    testRaftConfig("localhost:9171"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
@@ -815,4 +799,14 @@ func TestNodeAckTimeoutSurvivesRestart(t *testing.T) {
 
 	_, err = n.Dequeue(queueName, true)
 	assert.Error(t, err)
+}
+
+// testRaftConfig returns the Raft settings a test node needs: its address and
+// the default snapshot schedule.
+func testRaftConfig(addr string) config.RaftConfig {
+	return config.RaftConfig{
+		Address:           addr,
+		SnapshotInterval:  120,
+		SnapshotThreshold: 8192,
+	}
 }

@@ -383,8 +383,8 @@ func (n *Node) GetServers() ([]*entity.Server, error) {
 
 func (n *Node) createRaftNode(nodeID, raftDir, raftPort string, queueManager *queue.QueueManager) (*raft.Raft, error) {
 	config := raft.DefaultConfig()
-	config.SnapshotInterval = 120 * time.Second
-	config.SnapshotThreshold = 8192
+	config.SnapshotInterval = time.Duration(n.cfg.Raft.SnapshotInterval) * time.Second
+	config.SnapshotThreshold = n.cfg.Raft.SnapshotThreshold
 	config.LocalID = raft.ServerID(nodeID)
 	config.LogLevel = n.cfg.Logging.Level
 	config.Logger = logger.NewZeroHCLLogger("raft", hclog.LevelFromString(n.cfg.Logging.Level))

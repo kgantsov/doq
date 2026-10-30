@@ -31,3 +31,5 @@ grpc:
 raft:
   address: "localhost:9000"
   apply_timeout: 5
+  snapshot_interval: 120
+  snapshot_threshold: 8192

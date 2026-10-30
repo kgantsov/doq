@@ -44,6 +44,13 @@ type GrpcConfig struct {
 type RaftConfig struct {
 	Address      string `mapstructure:"address"`
 	ApplyTimeout int64  `mapstructure:"apply_timeout"`
+	// SnapshotInterval is how often, in seconds, Raft checks whether to take
+	// a snapshot. Raft adds a random delay of up to the same amount, so
+	// nodes don't all snapshot at once.
+	SnapshotInterval int64 `mapstructure:"snapshot_interval"`
+	// SnapshotThreshold is how many log entries since the last snapshot
+	// trigger a new one.
+	SnapshotThreshold uint64 `mapstructure:"snapshot_threshold"`
 }
 
 type StorageConfig struct {
@@ -153,6 +160,8 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	rootCmd.Flags().String("grpc.address", "", "Address to run the GRPC server on")
 	rootCmd.Flags().String("raft.address", "localhost:9000", "Raft bind address")
 	rootCmd.Flags().Int("raft.apply_timeout", 5, "Raft apply timeout in seconds")
+	rootCmd.Flags().Int64("raft.snapshot_interval", 120, "How often in seconds Raft checks whether to take a snapshot")
+	rootCmd.Flags().Uint64("raft.snapshot_threshold", 8192, "Number of log entries since the last snapshot that trigger a new one")
 	rootCmd.PersistentFlags().String("storage.data_dir", "data", "Data directory")
 	rootCmd.PersistentFlags().Int64("storage.gc_interval", 300, "Garbage collection interval in seconds")
 	rootCmd.PersistentFlags().Float64("storage.gc_discard_ratio", 0.7, "Garbage collection discard ratio")
@@ -186,6 +195,8 @@ func InitCobraCommand(runFunc func(cmd *cobra.Command, args []string)) *cobra.Co
 	viper.BindPFlag("grpc.address", rootCmd.Flags().Lookup("grpc.address"))
 	viper.BindPFlag("raft.address", rootCmd.Flags().Lookup("raft.address"))
 	viper.BindPFlag("raft.apply_timeout", rootCmd.Flags().Lookup("raft.apply_timeout"))
+	viper.BindPFlag("raft.snapshot_interval", rootCmd.Flags().Lookup("raft.snapshot_interval"))
+	viper.BindPFlag("raft.snapshot_threshold", rootCmd.Flags().Lookup("raft.snapshot_threshold"))
 	viper.BindPFlag("storage.data_dir", rootCmd.PersistentFlags().Lookup("storage.data_dir"))
 	viper.BindPFlag("storage.gc_interval", rootCmd.PersistentFlags().Lookup("storage.gc_interval"))
 	viper.BindPFlag("storage.gc_discard_ratio", rootCmd.PersistentFlags().Lookup("storage.gc_discard_ratio"))

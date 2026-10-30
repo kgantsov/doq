@@ -23,6 +23,8 @@ func TestInitCobraCommand__DefaultValues(t *testing.T) {
 		assert.Equal(t, "", config.Grpc.Address)
 		assert.Equal(t, "localhost:9000", config.Raft.Address)
 		assert.Equal(t, int64(5), config.Raft.ApplyTimeout)
+		assert.Equal(t, int64(120), config.Raft.SnapshotInterval)
+		assert.Equal(t, uint64(8192), config.Raft.SnapshotThreshold)
 		assert.Equal(t, "data", config.Storage.DataDir)
 		assert.Equal(t, int64(300), config.Storage.GCInterval)
 		assert.Equal(t, float64(0.7), config.Storage.GCDiscardRatio)
