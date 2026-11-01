@@ -351,7 +351,7 @@ func TestBadgerStorePersistSnapshot(t *testing.T) {
 	// to a snapshot sink, which could be used for recovery or replication.
 	// In a real-world scenario, this would be part of a Raft snapshot process.
 	for _, q := range queues {
-		err = store.PersistSnapshot(q.Queue, sink, txn)
+		err = store.PersistSnapshot(q.Queue, nil, sink, txn)
 		assert.NoError(t, err)
 	}
 

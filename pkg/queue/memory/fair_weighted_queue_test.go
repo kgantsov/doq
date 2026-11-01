@@ -1,13 +1,13 @@
 package memory
 
 import (
-	"math/rand"
 	"runtime"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCalculateWeight(t *testing.T) {
@@ -89,13 +89,13 @@ func TestFairWeightedQueueBasic(t *testing.T) {
 
 	// Test empty queue
 	assert.Equal(t, uint64(0), queue.Len())
-	assert.Nil(t, queue.Dequeue(false))
+	assert.Nil(t, queue.Dequeue(false, 0, time.Now()))
 
 	// Test single group enqueue/dequeue
 	queue.Enqueue("group1", &Item{ID: 1, Priority: 10})
 	assert.Equal(t, uint64(1), queue.Len())
 
-	item := queue.Dequeue(false)
+	item := queue.Dequeue(false, 0, time.Now())
 	assert.NotNil(t, item)
 	assert.Equal(t, uint64(1), item.ID)
 	assert.Equal(t, uint64(0), queue.Len())
@@ -123,7 +123,7 @@ func TestFairWeightedQueueGroupsAck(t *testing.T) {
 
 	for _, count := range customerMessages {
 		for i := 0; i < count; i++ {
-			item := queue.Dequeue(true)
+			item := queue.Dequeue(true, 0, time.Now())
 			if item != nil {
 				items[item.Group] += 1
 			}
@@ -158,7 +158,7 @@ func TestFairWeightedQueueGroups(t *testing.T) {
 
 	for _, count := range customerMessages {
 		for i := 0; i < count; i++ {
-			item := queue.Dequeue(false)
+			item := queue.Dequeue(false, 0, time.Now())
 			if item != nil {
 				items[item.Group] += 1
 			}
@@ -193,7 +193,7 @@ func TestFairWeightedQueueMultipleGroups(t *testing.T) {
 	// Dequeue all items and verify they exist
 	items := make(map[uint64]bool)
 	for i := 0; i < 10; i++ {
-		item := queue.Dequeue(false)
+		item := queue.Dequeue(false, 0, time.Now())
 		assert.NotNil(t, item)
 		items[item.ID] = true
 	}
@@ -216,15 +216,15 @@ func TestFairWeightedQueueUnackedHandling(t *testing.T) {
 	queue.Enqueue("group2", &Item{ID: 4, Priority: 10})
 
 	// Dequeue without acking (increasing unacked count)
-	item1 := queue.Dequeue(false)
-	item2 := queue.Dequeue(false)
+	item1 := queue.Dequeue(false, 0, time.Now())
+	item2 := queue.Dequeue(false, 0, time.Now())
 
 	assert.NotNil(t, item1)
 	assert.NotNil(t, item2)
 
 	// The next dequeue should favor the group with fewer unacked messages
 	// Since we don't know which group got which item, we'll verify the weights
-	item3 := queue.Dequeue(false)
+	item3 := queue.Dequeue(false, 0, time.Now())
 	assert.NotNil(t, item3)
 
 	// Ack a message to reduce unacked count
@@ -232,7 +232,7 @@ func TestFairWeightedQueueUnackedHandling(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Next dequeue should favor the group that just had a message acked
-	item4 := queue.Dequeue(false)
+	item4 := queue.Dequeue(false, 0, time.Now())
 	assert.NotNil(t, item4)
 
 	// Verify all items were dequeued
@@ -257,9 +257,9 @@ func TestFairWeightedQueuePriority(t *testing.T) {
 	queue.Enqueue("group1", &Item{ID: 3, Priority: 20})
 
 	// Dequeue should respect priority order within the group
-	item1 := queue.Dequeue(false)
-	item2 := queue.Dequeue(false)
-	item3 := queue.Dequeue(false)
+	item1 := queue.Dequeue(false, 0, time.Now())
+	item2 := queue.Dequeue(false, 0, time.Now())
+	item3 := queue.Dequeue(false, 0, time.Now())
 
 	assert.NotNil(t, item1)
 	assert.NotNil(t, item2)
@@ -314,8 +314,8 @@ func TestFairWeightedQueueUpdatePriority(t *testing.T) {
 	queue.UpdatePriority("group1", 1, 30)
 
 	// Dequeue should now return items in new priority order
-	item1 := queue.Dequeue(false)
-	item2 := queue.Dequeue(false)
+	item1 := queue.Dequeue(false, 0, time.Now())
+	item2 := queue.Dequeue(false, 0, time.Now())
 
 	assert.NotNil(t, item1)
 	assert.NotNil(t, item2)
@@ -335,13 +335,13 @@ func TestFairWeightedQueueMaxUnacked(t *testing.T) {
 	queue.Enqueue("group1", &Item{ID: 4, Priority: 10})
 
 	// Dequeue without acking until max unacked is reached
-	item1 := queue.Dequeue(false)
+	item1 := queue.Dequeue(false, 0, time.Now())
 	assert.NotNil(t, item1)
 
-	item2 := queue.Dequeue(false)
+	item2 := queue.Dequeue(false, 0, time.Now())
 	assert.NotNil(t, item2)
 
-	item3 := queue.Dequeue(false)
+	item3 := queue.Dequeue(false, 0, time.Now())
 	assert.Nil(t, item3) // Should be nil because max unacked is reached
 
 	// Ack one message
@@ -349,7 +349,7 @@ func TestFairWeightedQueueMaxUnacked(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Should be able to dequeue again
-	item4 := queue.Dequeue(false)
+	item4 := queue.Dequeue(false, 0, time.Now())
 	assert.NotNil(t, item4)
 }
 
@@ -384,10 +384,6 @@ func TestFairWeightedQueue_MemoryCleanup(t *testing.T) {
 	groups := []string{"group-A", "group-B", "group-C", "group-D"}
 	q := NewFairWeightedQueue(1000)
 
-	// Use a fixed seed for deterministic sampling in the WeightedAVL
-	rng := rand.New(rand.NewSource(42))
-	q.weights.SetRNG(rng)
-
 	t.Logf("Attempting to enqueue %d items...", numItems)
 	startTime := time.Now()
 	for i := range numItems {
@@ -407,7 +403,7 @@ func TestFairWeightedQueue_MemoryCleanup(t *testing.T) {
 	startTime = time.Now()
 	dequeuedCount := 0
 	for q.Len() > 0 {
-		item := q.Dequeue(true)
+		item := q.Dequeue(true, uint64(dequeuedCount), time.Now())
 		assert.NotNil(t, item)
 		dequeuedCount++
 	}
@@ -437,7 +433,7 @@ func BenchmarkFairWeightedQueuePeekReady(b *testing.B) {
 		group := "customer-" + strconv.Itoa(i)
 		q.Enqueue(group, &Item{ID: uint64(2 * i), Priority: 10})
 		q.Enqueue(group, &Item{ID: uint64(2*i + 1), Priority: 10})
-		q.Dequeue(false)
+		q.Dequeue(false, 0, time.Now())
 	}
 
 	b.ReportAllocs()
@@ -446,4 +442,31 @@ func BenchmarkFairWeightedQueuePeekReady(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		q.PeekReady()
 	}
+}
+
+// TestFairWeightedQueueDeleteKeepsUnackedCount empties a group's ready queue
+// with Delete while one of its messages is still in flight. The group must keep
+// counting that message: before the fix Delete dropped the group's unacked
+// counter, letting it exceed its unacked limit.
+func TestFairWeightedQueueDeleteKeepsUnackedCount(t *testing.T) {
+	queue := NewFairWeightedQueue(1)
+
+	queue.Enqueue("group1", &Item{ID: 1, Priority: 10})
+	queue.Enqueue("group1", &Item{ID: 2, Priority: 20})
+
+	item := queue.Dequeue(false, 0, time.Now())
+	require.NotNil(t, item)
+	assert.Equal(t, uint64(1), item.ID)
+
+	// Empty the group's ready queue while message 1 is still in flight.
+	require.NotNil(t, queue.Delete("group1", 2))
+
+	queue.Enqueue("group1", &Item{ID: 3, Priority: 10})
+	assert.Nil(t, queue.Dequeue(false, 0, time.Now()), "group1 is still at its unacked limit")
+
+	// Acking message 1 frees the slot.
+	require.NoError(t, queue.UpdateWeights("group1", 1))
+	item = queue.Dequeue(false, 0, time.Now())
+	require.NotNil(t, item)
+	assert.Equal(t, uint64(3), item.ID)
 }

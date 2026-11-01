@@ -3,6 +3,7 @@ package queue
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
@@ -54,17 +55,17 @@ func TestNewQueueManager(t *testing.T) {
 	q2m2, err := queue2.Enqueue(2, "default", 15, "queue 2 message 2", nil)
 	assert.Nil(t, err)
 
-	m, err := queue1.Dequeue(true)
+	m, err := queue1.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, q1m2.ID, m.ID)
 	assert.Equal(t, q1m2.Content, m.Content)
 
-	m, err = queue1.Dequeue(true)
+	m, err = queue1.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, q1m1.ID, m.ID)
 	assert.Equal(t, q1m1.Content, m.Content)
 
-	m, err = queue2.Dequeue(true)
+	m, err = queue2.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, q2m2.ID, m.ID)
 	assert.Equal(t, q2m2.Content, m.Content)
@@ -75,7 +76,7 @@ func TestNewQueueManager(t *testing.T) {
 	queue2, err = queueManager.GetQueue("queue_2")
 	assert.Nil(t, err)
 
-	m, err = queue2.Dequeue(true)
+	m, err = queue2.Dequeue(true, 0, time.Now())
 	assert.NotNil(t, err)
 	assert.Nil(t, m)
 }
@@ -125,7 +126,7 @@ func TestQueueManagerGetQueue(t *testing.T) {
 	q2m2, err := queue2.Enqueue(2, "default", 15, "queue 2 message 2", nil)
 	assert.Nil(t, err)
 
-	m, err := queue1.Dequeue(true)
+	m, err := queue1.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, q1m2.ID, m.ID)
 	assert.Equal(t, q1m2.Content, m.Content)
@@ -133,17 +134,17 @@ func TestQueueManagerGetQueue(t *testing.T) {
 	queue1, err = queueManager.GetQueue("queue_1")
 	assert.Nil(t, err)
 
-	m, err = queue1.Dequeue(true)
+	m, err = queue1.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, q1m1.ID, m.ID)
 	assert.Equal(t, q1m1.Content, m.Content)
 
-	m, err = queue2.Dequeue(true)
+	m, err = queue2.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, q2m2.ID, m.ID)
 	assert.Equal(t, q2m2.Content, m.Content)
 
-	m, err = queue2.Dequeue(true)
+	m, err = queue2.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, q2m1.ID, m.ID)
 	assert.Equal(t, q2m1.Content, m.Content)

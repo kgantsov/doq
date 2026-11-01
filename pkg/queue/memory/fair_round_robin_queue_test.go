@@ -2,7 +2,9 @@ package memory
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"math/rand"
+	"sort"
 	"testing"
 	"time"
 
@@ -134,7 +136,7 @@ func TestFairRoundRobinQueueSingleCustomer(t *testing.T) {
 					message := fq.Get(expectedMessage.group, expectedMessage.item.ID)
 					assert.Equal(t, expectedMessage.item.ID, message.ID)
 
-					assert.Equal(t, expectedMessage.item.ID, fq.Dequeue(true).ID)
+					assert.Equal(t, expectedMessage.item.ID, fq.Dequeue(true, 0, time.Now()).ID)
 					assert.Nil(t, fq.Get(expectedMessage.group, expectedMessage.item.ID))
 				}
 			}
@@ -151,8 +153,8 @@ func TestFairRoundRobinQueueDelete(t *testing.T) {
 
 	fq.Delete("customer1", 1)
 
-	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true, 0, time.Now()).ID)
 }
 
 func TestFairRoundRobinQueueUpdatePriority(t *testing.T) {
@@ -164,9 +166,9 @@ func TestFairRoundRobinQueueUpdatePriority(t *testing.T) {
 
 	fq.UpdatePriority("customer1", 1, 20)
 
-	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(1), fq.Dequeue(true, 0, time.Now()).ID)
 }
 
 func TestFairRoundRobinQueue(t *testing.T) {
@@ -183,16 +185,16 @@ func TestFairRoundRobinQueue(t *testing.T) {
 	fq.Enqueue("customer4", &Item{ID: 9, Priority: 10})
 	fq.Enqueue("customer5", &Item{ID: 10, Priority: 10})
 
-	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(7), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(9), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(10), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(2), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(6), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(8), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(3), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(1), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(7), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(9), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(10), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(2), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(6), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(8), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(3), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true, 0, time.Now()).ID)
 }
 
 func TestFairRoundRobinQueue1(t *testing.T) {
@@ -202,10 +204,10 @@ func TestFairRoundRobinQueue1(t *testing.T) {
 	fq.Enqueue("customer1", &Item{ID: 2, Priority: 10})
 	fq.Enqueue("customer2", &Item{ID: 3, Priority: 10})
 
-	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(3), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(2), fq.Dequeue(true).ID)
-	assert.Nil(t, fq.Dequeue(true))
+	assert.Equal(t, uint64(1), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(3), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(2), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Nil(t, fq.Dequeue(true, 0, time.Now()))
 }
 
 func TestFairRoundRobinQueueWithSubgroups(t *testing.T) {
@@ -227,21 +229,21 @@ func TestFairRoundRobinQueueWithSubgroups(t *testing.T) {
 	fq.Enqueue("customer-4.project-1.user-2", &Item{ID: 14, Priority: 10})
 	fq.Enqueue("customer-4.project-2.user-2", &Item{ID: 15, Priority: 10})
 
-	assert.Equal(t, uint64(1), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(9), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(10), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(13), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(4), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(12), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(15), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(7), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(11), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(14), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(3), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(6), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(8), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(2), fq.Dequeue(true).ID)
-	assert.Equal(t, uint64(5), fq.Dequeue(true).ID)
+	assert.Equal(t, uint64(1), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(9), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(10), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(13), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(4), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(12), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(15), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(7), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(11), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(14), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(3), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(6), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(8), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(2), fq.Dequeue(true, 0, time.Now()).ID)
+	assert.Equal(t, uint64(5), fq.Dequeue(true, 0, time.Now()).ID)
 }
 
 func TestFairRoundRobinQueueMaxUnacked(t *testing.T) {
@@ -254,13 +256,13 @@ func TestFairRoundRobinQueueMaxUnacked(t *testing.T) {
 	queue.Enqueue("group1", &Item{ID: 4, Priority: 10, Group: "group1"})
 
 	// Dequeue without acking until max unacked is reached
-	item1 := queue.Dequeue(false)
+	item1 := queue.Dequeue(false, 0, time.Now())
 	assert.NotNil(t, item1)
 
-	item2 := queue.Dequeue(false)
+	item2 := queue.Dequeue(false, 0, time.Now())
 	assert.NotNil(t, item2)
 
-	item3 := queue.Dequeue(false)
+	item3 := queue.Dequeue(false, 0, time.Now())
 	assert.Nil(t, item3) // Should be nil because max unacked is reached
 
 	// Ack one message
@@ -268,7 +270,7 @@ func TestFairRoundRobinQueueMaxUnacked(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Should be able to dequeue again
-	item4 := queue.Dequeue(false)
+	item4 := queue.Dequeue(false, 0, time.Now())
 	assert.NotNil(t, item4)
 }
 
@@ -306,7 +308,7 @@ func BenchmarkFairRoundRobinQueueDequeue(b *testing.B) {
 	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing
 
 	for i := 0; i < b.N; i++ {
-		fq.Dequeue(true)
+		fq.Dequeue(true, 0, time.Now())
 	}
 }
 
@@ -357,7 +359,7 @@ func TestFairRoundRobinQueueReadyCounterInvariant(t *testing.T) {
 			fq.Enqueue(g, &Item{ID: nextID, Priority: int64(rng.Intn(100))})
 			items = append(items, live{id: nextID, group: g})
 		case 2: // Dequeue, sometimes without ack (creates unacked pressure)
-			fq.Dequeue(rng.Intn(2) == 0)
+			fq.Dequeue(rng.Intn(2) == 0, 0, time.Now())
 		case 3: // Ack a random known group (frees an unacked slot)
 			if len(items) > 0 {
 				fq.UpdateWeights(items[rng.Intn(len(items))].group, 0)
@@ -401,7 +403,7 @@ func BenchmarkFairRoundRobinQueuePeekReady(b *testing.B) {
 			group := fmt.Sprintf("customer-%d.group-%d.user-0", c, g)
 			fq.Enqueue(group, &Item{ID: uint64(2 * (c*10 + g)), Priority: 10})
 			fq.Enqueue(group, &Item{ID: uint64(2*(c*10+g) + 1), Priority: 10})
-			fq.Dequeue(false)
+			fq.Dequeue(false, 0, time.Now())
 		}
 	}
 
@@ -456,7 +458,7 @@ func TestFairRoundRobinQueue_MemoryCleanup(t *testing.T) {
 	startTime = time.Now()
 	dequeuedCount := 0
 	for q.Len() > 0 {
-		item := q.Dequeue(true)
+		item := q.Dequeue(true, 0, time.Now())
 		assert.NotNil(t, item)
 		dequeuedCount++
 	}
@@ -489,7 +491,7 @@ func TestFairRoundRobinQueuePeekReady(t *testing.T) {
 	assert.True(t, ready)
 
 	// Dequeue without ack: group "a" now has 1 unacked, hitting the limit.
-	item := q.Dequeue(false)
+	item := q.Dequeue(false, 0, time.Now())
 	assert.NotNil(t, item)
 
 	// A message remains (Len > 0) but the group is gated, so nothing is ready.
@@ -501,4 +503,52 @@ func TestFairRoundRobinQueuePeekReady(t *testing.T) {
 	q.UpdateWeights("a", item.ID)
 	ready, _ = q.PeekReady()
 	assert.True(t, ready)
+}
+
+// TestFairRoundRobinQueueSchedulingStateRoundTrip rebuilds a queue from the same
+// messages in a different order, as a snapshot restore does, and checks that
+// applying the captured scheduling state makes it dequeue in exactly the same
+// order as the original.
+func TestFairRoundRobinQueueSchedulingStateRoundTrip(t *testing.T) {
+	groups := []string{"c", "a", "t.y", "b", "t.x", "t.z.1"}
+
+	original := NewFairRoundRobinQueue(0)
+	id := uint64(0)
+	for round := 0; round < 4; round++ {
+		for _, group := range groups {
+			id++
+			original.Enqueue(group, &Item{ID: id, Priority: int64(id % 3), Group: group})
+		}
+	}
+	// Move the cursors off the first children.
+	for i := 0; i < 5; i++ {
+		require.NotNil(t, original.Dequeue(true, 0, time.Now()))
+	}
+
+	state := original.SchedulingState()
+
+	// Rebuild from the remaining messages in ID order, which creates the groups
+	// in a different order than the original saw them.
+	var remaining []*Item
+	for _, leaf := range original.groupKeyToLeaf {
+		for _, item := range leaf.queue.items {
+			copied := *item
+			remaining = append(remaining, &copied)
+		}
+	}
+	sort.Slice(remaining, func(i, j int) bool { return remaining[i].ID < remaining[j].ID })
+	restored := NewFairRoundRobinQueue(0)
+	for _, item := range remaining {
+		restored.Enqueue(item.Group, item)
+	}
+	restored.RestoreSchedulingState(state)
+
+	assert.Equal(t, state, restored.SchedulingState())
+	for original.Len() > 0 {
+		want := original.Dequeue(true, 0, time.Now())
+		got := restored.Dequeue(true, 0, time.Now())
+		require.NotNil(t, got)
+		assert.Equal(t, want.ID, got.ID)
+	}
+	assert.Equal(t, uint64(0), restored.Len())
 }

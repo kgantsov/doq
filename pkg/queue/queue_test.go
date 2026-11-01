@@ -149,7 +149,7 @@ func TestQueue(t *testing.T) {
 			assert.Equal(t, len(tt.messages), pq.Len())
 
 			for i := 0; i < len(tt.messages); i++ {
-				m, err := pq.Dequeue(true)
+				m, err := pq.Dequeue(true, 0, time.Now())
 				assert.Nil(t, err)
 
 				assert.Equal(t, len(tt.messages)-(i+1), pq.Len())
@@ -183,7 +183,7 @@ func TestQueueEmptyQueue(t *testing.T) {
 	)
 	pq.CreateQueue("delayed", "test_queue_stored", entity.QueueSettings{})
 
-	m, err := pq.Dequeue(true)
+	m, err := pq.Dequeue(true, 0, time.Now())
 	assert.EqualError(t, err, errors.ErrEmptyQueue.Error())
 	assert.Nil(t, m)
 }
@@ -380,28 +380,28 @@ func TestQueueChangePriority(t *testing.T) {
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(55), m4.Priority)
 
-	m, err := pq.Dequeue(true)
+	m, err := pq.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test 2", m.Content)
 
-	m, err = pq.Dequeue(true)
+	m, err = pq.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test 3", m.Content)
 
-	m, err = pq.Dequeue(true)
+	m, err = pq.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test 5", m.Content)
 
-	m, err = pq.Dequeue(true)
+	m, err = pq.Dequeue(true, 0, time.Now())
 
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test 4", m.Content)
 
-	m, err = pq.Dequeue(true)
+	m, err = pq.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test 1", m.Content)
@@ -438,13 +438,13 @@ func TestQueueDelayedMessage(t *testing.T) {
 	assert.Equal(t, "delayed message 1", m1.Content)
 	assert.Equal(t, priority, m1.Priority)
 
-	m1, err = pq.Dequeue(true)
+	m1, err = pq.Dequeue(true, 0, time.Now())
 	assert.Nil(t, m1)
 	assert.EqualError(t, err, errors.ErrEmptyQueue.Error())
 
 	time.Sleep(1 * time.Second)
 
-	m1, err = pq.Dequeue(true)
+	m1, err = pq.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "delayed message 1", m1.Content)
 	assert.Equal(t, priority, m1.Priority)
@@ -490,19 +490,19 @@ func TestQueueAck(t *testing.T) {
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, int64(40), m4.Priority)
 
-	m1, err = pq.Dequeue(false)
+	m1, err = pq.Dequeue(false, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
 
-	m2, err = pq.Dequeue(false)
+	m2, err = pq.Dequeue(false, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m2.Content)
 
-	m3, err = pq.Dequeue(false)
+	m3, err = pq.Dequeue(false, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
 
-	m4, err = pq.Dequeue(false)
+	m4, err = pq.Dequeue(false, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 
@@ -568,19 +568,19 @@ func TestQueueNack(t *testing.T) {
 	assert.Equal(t, int64(40), m4.Priority)
 	assert.Equal(t, map[string]string(nil), m4.Metadata)
 
-	m1, err = pq.Dequeue(false)
+	m1, err = pq.Dequeue(false, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
 
-	m2, err = pq.Dequeue(false)
+	m2, err = pq.Dequeue(false, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m2.Content)
 
-	m3, err = pq.Dequeue(false)
+	m3, err = pq.Dequeue(false, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
 
-	m4, err = pq.Dequeue(false)
+	m4, err = pq.Dequeue(false, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 
@@ -599,27 +599,27 @@ func TestQueueNack(t *testing.T) {
 	err = pq.Nack(100, 10, nil)
 	assert.EqualError(t, err, errors.ErrMessageNotFound.Error())
 
-	m1, err = pq.Dequeue(true)
+	m1, err = pq.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 2", m1.Content)
 	assert.Equal(t, map[string]string{"retry": "2"}, m1.Metadata)
 
-	m2, err = pq.Dequeue(true)
+	m2, err = pq.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m2.Content)
 	assert.Equal(t, map[string]string{"retry": "1"}, m2.Metadata)
 
-	m3, err = pq.Dequeue(true)
+	m3, err = pq.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 3", m3.Content)
 	assert.Equal(t, map[string]string(nil), m3.Metadata)
 
-	m4, err = pq.Dequeue(true)
+	m4, err = pq.Dequeue(true, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 4", m4.Content)
 	assert.Equal(t, map[string]string(nil), m4.Metadata)
 
-	m4, err = pq.Dequeue(true)
+	m4, err = pq.Dequeue(true, 0, time.Now())
 	assert.EqualError(t, err, errors.ErrEmptyQueue.Error())
 }
 
@@ -659,7 +659,7 @@ func TestQueueNackDoesNotLeakUnacked(t *testing.T) {
 			// Nack leaked the unacked counter, cycle number MaxUnacked+1 would
 			// fail with ErrEmptyQueue because the group's weight hit 0.
 			for i := 0; i < 5; i++ {
-				m, err := pq.Dequeue(false)
+				m, err := pq.Dequeue(false, 0, time.Now())
 				require.NoErrorf(t, err, "dequeue starved on cycle %d (unacked leaked)", i)
 				require.Equal(t, uint64(1), m.ID)
 
@@ -702,7 +702,7 @@ func TestQueueTouch(t *testing.T) {
 	assert.Equal(t, "test 1", m1.Content)
 	assert.Equal(t, int64(10), m1.Priority)
 
-	m1, err = pq.Dequeue(false)
+	m1, err = pq.Dequeue(false, 0, time.Now())
 	assert.Nil(t, err)
 	assert.Equal(t, "test 1", m1.Content)
 
@@ -711,7 +711,7 @@ func TestQueueTouch(t *testing.T) {
 	initialPriority := item.Priority
 
 	time.Sleep(1 * time.Second)
-	err = pq.Touch(m1.ID)
+	err = pq.Touch(m1.ID, time.Now())
 	assert.NoError(t, err)
 
 	item1 := pq.ackQueue.Get("default", m1.ID)
@@ -773,7 +773,7 @@ func BenchmarkQueueDequeue(b *testing.B) {
 	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing
 
 	for i := 0; i < b.N; i++ {
-		pq.Dequeue(true)
+		pq.Dequeue(true, 0, time.Now())
 	}
 }
 
@@ -827,7 +827,7 @@ func TestFairDequeue(t *testing.T) {
 
 	for _, count := range customerMessages {
 		for i := 0; i < count; i++ {
-			message, err := pq.Dequeue(false)
+			message, err := pq.Dequeue(false, 0, time.Now())
 			if err == nil {
 				items[message.Group] += 1
 			}
@@ -868,7 +868,7 @@ func TestQueueAckTimeoutGoesThroughHandler(t *testing.T) {
 	m, err := pq.Enqueue(1, "default", 10, "test 1", nil)
 	require.NoError(t, err)
 
-	m, err = pq.Dequeue(false)
+	m, err = pq.Dequeue(false, 0, time.Now())
 	require.NoError(t, err)
 
 	// Not expired yet: the handler is not called.
@@ -895,3 +895,48 @@ func TestQueueAckTimeoutGoesThroughHandler(t *testing.T) {
 	assert.ErrorIs(t, pq.AckTimeout(m.ID), errors.ErrMessageNotFound)
 }
 
+// TestQueueDeleteInFlightReleasesUnackedSlot deletes a message that is in flight
+// and checks that its group's unacked slot is released, as Ack does. Before the
+// fix the slot leaked, so a group at its unacked limit stayed blocked forever.
+func TestQueueDeleteInFlightReleasesUnackedSlot(t *testing.T) {
+	for _, strategy := range []string{"round_robin", "weighted"} {
+		t.Run(strategy, func(t *testing.T) {
+			db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+			require.NoError(t, err)
+			defer db.Close()
+
+			pq := NewQueue(
+				storage.NewBadgerStore(db),
+				&config.Config{Queue: config.QueueConfig{
+					AcknowledgementCheckInterval: 1,
+					QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+				}},
+				nil,
+			)
+			require.NoError(t, pq.CreateQueue("fair", "test_queue", entity.QueueSettings{
+				Strategy:   strategy,
+				MaxUnacked: 1,
+				AckTimeout: 60,
+			}))
+
+			_, err = pq.Enqueue(1, "customer-1", 10, "message 1", nil)
+			require.NoError(t, err)
+			_, err = pq.Enqueue(2, "customer-1", 10, "message 2", nil)
+			require.NoError(t, err)
+
+			m, err := pq.Dequeue(false, 0, time.Now())
+			require.NoError(t, err)
+			assert.Equal(t, uint64(1), m.ID)
+
+			// The group is at its limit of one unacked message.
+			_, err = pq.Dequeue(false, 0, time.Now())
+			assert.ErrorIs(t, err, errors.ErrEmptyQueue)
+
+			require.NoError(t, pq.Delete(m.ID))
+
+			m, err = pq.Dequeue(false, 0, time.Now())
+			require.NoError(t, err)
+			assert.Equal(t, uint64(2), m.ID)
+		})
+	}
+}

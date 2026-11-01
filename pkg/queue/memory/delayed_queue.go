@@ -28,7 +28,7 @@ func (pq *DelayedQueue) Enqueue(group string, item *Item) {
 	heap.Push(pq.queue, item)
 }
 
-func (pq *DelayedQueue) Dequeue(ack bool) *Item {
+func (pq *DelayedQueue) Dequeue(ack bool, seed uint64, now time.Time) *Item {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
 
@@ -38,7 +38,7 @@ func (pq *DelayedQueue) Dequeue(ack bool) *Item {
 
 	queueItem := pq.queue.Peek().(*Item)
 
-	if int64(queueItem.Priority) > time.Now().UTC().Unix() {
+	if int64(queueItem.Priority) > now.UTC().Unix() {
 		// Delayed message handling
 		// If a priority is in the future, return nil
 		return nil
@@ -115,4 +115,18 @@ func (pq *DelayedQueue) Len() uint64 {
 func (pq *DelayedQueue) UpdateWeights(group string, id uint64) error {
 
 	return nil
+}
+
+func (pq *DelayedQueue) MarkUnacked(group string) {}
+
+// Items returns a copy of every item in the queue, in no particular order.
+func (pq *DelayedQueue) Items() []Item {
+	pq.mu.RLock()
+	defer pq.mu.RUnlock()
+
+	items := make([]Item, 0, len(pq.queue.items))
+	for _, item := range pq.queue.items {
+		items = append(items, *item)
+	}
+	return items
 }

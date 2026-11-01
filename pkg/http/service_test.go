@@ -103,7 +103,7 @@ func TestLeaderHintHeaders(t *testing.T) {
 
 	t.Run("follower advertises leader", func(t *testing.T) {
 		node := mocks.NewMockNode()
-		node.On("LeaderHttpAddress").Return("doq-1.doq-internal:8000")
+		node.SetLeaderHttpAddress("doq-1.doq-internal:8000")
 		node.On("IsLeader").Return(false)
 
 		service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
@@ -118,7 +118,7 @@ func TestLeaderHintHeaders(t *testing.T) {
 
 	t.Run("leader advertises itself", func(t *testing.T) {
 		node := mocks.NewMockNode()
-		node.On("LeaderHttpAddress").Return("doq-0.doq-internal:8000")
+		node.SetLeaderHttpAddress("doq-0.doq-internal:8000")
 		node.On("IsLeader").Return(true)
 
 		service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
@@ -133,7 +133,7 @@ func TestLeaderHintHeaders(t *testing.T) {
 
 	t.Run("no leader known omits the headers", func(t *testing.T) {
 		node := mocks.NewMockNode()
-		node.On("LeaderHttpAddress").Return("")
+		node.SetLeaderHttpAddress("")
 
 		service := NewHttpService(cfg, node, embed.FS{}, embed.FS{})
 

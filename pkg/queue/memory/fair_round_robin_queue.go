@@ -278,7 +278,7 @@ func (fq *FairRoundRobinQueue) removeEmptyChild(parent *GroupNode, childName str
 }
 
 // Dequeue removes and returns the next message in a fair way
-func (fq *FairRoundRobinQueue) Dequeue(ack bool) *Item {
+func (fq *FairRoundRobinQueue) Dequeue(ack bool, seed uint64, now time.Time) *Item {
 	fq.mu.Lock()
 	defer fq.mu.Unlock()
 
@@ -416,4 +416,105 @@ func (fq *FairRoundRobinQueue) UpdateWeights(group string, id uint64) error {
 		fq.refreshLeafReady(leaf)
 	}
 	return nil
+}
+
+func (fq *FairRoundRobinQueue) MarkUnacked(group string) {
+	fq.mu.Lock()
+	defer fq.mu.Unlock()
+
+	fq.unackedByGroup[group]++
+
+	// A group that just hit its unacked limit is no longer ready.
+	if leaf, exists := fq.groupKeyToLeaf[group]; exists {
+		fq.refreshLeafReady(leaf)
+	}
+}
+
+// SchedulingNode is the scheduling state of one internal node of the group tree:
+// the order its children are visited in, and the child the next dequeue starts
+// from ("" for the first child).
+type SchedulingNode struct {
+	Path     string // dot-joined group path; "" is the root
+	Children []string
+	Current  string
+}
+
+// SchedulingState returns the scheduling state of every internal node, in
+// depth-first order. Children are visited in the order they were created and the
+// cursors move with every dequeue, so neither can be rebuilt from the messages
+// alone; snapshots persist this alongside them.
+func (fq *FairRoundRobinQueue) SchedulingState() []SchedulingNode {
+	fq.mu.RLock()
+	defer fq.mu.RUnlock()
+
+	var nodes []SchedulingNode
+	var walk func(node *GroupNode)
+	walk = func(node *GroupNode) {
+		if node.childrenList.Len() == 0 {
+			return
+		}
+
+		state := SchedulingNode{Path: node.groupKey}
+		if node.currentChild != nil {
+			state.Current = node.currentChild.group
+		}
+		for child := node.childrenList.head; child != nil; child = child.next {
+			state.Children = append(state.Children, child.group)
+		}
+		nodes = append(nodes, state)
+
+		for _, name := range state.Children {
+			walk(node.children[name])
+		}
+	}
+	walk(fq.root)
+
+	return nodes
+}
+
+// RestoreSchedulingState reorders the group tree's children and resets its
+// cursors to a state captured by SchedulingState. Nodes or children that do not
+// exist in the current tree are skipped; children missing from the state keep
+// their relative order after the listed ones.
+func (fq *FairRoundRobinQueue) RestoreSchedulingState(nodes []SchedulingNode) {
+	fq.mu.Lock()
+	defer fq.mu.Unlock()
+
+	for _, state := range nodes {
+		node := fq.root
+		if state.Path != "" {
+			for _, name := range strings.Split(state.Path, ".") {
+				node = node.children[name]
+				if node == nil {
+					break
+				}
+			}
+		}
+		if node == nil {
+			continue
+		}
+
+		listed := make(map[string]bool, len(state.Children))
+		ordered := &LinkedList{}
+		for _, name := range state.Children {
+			if _, ok := node.children[name]; ok && !listed[name] {
+				listed[name] = true
+				ordered.Append(NewLinkedListNode(name, nil))
+			}
+		}
+		for child := node.childrenList.head; child != nil; child = child.next {
+			if !listed[child.group] {
+				ordered.Append(NewLinkedListNode(child.group, nil))
+			}
+		}
+		node.childrenList = ordered
+
+		node.currentChild = nil
+		for child := ordered.head; child != nil; child = child.next {
+			if child.group == state.Current {
+				node.currentChild = child
+				break
+			}
+		}
+	}
 }

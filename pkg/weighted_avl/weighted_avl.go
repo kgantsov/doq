@@ -1,9 +1,7 @@
 package weightedavl
 
 import (
-	"math/rand"
 	"sync"
-	"time"
 )
 
 type node struct {
@@ -199,21 +197,12 @@ func max(a, b int) int {
 type WeightedAVL struct {
 	root *node
 	mu   sync.RWMutex
-
-	rng *rand.Rand
 }
 
 func NewWeightedAVL() *WeightedAVL {
 	return &WeightedAVL{
-		mu:  sync.RWMutex{},
-		rng: rand.New(rand.NewSource(time.Now().UnixNano())),
+		mu: sync.RWMutex{},
 	}
-}
-
-func (tree *WeightedAVL) SetRNG(rng *rand.Rand) {
-	tree.mu.Lock()
-	defer tree.mu.Unlock()
-	tree.rng = rng
 }
 
 func (tree *WeightedAVL) Update(key string, weight int) {
@@ -236,7 +225,11 @@ func (tree *WeightedAVL) Get(key string) (int, bool) {
 	return get(tree.root, key)
 }
 
-func (tree *WeightedAVL) Sample() string {
+// Sample picks a key with probability proportional to its weight. The pick is a
+// pure function of seed and the tree's contents: the same seed on the same tree
+// always returns the same key. Under Raft the seed comes from the log entry, so
+// every replica, and every replay of the log, picks the same key.
+func (tree *WeightedAVL) Sample(seed uint64) string {
 	tree.mu.RLock()
 	defer tree.mu.RUnlock()
 
@@ -244,8 +237,18 @@ func (tree *WeightedAVL) Sample() string {
 		return ""
 	}
 
-	r := tree.rng.Intn(tree.root.sum)
+	r := int(mix64(seed) % uint64(tree.root.sum))
 	return sample(tree.root, r)
+}
+
+// mix64 is the splitmix64 finalizer. It spreads consecutive seeds (such as
+// consecutive Raft log indexes) uniformly over uint64, so their picks are not
+// correlated.
+func mix64(x uint64) uint64 {
+	x += 0x9e3779b97f4a7c15
+	x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9
+	x = (x ^ (x >> 27)) * 0x94d049bb133111eb
+	return x ^ (x >> 31)
 }
 
 func (tree *WeightedAVL) Increment(key string, delta int) {

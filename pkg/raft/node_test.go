@@ -560,10 +560,11 @@ func TestBackupRestore(t *testing.T) {
 		Cluster: config.ClusterConfig{
 			NodeID: "localhost",
 		},
+		// Not 9000/9001: those belong to the local dev cluster (make run_node_*).
 		Http: config.HttpConfig{
-			Port: "9000",
+			Port: "9180",
 		},
-		Raft: testRaftConfig("localhost:9001"),
+		Raft: testRaftConfig("localhost:9181"),
 		Queue: config.QueueConfig{
 			AcknowledgementCheckInterval: 1,
 			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},

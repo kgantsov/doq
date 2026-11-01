@@ -77,7 +77,7 @@ func (q *FairWeightedQueue) Enqueue(group string, item *Item) {
 	)
 }
 
-func (q *FairWeightedQueue) Dequeue(ack bool) *Item {
+func (q *FairWeightedQueue) Dequeue(ack bool, seed uint64, now time.Time) *Item {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -87,7 +87,7 @@ func (q *FairWeightedQueue) Dequeue(ack bool) *Item {
 
 	var selectedGroup string
 
-	selectedGroup = q.weights.Sample()
+	selectedGroup = q.weights.Sample(seed)
 	if selectedGroup == "" {
 		log.Debug().Msgf("No group selected")
 		return nil
@@ -157,10 +157,18 @@ func (q *FairWeightedQueue) Delete(group string, id uint64) *Item {
 		return nil
 	}
 
-	if q.queues[group].Len() == 0 {
+	// Like Dequeue, only drop the group once it has neither ready nor unacked
+	// messages; dropping it earlier would forget its in-flight messages and let
+	// it exceed its unacked limit.
+	if q.queues[group].Len() == 0 && q.unackedByGroup[group] == 0 {
 		delete(q.queues, group)
 		delete(q.unackedByGroup, group)
 		q.weights.Remove(group)
+	} else {
+		q.weights.Update(
+			group,
+			CalculateWeight(q.maxUnacked, q.unackedByGroup[group], q.queues[group].Len()),
+		)
 	}
 
 	return item
@@ -213,4 +221,21 @@ func (q *FairWeightedQueue) UpdateWeights(group string, id uint64) error {
 	}
 
 	return nil
+}
+
+func (q *FairWeightedQueue) MarkUnacked(group string) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	// Dequeue(ack=false) keeps an emptied group's queue while it has unacked
+	// messages, and UpdateWeights relies on it existing; do the same here.
+	if _, ok := q.queues[group]; !ok {
+		q.queues[group] = NewPriorityMemoryQueue(true)
+	}
+
+	q.unackedByGroup[group]++
+	q.weights.Update(
+		group,
+		CalculateWeight(q.maxUnacked, q.unackedByGroup[group], q.queues[group].Len()),
+	)
 }

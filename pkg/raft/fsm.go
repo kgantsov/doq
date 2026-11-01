@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/config"
@@ -48,13 +49,22 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 		return &FSMResponse{error: err}
 	}
 
+	// The leader stamps AppendedAt when it appends the entry, and followers and
+	// log replays see the same value, so it is the FSM's only clock. Entries
+	// appended before raft recorded it (hashicorp/raft < v1.3) have it zero;
+	// those fall back to the local clock, which is no worse than before.
+	now := raftLog.AppendedAt
+	if now.IsZero() {
+		now = time.Now()
+	}
+
 	switch command := c.Cmd.(type) {
 	case *pb.RaftCommand_LeaderConfigChange:
 		return f.applyLeaderConfigChange(command)
 	case *pb.RaftCommand_Enqueue:
 		return f.applyEnqueue(command)
 	case *pb.RaftCommand_Dequeue:
-		return f.applyDequeue(command)
+		return f.applyDequeue(command, raftLog.Index, now)
 	case *pb.RaftCommand_Get:
 		return f.applyGet(command)
 	case *pb.RaftCommand_Delete:
@@ -64,7 +74,7 @@ func (f *FSM) Apply(raftLog *raft.Log) interface{} {
 	case *pb.RaftCommand_Nack:
 		return f.applyNack(command)
 	case *pb.RaftCommand_Touch:
-		return f.applyTouch(command)
+		return f.applyTouch(command, now)
 	case *pb.RaftCommand_AckTimeout:
 		return f.applyAckTimeout(command)
 	case *pb.RaftCommand_UpdatePriority:
@@ -147,7 +157,7 @@ func (f *FSM) applyEnqueue(payload *pb.RaftCommand_Enqueue) *FSMResponse {
 	}
 }
 
-func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue) *FSMResponse {
+func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue, index uint64, now time.Time) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.Dequeue.QueueName)
 	if err != nil {
 		log.Error().
@@ -160,7 +170,9 @@ func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue) *FSMResponse {
 		}
 	}
 
-	msg, err := q.Dequeue(payload.Dequeue.Ack)
+	// The log index seeds the weighted fair queue's random pick, so every
+	// replica, and every replay of this entry, dequeues the same message.
+	msg, err := q.Dequeue(payload.Dequeue.Ack, index, now)
 
 	log.Debug().Str("component", "fsm").Msgf("Node %s Dequeued a message: %+v %v", f.NodeID, msg, err)
 
@@ -378,7 +390,7 @@ func (f *FSM) applyNack(payload *pb.RaftCommand_Nack) *FSMResponse {
 	}
 }
 
-func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch) *FSMResponse {
+func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch, now time.Time) *FSMResponse {
 	q, err := f.queueManager.GetQueue(payload.Touch.QueueName)
 	if err != nil {
 		log.Error().
@@ -391,7 +403,7 @@ func (f *FSM) applyTouch(payload *pb.RaftCommand_Touch) *FSMResponse {
 		}
 	}
 
-	err = q.Touch(payload.Touch.Id)
+	err = q.Touch(payload.Touch.Id, now)
 
 	log.Debug().Str("component", "fsm").Msgf("Node %s Touched a message: %v", f.NodeID, err)
 
@@ -572,11 +584,17 @@ func (f *FSM) Snapshot() (raft.FSMSnapshot, error) {
 	// This transaction will provide a consistent view even while writes continue.
 	txn := f.db.NewTransaction(false)
 
+	// Unacked messages and round-robin scheduling state live only in memory.
+	// Capture them here, under the FSM lock and at the same point as the
+	// transaction, so a restored replica matches the others exactly.
+	queueStates := f.queueManager.CaptureSnapshotState()
+
 	return &FSMSnapshot{
 		NodeID:       f.NodeID,
 		queueManager: f.queueManager,
 		leaderConfig: f.leaderConfig,
 		txn:          txn,
+		queueStates:  queueStates,
 	}, nil
 }
 
@@ -593,6 +611,9 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 	queuesTotal := 0
 
 	var q *queue.Queue
+	// Ack deadlines of the current queue's unacked messages, keyed by message
+	// ID. The snapshot writes them before the queue's messages.
+	var unacked map[uint64]int64
 
 	for {
 		item, err := storage.ReadSnapshotItem(rc)
@@ -629,6 +650,7 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 			}
 		case *pb.SnapshotItem_Queue:
 			log.Debug().Str("component", "fsm").Msgf("Restoring queue: %s", v.Queue.Name)
+			unacked = make(map[uint64]int64)
 			q, err = f.queueManager.CreateQueue(v.Queue.Type, v.Queue.Name, entity.QueueSettings{
 				Strategy:   v.Queue.Settings.Strategy.String(),
 				MaxUnacked: int(v.Queue.Settings.MaxUnacked),
@@ -639,6 +661,12 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 				continue
 			}
 			queuesTotal++
+		case *pb.SnapshotItem_UnackedMessage:
+			unacked[v.UnackedMessage.Id] = v.UnackedMessage.AckDeadline
+		case *pb.SnapshotItem_RoundRobinState:
+			if q != nil {
+				q.RestoreRoundRobinState(v.RoundRobinState)
+			}
 		case *pb.SnapshotItem_Message:
 			log.Debug().
 				Str("component", "fsm").
@@ -648,6 +676,17 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 					v.Message.Group,
 					v.Message.Priority,
 				)
+			if deadline, ok := unacked[v.Message.Id]; ok {
+				q.RestoreUnacked(
+					v.Message.Id,
+					v.Message.Group,
+					v.Message.Priority,
+					v.Message.Content,
+					v.Message.Metadata,
+					deadline,
+				)
+				continue
+			}
 			q.Enqueue(
 				v.Message.Id,
 				v.Message.Group,
@@ -671,6 +710,7 @@ type FSMSnapshot struct {
 	queueManager *queue.QueueManager
 	leaderConfig *LeaderConfig
 	txn          *badger.Txn
+	queueStates  map[string]*queue.SnapshotState
 }
 
 func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
@@ -692,7 +732,7 @@ func (f *FSMSnapshot) Persist(sink raft.SnapshotSink) error {
 		return fmt.Errorf("failed to write message snapshot item: %v", err)
 	}
 
-	if err := f.queueManager.PersistSnapshot(sink, f.txn); err != nil {
+	if err := f.queueManager.PersistSnapshot(sink, f.txn, f.queueStates); err != nil {
 		log.Debug().Str("component", "fsm").Msg("Error copying logs to sink")
 		sink.Cancel()
 		return err

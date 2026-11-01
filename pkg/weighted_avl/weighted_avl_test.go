@@ -1,16 +1,10 @@
 package weightedavl
 
 import (
-	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
-
-func init() {
-	// Set a fixed seed for deterministic test results
-	rand.Seed(42)
-}
 
 func TestNewWeightedAVL(t *testing.T) {
 	tree := NewWeightedAVL()
@@ -68,11 +62,11 @@ func TestSample(t *testing.T) {
 	tree := NewWeightedAVL()
 
 	// Test sampling from empty tree
-	assert.Equal(t, "", tree.Sample())
+	assert.Equal(t, "", tree.Sample(0))
 
 	// Test sampling from tree with one node
 	tree.Update("a", 5)
-	assert.Equal(t, "a", tree.Sample())
+	assert.Equal(t, "a", tree.Sample(0))
 
 	// Test sampling with multiple nodes
 	tree.Update("b", 3)
@@ -81,7 +75,7 @@ func TestSample(t *testing.T) {
 	// Run multiple samples to verify distribution
 	samples := make(map[string]int)
 	for i := 0; i < 1000; i++ {
-		sample := tree.Sample()
+		sample := tree.Sample(uint64(i))
 		samples[sample]++
 	}
 

@@ -67,7 +67,7 @@ func TestDelayedQueue(t *testing.T) {
 
 			for i := 0; i < len(tt.messages); i++ {
 
-				m := pq.Dequeue(false)
+				m := pq.Dequeue(false, 0, time.Now())
 
 				assert.Equal(t, pq.Len(), uint64(len(tt.messages)-(i+1)))
 
@@ -89,12 +89,12 @@ func TestDelayedQueueDelayed(t *testing.T) {
 	assert.Equal(t, uint64(1), m1.ID)
 	assert.Equal(t, priority, m1.Priority)
 
-	m1 = pq.Dequeue(false)
+	m1 = pq.Dequeue(false, 0, time.Now())
 	assert.Nil(t, m1)
 
 	time.Sleep(1 * time.Second)
 
-	m1 = pq.Dequeue(false)
+	m1 = pq.Dequeue(false, 0, time.Now())
 	assert.Equal(t, uint64(1), m1.ID)
 	assert.Equal(t, priority, m1.Priority)
 }
@@ -119,7 +119,7 @@ func BenchmarkDelayedQueueDequeue(b *testing.B) {
 	b.ResetTimer() // Reset timer to focus only on Dequeue operation timing
 
 	for i := 0; i < b.N; i++ {
-		pq.Dequeue(false)
+		pq.Dequeue(false, 0, time.Now())
 	}
 }
 
@@ -164,7 +164,7 @@ func TestDelayedQueue_MemoryCleanup(t *testing.T) {
 	startTime = time.Now()
 	dequeuedCount := 0
 	for q.Len() > 0 {
-		item := q.Dequeue(true)
+		item := q.Dequeue(true, 0, time.Now())
 		assert.NotNil(t, item)
 		dequeuedCount++
 	}

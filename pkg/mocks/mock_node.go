@@ -15,6 +15,13 @@ type mockNode struct {
 	mock.Mock
 	NextIDFunc func() uint64
 	mu         sync.Mutex
+
+	// Leader addresses returned by LeaderGrpcAddress and LeaderHttpAddress,
+	// guarded by mu. They are plain fields rather than testify expectations
+	// because the leader-hint interceptor and middleware call them on every
+	// request, concurrently with tests registering expectations.
+	leaderGrpcAddr string
+	leaderHttpAddr string
 }
 
 func NewMockNode() *mockNode {
@@ -58,28 +65,32 @@ func (n *mockNode) IsLeader() bool {
 	return args.Bool(0)
 }
 
+// LeaderGrpcAddress returns the address set by SetLeaderGrpcAddress, or "" (no
+// leader known), so tests that don't care about the leader hint need no setup.
 func (n *mockNode) LeaderGrpcAddress() string {
-	// Called on every RPC by the leader-hint interceptor. Default to an empty
-	// address (no leader known) unless a test explicitly sets an expectation,
-	// so tests that don't care about the hint don't need to register one.
-	for _, c := range n.ExpectedCalls {
-		if c.Method == "LeaderGrpcAddress" {
-			return n.Called().String(0)
-		}
-	}
-	return ""
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.leaderGrpcAddr
 }
 
+func (n *mockNode) SetLeaderGrpcAddress(addr string) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.leaderGrpcAddr = addr
+}
+
+// LeaderHttpAddress returns the address set by SetLeaderHttpAddress, or "" (no
+// leader known), so tests that don't care about the leader hint need no setup.
 func (n *mockNode) LeaderHttpAddress() string {
-	// Called on every HTTP response by the leader-hint middleware. Default to an
-	// empty address (no leader known) unless a test explicitly sets an
-	// expectation, so tests that don't care about the hint don't need one.
-	for _, c := range n.ExpectedCalls {
-		if c.Method == "LeaderHttpAddress" {
-			return n.Called().String(0)
-		}
-	}
-	return ""
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	return n.leaderHttpAddr
+}
+
+func (n *mockNode) SetLeaderHttpAddress(addr string) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.leaderHttpAddr = addr
 }
 
 // Ready reports the node as ready in tests. Real readiness is exercised in the

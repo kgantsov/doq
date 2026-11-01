@@ -797,7 +797,7 @@ func TestLeaderHintMetadata(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockNode := mocks.NewMockNode()
-			mockNode.On("LeaderGrpcAddress").Return(tt.leaderAddr)
+			mockNode.SetLeaderGrpcAddress(tt.leaderAddr)
 			mockNode.On("IsLeader").Return(tt.isLeader)
 
 			var idCounter uint64 = 0

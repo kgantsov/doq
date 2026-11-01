@@ -392,8 +392,14 @@ func (s *BadgerStore) UpdateMessage(
 	})
 }
 
+// PersistSnapshot writes the queue's config, then its unacked markers, then its
+// messages. Restore relies on that order: it must know which messages are in
+// flight before it reads them.
 func (s *BadgerStore) PersistSnapshot(
-	queueConfig *entity.QueueConfig, sink raft.SnapshotSink, txn *badger.Txn,
+	queueConfig *entity.QueueConfig,
+	unacked []*pb.UnackedMessage,
+	sink raft.SnapshotSink,
+	txn *badger.Txn,
 ) error {
 	it := txn.NewIterator(badger.DefaultIteratorOptions)
 	defer it.Close()
@@ -406,6 +412,15 @@ func (s *BadgerStore) PersistSnapshot(
 
 	if err := WriteSnapshotItem(sink, snapshotItem); err != nil {
 		return fmt.Errorf("failed to write message snapshot item: %v", err)
+	}
+
+	for _, u := range unacked {
+		snapshotItem := &pb.SnapshotItem{
+			Item: &pb.SnapshotItem_UnackedMessage{UnackedMessage: u},
+		}
+		if err := WriteSnapshotItem(sink, snapshotItem); err != nil {
+			return fmt.Errorf("failed to write unacked message snapshot item: %v", err)
+		}
 	}
 
 	prefix := s.getMessagesPrefix(queueConfig.Name)

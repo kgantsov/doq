@@ -49,13 +49,28 @@ func (qm *QueueManager) newQueue() *Queue {
 	return q
 }
 
-func (qm *QueueManager) PersistSnapshot(sink raft.SnapshotSink, txn *badger.Txn) error {
+// CaptureSnapshotState returns every queue's in-memory snapshot state, keyed by
+// queue name. See Queue.CaptureSnapshotState.
+func (qm *QueueManager) CaptureSnapshotState() map[string]*SnapshotState {
+	qm.mu.Lock()
+	defer qm.mu.Unlock()
+
+	states := make(map[string]*SnapshotState, len(qm.queues))
+	for name, queue := range qm.queues {
+		states[name] = queue.CaptureSnapshotState()
+	}
+	return states
+}
+
+func (qm *QueueManager) PersistSnapshot(
+	sink raft.SnapshotSink, txn *badger.Txn, states map[string]*SnapshotState,
+) error {
 	qm.mu.Lock()
 	queues := qm.queues
 	qm.mu.Unlock()
 
-	for _, queue := range queues {
-		err := queue.PersistSnapshot(sink, txn)
+	for name, queue := range queues {
+		err := queue.PersistSnapshot(sink, txn, states[name])
 		if err != nil {
 			return err
 		}

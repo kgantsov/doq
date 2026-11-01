@@ -4,6 +4,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/hashicorp/raft"
 	"github.com/kgantsov/doq/pkg/entity"
+	pb "github.com/kgantsov/doq/pkg/proto"
 )
 
 type Store interface {
@@ -31,5 +32,10 @@ type Store interface {
 		content string,
 		metadata map[string]string,
 	) error
-	PersistSnapshot(queueConfig *entity.QueueConfig, sink raft.SnapshotSink, txn *badger.Txn) error
+	PersistSnapshot(
+		queueConfig *entity.QueueConfig,
+		unacked []*pb.UnackedMessage,
+		sink raft.SnapshotSink,
+		txn *badger.Txn,
+	) error
 }

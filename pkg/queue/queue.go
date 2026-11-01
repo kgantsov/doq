@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/kgantsov/doq/pkg/entity"
 	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/metrics"
+	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/kgantsov/doq/pkg/queue/memory"
 	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/prometheus/client_golang/prometheus"
@@ -396,12 +398,17 @@ func (q *Queue) Enqueue(
 	return msg, nil
 }
 
-func (q *Queue) Dequeue(ack bool) (*entity.Message, error) {
+// Dequeue removes and returns the next message. seed drives the random pick of
+// weighted fair queues and now gates delayed messages and sets the ack deadline
+// (see memory.MemoryQueue.Dequeue). The FSM passes the Raft log index and the
+// leader's append time so every replica dequeues the same message with the same
+// deadline.
+func (q *Queue) Dequeue(ack bool, seed uint64, now time.Time) (*entity.Message, error) {
 	if q.queue.Len() == 0 {
 		return nil, errors.ErrEmptyQueue
 	}
 
-	queueItem := q.queue.Dequeue(ack)
+	queueItem := q.queue.Dequeue(ack, seed, now)
 	if queueItem == nil {
 		return nil, errors.ErrEmptyQueue
 	}
@@ -417,7 +424,7 @@ func (q *Queue) Dequeue(ack bool) (*entity.Message, error) {
 			"default",
 			&memory.Item{
 				ID: queueItem.ID,
-				Priority: time.Now().UTC().Add(
+				Priority: now.UTC().Add(
 					time.Duration(q.config.Settings.AckTimeout) * time.Second,
 				).Unix(),
 				Group: msg.Group,
@@ -456,7 +463,12 @@ func (q *Queue) Delete(id uint64) error {
 
 	group := msg.Group
 	q.queue.Delete(group, id)
-	q.ackQueue.Delete(group, id)
+	// Deleting an in-flight message takes it out of the unacked state, so
+	// release its unacked slot for fair queues, as Ack, Nack and AckTimeout do.
+	// Otherwise the group's unacked counter leaks and eventually starves it.
+	if q.ackQueue.Delete(group, id) != nil && q.config.Type == "fair" {
+		q.queue.UpdateWeights(group, id)
+	}
 
 	return nil
 }
@@ -489,7 +501,9 @@ func (q *Queue) UpdatePriority(id uint64, newPriority int64) error {
 	return nil
 }
 
-func (q *Queue) Touch(id uint64) error {
+// Touch extends an unacked message's ack deadline to now plus the ack timeout.
+// The FSM passes the leader's append time as now.
+func (q *Queue) Touch(id uint64, now time.Time) error {
 	queueItem := q.ackQueue.Get("default", id)
 
 	if queueItem == nil {
@@ -499,7 +513,7 @@ func (q *Queue) Touch(id uint64) error {
 	q.ackQueue.UpdatePriority(
 		"default",
 		id,
-		time.Now().UTC().Add(
+		now.UTC().Add(
 			time.Duration(q.config.Settings.AckTimeout)*time.Second,
 		).Unix(),
 	)
@@ -597,6 +611,133 @@ func (q *Queue) Len() int {
 	return int(q.queue.Len())
 }
 
-func (q *Queue) PersistSnapshot(sink raft.SnapshotSink, txn *badger.Txn) error {
-	return q.store.PersistSnapshot(q.config, sink, txn)
+// UnackedSnapshot returns the in-flight messages and their ack deadlines,
+// sorted by ID. The FSM captures it under its lock when a snapshot starts, so it
+// matches the snapshot's Badger transaction.
+func (q *Queue) UnackedSnapshot() []*pb.UnackedMessage {
+	items := q.ackQueue.Items()
+	unacked := make([]*pb.UnackedMessage, 0, len(items))
+	for _, item := range items {
+		unacked = append(unacked, &pb.UnackedMessage{Id: item.ID, AckDeadline: item.Priority})
+	}
+	sort.Slice(unacked, func(i, j int) bool { return unacked[i].Id < unacked[j].Id })
+	return unacked
+}
+
+// SnapshotState is the part of a queue's state that lives only in memory but
+// must survive a snapshot: its in-flight messages and, for round-robin fair
+// queues, the group scheduling order and cursors.
+type SnapshotState struct {
+	Unacked    []*pb.UnackedMessage
+	RoundRobin *pb.RoundRobinState
+}
+
+// schedulingStater is implemented by memory queues whose dequeue order depends
+// on scheduling state beyond their messages (round-robin fair queues).
+type schedulingStater interface {
+	SchedulingState() []memory.SchedulingNode
+	RestoreSchedulingState(nodes []memory.SchedulingNode)
+}
+
+// CaptureSnapshotState returns the queue's in-memory snapshot state. The FSM
+// calls it under its lock when a snapshot starts, so it matches the snapshot's
+// Badger transaction.
+func (q *Queue) CaptureSnapshotState() *SnapshotState {
+	state := &SnapshotState{Unacked: q.UnackedSnapshot()}
+
+	if s, ok := q.queue.(schedulingStater); ok {
+		state.RoundRobin = &pb.RoundRobinState{}
+		for _, node := range s.SchedulingState() {
+			state.RoundRobin.Nodes = append(state.RoundRobin.Nodes, &pb.RoundRobinNode{
+				Path:     node.Path,
+				Children: node.Children,
+				Current:  node.Current,
+			})
+		}
+	}
+
+	return state
+}
+
+// PersistSnapshot writes the queue's config, unacked markers and messages, then
+// its round-robin scheduling state. The scheduling state goes last so restore
+// applies it to the tree rebuilt from the messages.
+func (q *Queue) PersistSnapshot(sink raft.SnapshotSink, txn *badger.Txn, state *SnapshotState) error {
+	if state == nil {
+		state = &SnapshotState{}
+	}
+
+	if err := q.store.PersistSnapshot(q.config, state.Unacked, sink, txn); err != nil {
+		return err
+	}
+
+	if state.RoundRobin != nil {
+		item := &pb.SnapshotItem{
+			Item: &pb.SnapshotItem_RoundRobinState{RoundRobinState: state.RoundRobin},
+		}
+		if err := storage.WriteSnapshotItem(sink, item); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// RestoreRoundRobinState applies round-robin scheduling state from a snapshot.
+// It is a no-op for queues without scheduling state.
+func (q *Queue) RestoreRoundRobinState(state *pb.RoundRobinState) {
+	s, ok := q.queue.(schedulingStater)
+	if !ok || state == nil {
+		return
+	}
+
+	nodes := make([]memory.SchedulingNode, 0, len(state.Nodes))
+	for _, node := range state.Nodes {
+		nodes = append(nodes, memory.SchedulingNode{
+			Path:     node.Path,
+			Children: node.Children,
+			Current:  node.Current,
+		})
+	}
+	s.RestoreSchedulingState(nodes)
+}
+
+// RestoreUnacked restores a message from a snapshot as in flight: it goes to the
+// ack queue with its original deadline, not to the ready queue, and counts
+// towards its group's unacked limit in fair queues.
+func (q *Queue) RestoreUnacked(
+	id uint64,
+	group string,
+	priority int64,
+	content string,
+	metadata map[string]string,
+	ackDeadline int64,
+) error {
+	if q.config.Type != "fair" {
+		group = "default"
+	}
+
+	msg, err := q.store.Enqueue(q.config.Name, id, group, priority, content, metadata)
+	if err != nil {
+		return err
+	}
+
+	// Restoring over existing state (a follower installing a snapshot): the
+	// message may already be in flight or ready here.
+	if q.ackQueue.Get("default", id) != nil {
+		q.ackQueue.UpdatePriority("default", id, ackDeadline)
+		return nil
+	}
+	if q.queue.Get(msg.Group, id) != nil {
+		q.queue.Delete(msg.Group, id)
+	}
+
+	q.ackQueue.Enqueue("default", &memory.Item{ID: id, Priority: ackDeadline, Group: msg.Group})
+	q.queue.MarkUnacked(msg.Group)
+
+	if q.cfg.Prometheus.Enabled {
+		q.updatePrometheusQueueSizes()
+	}
+
+	return nil
 }

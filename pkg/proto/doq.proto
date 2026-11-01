@@ -76,12 +76,37 @@ message LeaderConfiguration {
   string http_addr = 4;
 }
 
+// UnackedMessage marks a message as dequeued but not yet acked. In a snapshot it
+// follows its queue's Queue item and precedes the queue's Message items, so
+// restore can put the message back in flight instead of making it ready.
+message UnackedMessage {
+  uint64 id = 1;
+  int64 ack_deadline = 2; // unix seconds
+}
+
+// RoundRobinNode is the scheduling state of one internal node of a round-robin
+// fair queue's group tree: the order its children are visited in and the child
+// the next dequeue starts from.
+message RoundRobinNode {
+  string path = 1; // dot-joined group path; "" is the root
+  repeated string children = 2;
+  string current = 3; // "" when the next dequeue starts from the first child
+}
+
+// RoundRobinState is a round-robin queue's scheduling state. In a snapshot it
+// follows the queue's Message items, so restore applies it to the rebuilt tree.
+message RoundRobinState {
+  repeated RoundRobinNode nodes = 1;
+}
+
 message SnapshotItem {
   oneof item {
     Queue queue = 1;
     Message message = 2;
 
     LeaderConfiguration leader_configuration = 3;
+    UnackedMessage unacked_message = 4;
+    RoundRobinState round_robin_state = 5;
   }
 }
 
