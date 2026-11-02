@@ -606,6 +606,15 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	// The snapshot replaces the FSM's state rather than adding to it. A
+	// running follower that fell too far behind for the leader to send it the
+	// log installs a snapshot over the state it already has; anything not in
+	// the snapshot must go, or it would be served, and written into this
+	// node's next snapshot.
+	if err := f.queueManager.Reset(); err != nil {
+		return fmt.Errorf("clear state before restoring the snapshot: %w", err)
+	}
+
 	linesTotal := 0
 	linesRestored := 0
 	queuesTotal := 0

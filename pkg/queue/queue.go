@@ -325,13 +325,20 @@ func (q *Queue) DeleteQueue() error {
 		return err
 	}
 
-	q.StopAckQueueMonitoring()
-
-	q.stats.Stop()
+	q.stop()
 
 	q.updatePrometheusQueueSizes()
 
 	return nil
+}
+
+// stop shuts down the queue's background work and wakes any consumer blocked
+// in NotifyChan, so it looks the queue up again instead of waiting on a queue
+// that no longer exists.
+func (q *Queue) stop() {
+	q.StopAckQueueMonitoring()
+	q.stats.Stop()
+	q.notify()
 }
 
 func (q *Queue) Load(queueName string) error {

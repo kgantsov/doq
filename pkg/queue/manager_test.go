@@ -8,6 +8,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/storage"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
@@ -70,15 +71,14 @@ func TestNewQueueManager(t *testing.T) {
 	assert.Equal(t, q2m2.ID, m.ID)
 	assert.Equal(t, q2m2.Content, m.Content)
 
+	// queue_2 still has a message: deleting it must remove that too, so the
+	// queue can't be loaded again from the store.
 	err = queueManager.DeleteQueue("queue_2")
 	assert.Nil(t, err)
 
 	queue2, err = queueManager.GetQueue("queue_2")
-	assert.Nil(t, err)
-
-	m, err = queue2.Dequeue(true, 0, time.Now())
-	assert.NotNil(t, err)
-	assert.Nil(t, m)
+	assert.ErrorIs(t, err, errors.ErrQueueNotFound)
+	assert.Nil(t, queue2)
 }
 
 func TestQueueManagerGetQueue(t *testing.T) {

@@ -143,31 +143,44 @@ func (s *BadgerStore) UpdateQueue(queueType, queueName string, settings entity.Q
 	return nil
 }
 
+// DeleteQueue removes a queue's config and all of its messages. Messages are
+// deleted in batches, so a queue of any size fits within Badger's transaction
+// limits.
 func (s *BadgerStore) DeleteQueue(queueName string) error {
-	err := s.db.Update(func(txn *badger.Txn) error {
+	var keys [][]byte
+	err := s.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
-		opts.PrefetchValues = true
+		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
 		prefix := s.getMessagesPrefix(queueName)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			return txn.Delete(item.Key())
+			keys = append(keys, it.Item().KeyCopy(nil))
 		}
-
-		err := txn.Delete(s.GetQueueKey(queueName))
-		if err != nil {
-			return err
-		}
-
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	return nil
+	wb := s.db.NewWriteBatch()
+	defer wb.Cancel()
+	for _, key := range keys {
+		if err := wb.Delete(key); err != nil {
+			return err
+		}
+	}
+	if err := wb.Delete(s.GetQueueKey(queueName)); err != nil {
+		return err
+	}
+	return wb.Flush()
+}
+
+// DeleteAll removes every queue and message. Raft's log and stable store
+// share this database under their own prefixes and are left alone.
+func (s *BadgerStore) DeleteAll() error {
+	return s.db.DropPrefix([]byte("queues:"), []byte("messages:"))
 }
 
 func (s *BadgerStore) Enqueue(

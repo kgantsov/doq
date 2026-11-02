@@ -79,6 +79,21 @@ func (qm *QueueManager) PersistSnapshot(
 	return nil
 }
 
+// Reset removes every queue and message, from memory and from the store, so a
+// snapshot can be restored over existing state without leaving behind queues
+// or messages that aren't in it.
+func (qm *QueueManager) Reset() error {
+	qm.mu.Lock()
+	defer qm.mu.Unlock()
+
+	for _, q := range qm.queues {
+		q.stop()
+	}
+	qm.queues = make(map[string]*Queue)
+
+	return qm.store.DeleteAll()
+}
+
 func (qm *QueueManager) CreateQueue(queueType, queueName string, settings entity.QueueSettings) (*Queue, error) {
 	qm.mu.Lock()
 	defer qm.mu.Unlock()

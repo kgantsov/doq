@@ -12,6 +12,9 @@ type Store interface {
 	CreateQueue(queueType, queueName string, settings entity.QueueSettings) error
 	UpdateQueue(queueType, queueName string, settings entity.QueueSettings) error
 	DeleteQueue(queueName string) error
+	// DeleteAll removes every queue and message, e.g. before restoring a
+	// snapshot over existing state.
+	DeleteAll() error
 	Enqueue(
 		queueName string,
 		id uint64,

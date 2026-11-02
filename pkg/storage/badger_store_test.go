@@ -8,6 +8,7 @@ import (
 	"github.com/kgantsov/doq/pkg/entity"
 	pb "github.com/kgantsov/doq/pkg/proto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateUpdateQueue(t *testing.T) {
@@ -385,4 +386,68 @@ func TestBadgerStorePersistSnapshot(t *testing.T) {
 			// assert.Equal(t, m.Metadata, msg.Metadata)
 		}
 	}
+}
+
+func TestBadgerStoreDeleteQueueRemovesAllMessages(t *testing.T) {
+	opts := badger.DefaultOptions("").WithInMemory(true)
+	db, err := badger.Open(opts)
+	require.NoError(t, err)
+	defer db.Close()
+
+	store := NewBadgerStore(db)
+	settings := entity.QueueSettings{}
+	require.NoError(t, store.CreateQueue("delayed", "gone", settings))
+	require.NoError(t, store.CreateQueue("delayed", "other", settings))
+	for id := uint64(1); id <= 3; id++ {
+		_, err := store.Enqueue("gone", id, "default", 0, "message", nil)
+		require.NoError(t, err)
+	}
+	_, err = store.Enqueue("other", 1, "default", 0, "other message", nil)
+	require.NoError(t, err)
+
+	require.NoError(t, store.DeleteQueue("gone"))
+
+	_, err = store.LoadQueue("gone")
+	assert.Error(t, err, "the queue's config survived")
+	messages, err := store.GetMessages("gone", 10, 0)
+	require.NoError(t, err)
+	assert.Empty(t, messages, "the queue's messages survived")
+
+	_, err = store.LoadQueue("other")
+	assert.NoError(t, err)
+	_, err = store.Get("other", 1)
+	assert.NoError(t, err, "deleting one queue touched another")
+}
+
+func TestBadgerStoreDeleteAll(t *testing.T) {
+	opts := badger.DefaultOptions("").WithInMemory(true)
+	db, err := badger.Open(opts)
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Raft keeps its log in the same database.
+	require.NoError(t, db.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte("logs-1"), []byte("raft entry"))
+	}))
+
+	store := NewBadgerStore(db)
+	for _, name := range []string{"a", "b"} {
+		require.NoError(t, store.CreateQueue("delayed", name, entity.QueueSettings{}))
+		_, err := store.Enqueue(name, 1, "default", 0, "message", nil)
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, store.DeleteAll())
+
+	queues, err := store.ListQueues()
+	require.NoError(t, err)
+	assert.Empty(t, queues)
+	for _, name := range []string{"a", "b"} {
+		_, err := store.Get(name, 1)
+		assert.Error(t, err, "message in queue %s survived", name)
+	}
+	assert.NoError(t, db.View(func(txn *badger.Txn) error {
+		_, err := txn.Get([]byte("logs-1"))
+		return err
+	}), "DeleteAll removed a key that isn't queue data")
 }

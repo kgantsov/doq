@@ -723,3 +723,128 @@ func TestFSMUsesLeaderAppendTime(t *testing.T) {
 		q.UnackedSnapshot(),
 	)
 }
+
+// TestFSMRestoreReplacesExistingState installs a snapshot on an FSM that
+// already has state, as a running follower does when it has fallen too far
+// behind for the leader to send it the log. The follower's own state must be
+// replaced, not merged: queues and messages that are gone from the snapshot
+// must be gone after the restore, from memory and from the store, or they
+// come back in the follower's next snapshot and on its next restart.
+func TestFSMRestoreReplacesExistingState(t *testing.T) {
+	cfg := &config.Config{
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		},
+	}
+
+	index := uint64(0)
+	nextLog := func(cmd *pb.RaftCommand) *raft.Log {
+		index++
+		return raftLog(t, index, cmd)
+	}
+	createQueue := func(name string) *raft.Log {
+		return nextLog(&pb.RaftCommand{Cmd: &pb.RaftCommand_CreateQueue{CreateQueue: &pb.CreateQueueRequest{
+			Type: "delayed", Name: name, Settings: &pb.QueueSettings{AckTimeout: 60},
+		}}})
+	}
+	enqueue := func(queueName string, id uint64) *raft.Log {
+		return nextLog(&pb.RaftCommand{Cmd: &pb.RaftCommand_Enqueue{Enqueue: &pb.EnqueueRequest{
+			QueueName: queueName, Id: id, Priority: int64(id), Content: fmt.Sprintf("message %d", id),
+		}}})
+	}
+
+	// What the follower applied before it fell behind.
+	shared := []*raft.Log{
+		createQueue("kept"),
+		enqueue("kept", 1),
+		enqueue("kept", 2),
+		enqueue("kept", 3),
+		createQueue("deleted"),
+		enqueue("deleted", 10),
+	}
+	// What the leader applied after that, up to its snapshot.
+	missed := []*raft.Log{
+		nextLog(&pb.RaftCommand{Cmd: &pb.RaftCommand_Delete{Delete: &pb.DeleteRequest{QueueName: "kept", Id: 1}}}),
+		nextLog(&pb.RaftCommand{Cmd: &pb.RaftCommand_DeleteQueue{DeleteQueue: &pb.DeleteQueueRequest{Name: "deleted"}}}),
+		enqueue("kept", 4),
+		nextLog(&pb.RaftCommand{Cmd: &pb.RaftCommand_Dequeue{Dequeue: &pb.DequeueRequest{QueueName: "kept", Ack: false}}}),
+	}
+
+	openFSM := func() (*FSM, storage.Store) {
+		db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+		require.NoError(t, err)
+		t.Cleanup(func() { db.Close() })
+		return newTestFSM(db, cfg), storage.NewBadgerStore(db)
+	}
+	applyAll := func(fsm *FSM, logs []*raft.Log) {
+		for _, l := range logs {
+			resp := fsm.Apply(l).(*FSMResponse)
+			require.NoError(t, resp.error, "log index %d", l.Index)
+		}
+	}
+
+	leader, _ := openFSM()
+	applyAll(leader, shared)
+	applyAll(leader, missed)
+
+	follower, followerStore := openFSM()
+	applyAll(follower, shared)
+
+	leaderSnapshot := snapshotItems(t, leader)
+	require.NoError(t, follower.Restore(itemsSink(t, leaderSnapshot)))
+
+	_, err := follower.queueManager.GetQueue("deleted")
+	assert.ErrorIs(t, err, errors.ErrQueueNotFound, "a queue deleted on the leader survived the restore")
+	_, err = followerStore.Get("kept", 1)
+	assert.Error(t, err, "a message deleted on the leader survived the restore in the store")
+
+	kept, err := follower.queueManager.GetQueue("kept")
+	require.NoError(t, err)
+	stats := kept.GetStats()
+	assert.Equal(t, int64(2), stats.Ready)
+	assert.Equal(t, int64(1), stats.Unacked)
+
+	// The follower's next snapshot must match the leader's.
+	assert.ElementsMatch(t, itemStrings(leaderSnapshot), itemStrings(snapshotItems(t, follower)))
+}
+
+// snapshotItems takes a snapshot of fsm and returns its items.
+func snapshotItems(t *testing.T, fsm *FSM) []*pb.SnapshotItem {
+	t.Helper()
+	snap, err := fsm.Snapshot()
+	require.NoError(t, err)
+	sink := &MockSink{}
+	require.NoError(t, snap.Persist(sink))
+	snap.Release()
+
+	var items []*pb.SnapshotItem
+	for {
+		item, err := storage.ReadSnapshotItem(sink)
+		if err == io.EOF {
+			return items
+		}
+		require.NoError(t, err)
+		items = append(items, item)
+	}
+}
+
+// itemsSink returns a sink that reads back as a snapshot of items.
+func itemsSink(t *testing.T, items []*pb.SnapshotItem) *MockSink {
+	t.Helper()
+	sink := &MockSink{}
+	for _, item := range items {
+		require.NoError(t, storage.WriteSnapshotItem(sink, item))
+	}
+	return sink
+}
+
+// itemStrings renders snapshot items for comparing snapshots whose queues may
+// be written in any order.
+func itemStrings(items []*pb.SnapshotItem) []string {
+	out := make([]string, len(items))
+	for i, item := range items {
+		out[i] = item.String()
+	}
+	return out
+}
