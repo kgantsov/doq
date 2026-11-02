@@ -142,10 +142,20 @@ func newDeterminismHarness(
 }
 
 func (h *determinismHarness) openFSM() *FSM {
-	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true).WithLogger(nil))
+	// Badger's default 64MB memtable is allocated up front even in memory, and
+	// a run opens hundreds of these.
+	opts := badger.DefaultOptions("").WithInMemory(true).WithLogger(nil).
+		WithMemTableSize(1 << 20).WithValueThreshold(1 << 10).WithBlockCacheSize(1 << 20)
+	db, err := badger.Open(opts)
 	require.NoError(h.t, err)
-	h.t.Cleanup(func() { db.Close() })
-	return newTestFSM(db, h.cfg)
+	f := newTestFSM(db, h.cfg)
+	h.t.Cleanup(func() {
+		// Deleting the queue stops its background goroutines before the
+		// database closes under them.
+		f.queueManager.DeleteQueue(h.queue)
+		db.Close()
+	})
+	return f
 }
 
 // apply appends one entry to the log and applies it to both FSMs. The leader's

@@ -10,6 +10,7 @@ import (
 
 	"github.com/kgantsov/doq/pkg/config"
 	"github.com/kgantsov/doq/pkg/entity"
+	"github.com/kgantsov/doq/pkg/errors"
 	"github.com/kgantsov/doq/pkg/http"
 	"github.com/kgantsov/doq/pkg/metrics"
 	"github.com/kgantsov/doq/pkg/mocks"
@@ -602,6 +603,9 @@ func TestDequeueStream(t *testing.T) {
 
 	client := pb.NewDOQClient(conn)
 
+	// Set up every response before opening the stream: the server dequeues the
+	// next message as soon as the client asks for it, so changing expectations
+	// while the stream is open races with the server's calls.
 	mockNode.On(
 		"Dequeue",
 		"test-queue",
@@ -612,7 +616,19 @@ func TestDequeueStream(t *testing.T) {
 		Group:    "default",
 		Content:  "test-message-1",
 		Metadata: map[string]string{"retry": "3"},
-	}, nil)
+	}, nil).Once()
+	mockNode.On(
+		"Dequeue",
+		"test-queue",
+		true,
+	).Return(&entity.Message{
+		ID:       uint64(2),
+		Priority: 50,
+		Group:    "default",
+		Content:  "test-message-2",
+		Metadata: map[string]string{"retry": "3"},
+	}, nil).Once()
+	mockNode.On("Dequeue", "test-queue", true).Return((*entity.Message)(nil), errors.ErrEmptyQueue)
 
 	// Open a dequeueStream to receive messages from the queue
 	dequeueStream, err := client.DequeueStream(ctx)
@@ -631,24 +647,6 @@ func TestDequeueStream(t *testing.T) {
 	assert.Equal(t, "test-message-1", msg.Content)
 
 	dequeueStream.Send(&pb.DequeueRequest{})
-
-	mockNode.On(
-		"Dequeue",
-		"test-queue",
-		true,
-	).Unset()
-
-	mockNode.On(
-		"Dequeue",
-		"test-queue",
-		true,
-	).Return(&entity.Message{
-		ID:       uint64(2),
-		Priority: 50,
-		Group:    "default",
-		Content:  "test-message-2",
-		Metadata: map[string]string{"retry": "3"},
-	}, nil)
 
 	// Consume messages from the stream
 	msg, err = dequeueStream.Recv()
