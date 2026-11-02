@@ -1,6 +1,10 @@
 test:
 	go test ./... -race -cover
 
+# Starts real 3-node clusters, so it needs the web UI built (make build_web).
+test_integration:
+	go test -tags integration -count=1 -v ./testing/integration/...
+
 bench:
 	go test ./... -bench=. -benchmem
 
