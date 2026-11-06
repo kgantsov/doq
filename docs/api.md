@@ -111,8 +111,11 @@ high-throughput producers/consumers.
 | `UpdatePriority` | Change a message's priority. |
 
 Key message fields (`EnqueueRequest` / `DequeueResponse`): `queueName`, `id`,
-`group`, `priority`, `content`, `metadata`. `QueueSettings` carries `strategy`
-(`ROUND_ROBIN` / `WEIGHTED`), `max_unacked`, and `ack_timeout` (seconds).
+`group`, `priority`, `content`, `metadata`, plus the read-only `delivery_count`
+on the message-returning responses. `QueueSettings` carries `strategy`
+(`ROUND_ROBIN` / `WEIGHTED`), `max_unacked`, `ack_timeout` (seconds), and
+`delivery_limit` — the number of deliveries a message gets before it is dropped,
+`0` for unlimited. See [queues.md](queues.md#delivery-limits).
 
 ### Producer example
 

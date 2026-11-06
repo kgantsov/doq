@@ -30,13 +30,14 @@ type FSM struct {
 }
 
 type FSMResponse struct {
-	QueueName string
-	ID        uint64
-	Group     string
-	Priority  int64
-	Content   string
-	Metadata  map[string]string
-	error     error
+	QueueName     string
+	ID            uint64
+	Group         string
+	Priority      int64
+	Content       string
+	Metadata      map[string]string
+	DeliveryCount uint32
+	error         error
 }
 
 func (f *FSM) Apply(raftLog *raft.Log) interface{} {
@@ -147,13 +148,14 @@ func (f *FSM) applyEnqueue(payload *pb.RaftCommand_Enqueue) *FSMResponse {
 	}
 
 	return &FSMResponse{
-		QueueName: payload.Enqueue.QueueName,
-		ID:        msg.ID,
-		Group:     msg.Group,
-		Priority:  msg.Priority,
-		Content:   msg.Content,
-		Metadata:  msg.Metadata,
-		error:     nil,
+		QueueName:     payload.Enqueue.QueueName,
+		ID:            msg.ID,
+		Group:         msg.Group,
+		Priority:      msg.Priority,
+		Content:       msg.Content,
+		Metadata:      msg.Metadata,
+		DeliveryCount: msg.DeliveryCount,
+		error:         nil,
 	}
 }
 
@@ -190,13 +192,14 @@ func (f *FSM) applyDequeue(payload *pb.RaftCommand_Dequeue, index uint64, now ti
 	}
 
 	return &FSMResponse{
-		QueueName: payload.Dequeue.QueueName,
-		ID:        msg.ID,
-		Group:     msg.Group,
-		Priority:  msg.Priority,
-		Content:   msg.Content,
-		Metadata:  msg.Metadata,
-		error:     nil,
+		QueueName:     payload.Dequeue.QueueName,
+		ID:            msg.ID,
+		Group:         msg.Group,
+		Priority:      msg.Priority,
+		Content:       msg.Content,
+		Metadata:      msg.Metadata,
+		DeliveryCount: msg.DeliveryCount,
+		error:         nil,
 	}
 }
 
@@ -231,13 +234,14 @@ func (f *FSM) applyGet(payload *pb.RaftCommand_Get) *FSMResponse {
 	}
 
 	return &FSMResponse{
-		QueueName: payload.Get.QueueName,
-		ID:        msg.ID,
-		Group:     msg.Group,
-		Priority:  msg.Priority,
-		Content:   msg.Content,
-		Metadata:  msg.Metadata,
-		error:     nil,
+		QueueName:     payload.Get.QueueName,
+		ID:            msg.ID,
+		Group:         msg.Group,
+		Priority:      msg.Priority,
+		Content:       msg.Content,
+		Metadata:      msg.Metadata,
+		DeliveryCount: msg.DeliveryCount,
+		error:         nil,
 	}
 }
 
@@ -479,18 +483,20 @@ func (f *FSM) applyCreateQueue(payload *pb.RaftCommand_CreateQueue) *FSMResponse
 	log.Info().
 		Str("component", "fsm").
 		Msgf(
-			"Creating queue: %s %d %s",
+			"Creating queue: %s %d %s %d",
 			payload.CreateQueue.Name,
 			payload.CreateQueue.Settings.AckTimeout,
 			payload.CreateQueue.Settings.Strategy.String(),
+			payload.CreateQueue.Settings.DeliveryLimit,
 		)
 	_, err := f.queueManager.CreateQueue(
 		payload.CreateQueue.Type,
 		payload.CreateQueue.Name,
 		entity.QueueSettings{
-			Strategy:   payload.CreateQueue.Settings.Strategy.String(),
-			MaxUnacked: int(payload.CreateQueue.Settings.MaxUnacked),
-			AckTimeout: payload.CreateQueue.Settings.AckTimeout,
+			Strategy:      payload.CreateQueue.Settings.Strategy.String(),
+			MaxUnacked:    int(payload.CreateQueue.Settings.MaxUnacked),
+			AckTimeout:    payload.CreateQueue.Settings.AckTimeout,
+			DeliveryLimit: payload.CreateQueue.Settings.DeliveryLimit,
 		},
 	)
 	if err != nil {
@@ -525,9 +531,10 @@ func (f *FSM) applyUpdateQueue(payload *pb.RaftCommand_UpdateQueue) *FSMResponse
 	err := f.queueManager.UpdateQueue(
 		payload.UpdateQueue.Name,
 		entity.QueueSettings{
-			Strategy:   payload.UpdateQueue.Settings.Strategy.String(),
-			MaxUnacked: int(payload.UpdateQueue.Settings.MaxUnacked),
-			AckTimeout: payload.UpdateQueue.Settings.AckTimeout,
+			Strategy:      payload.UpdateQueue.Settings.Strategy.String(),
+			MaxUnacked:    int(payload.UpdateQueue.Settings.MaxUnacked),
+			AckTimeout:    payload.UpdateQueue.Settings.AckTimeout,
+			DeliveryLimit: payload.UpdateQueue.Settings.DeliveryLimit,
 		},
 	)
 	if err != nil {
@@ -661,9 +668,10 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 			log.Debug().Str("component", "fsm").Msgf("Restoring queue: %s", v.Queue.Name)
 			unacked = make(map[uint64]int64)
 			q, err = f.queueManager.CreateQueue(v.Queue.Type, v.Queue.Name, entity.QueueSettings{
-				Strategy:   v.Queue.Settings.Strategy.String(),
-				MaxUnacked: int(v.Queue.Settings.MaxUnacked),
-				AckTimeout: v.Queue.Settings.AckTimeout,
+				Strategy:      v.Queue.Settings.Strategy.String(),
+				MaxUnacked:    int(v.Queue.Settings.MaxUnacked),
+				AckTimeout:    v.Queue.Settings.AckTimeout,
+				DeliveryLimit: v.Queue.Settings.DeliveryLimit,
 			})
 			if err != nil {
 				log.Warn().Str("component", "fsm").Msgf("Failed to create a queue: %v", err)
@@ -685,24 +693,22 @@ func (f *FSM) Restore(rc io.ReadCloser) error {
 					v.Message.Group,
 					v.Message.Priority,
 				)
+			// Restore through the message-shaped paths, not Queue.Enqueue: they
+			// persist the message verbatim, so DeliveryCount survives instead of
+			// resetting and handing a poison message a fresh delivery budget.
+			msg := &entity.Message{
+				ID:            v.Message.Id,
+				Group:         v.Message.Group,
+				Priority:      v.Message.Priority,
+				Content:       v.Message.Content,
+				Metadata:      v.Message.Metadata,
+				DeliveryCount: v.Message.DeliveryCount,
+			}
 			if deadline, ok := unacked[v.Message.Id]; ok {
-				q.RestoreUnacked(
-					v.Message.Id,
-					v.Message.Group,
-					v.Message.Priority,
-					v.Message.Content,
-					v.Message.Metadata,
-					deadline,
-				)
+				q.RestoreUnacked(msg, deadline)
 				continue
 			}
-			q.Enqueue(
-				v.Message.Id,
-				v.Message.Group,
-				v.Message.Priority,
-				v.Message.Content,
-				v.Message.Metadata,
-			)
+			q.EnqueueRestored(msg)
 		default:
 			return fmt.Errorf("unknown item in snapshot")
 		}

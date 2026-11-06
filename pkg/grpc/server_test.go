@@ -841,3 +841,110 @@ func TestLeaderHintMetadata(t *testing.T) {
 		})
 	}
 }
+
+// TestDeliveryCountInResponses checks delivery_count reaches gRPC clients on
+// every message-returning response, including both streaming paths. The proto
+// field existing is not enough — each response is built field by field, so a
+// missing assignment silently reports 0 forever.
+func TestDeliveryCountInResponses(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	msg := &entity.Message{
+		ID:            uint64(7),
+		Priority:      10,
+		Group:         "default",
+		Content:       "poison",
+		Metadata:      map[string]string{"retry": "2"},
+		DeliveryCount: 3,
+	}
+
+	mockNode.On(
+		"Enqueue", "test-queue", uint64(0), "default", int64(10), "poison", msg.Metadata,
+	).Return(msg, nil)
+	mockNode.On("Dequeue", "test-queue", false).Return(msg, nil)
+	mockNode.On("Dequeue", "test-queue", true).Return(msg, nil)
+	mockNode.On("Get", "test-queue", uint64(7)).Return(msg, nil)
+
+	enqueueResp, err := client.Enqueue(ctx, &pb.EnqueueRequest{
+		QueueName: "test-queue",
+		Group:     "default",
+		Priority:  10,
+		Content:   "poison",
+		Metadata:  msg.Metadata,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, uint32(3), enqueueResp.DeliveryCount, "Enqueue response")
+
+	dequeueResp, err := client.Dequeue(ctx, &pb.DequeueRequest{QueueName: "test-queue"})
+	require.NoError(t, err)
+	assert.Equal(t, uint32(3), dequeueResp.DeliveryCount, "Dequeue response")
+
+	getResp, err := client.Get(ctx, &pb.GetRequest{QueueName: "test-queue", Id: 7})
+	require.NoError(t, err)
+	assert.Equal(t, uint32(3), getResp.DeliveryCount, "Get response")
+
+	enqueueStream, err := client.EnqueueStream(ctx)
+	require.NoError(t, err)
+	require.NoError(t, enqueueStream.Send(&pb.EnqueueRequest{
+		QueueName: "test-queue",
+		Group:     "default",
+		Priority:  10,
+		Content:   "poison",
+		Metadata:  msg.Metadata,
+	}))
+	streamed, err := enqueueStream.Recv()
+	require.NoError(t, err)
+	assert.Equal(t, uint32(3), streamed.DeliveryCount, "EnqueueStream response")
+
+	dequeueStream, err := client.DequeueStream(ctx)
+	require.NoError(t, err)
+	require.NoError(t, dequeueStream.Send(&pb.DequeueRequest{
+		QueueName: "test-queue",
+		Ack:       true,
+	}))
+	streamedDequeue, err := dequeueStream.Recv()
+	require.NoError(t, err)
+	assert.Equal(t, uint32(3), streamedDequeue.DeliveryCount, "DequeueStream response")
+}
+
+// TestDeliveryLimitInQueueSettings checks the new queue setting survives the
+// gRPC create/read round trip.
+func TestDeliveryLimitInQueueSettings(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	settings := entity.QueueSettings{
+		Strategy:      "STRATEGY_UNSPECIFIED",
+		AckTimeout:    60,
+		DeliveryLimit: 3,
+	}
+	mockNode.On("CreateQueue", "delayed", "test-queue", settings).Return(nil)
+
+	resp, err := client.CreateQueue(ctx, &pb.CreateQueueRequest{
+		Name:     "test-queue",
+		Type:     "delayed",
+		Settings: &pb.QueueSettings{AckTimeout: 60, DeliveryLimit: 3},
+	})
+	require.NoError(t, err)
+	assert.True(t, resp.Success)
+	mockNode.AssertCalled(t, "CreateQueue", "delayed", "test-queue", settings)
+}

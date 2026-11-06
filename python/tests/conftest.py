@@ -31,13 +31,13 @@ async def fixt_http_client():
 async def fixt_generate_queue(fixt_http_client):
     created_names = []
 
-    async def _generate_queue(type: str, name: str):
+    async def _generate_queue(type: str, name: str, settings: dict | None = None):
         # name = f'{"-".join(fake.words(3))}'
 
         request_data = {
             "type": type,
             "name": name,
-            "settings": {}
+            "settings": settings or {}
         }
 
         response = await fixt_http_client.post(
@@ -102,6 +102,17 @@ async def fixt_priority_queue(fixt_generate_queue):
     group = await fixt_generate_queue(
         type="delayed",
         name="login"
+    )
+
+    yield group
+
+
+@pytest.fixture(scope="package")
+async def fixt_delivery_limit_queue(fixt_generate_queue):
+    group = await fixt_generate_queue(
+        type="delayed",
+        name="delivery-limit",
+        settings={"delivery_limit": 2},
     )
 
     yield group

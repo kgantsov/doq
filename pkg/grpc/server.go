@@ -105,9 +105,10 @@ func (s *QueueServer) CreateQueue(
 		req.Type,
 		req.Name,
 		entity.QueueSettings{
-			Strategy:   strings.ToUpper(req.Settings.Strategy.String()),
-			MaxUnacked: int(req.Settings.MaxUnacked),
-			AckTimeout: req.Settings.AckTimeout,
+			Strategy:      strings.ToUpper(req.Settings.Strategy.String()),
+			MaxUnacked:    int(req.Settings.MaxUnacked),
+			AckTimeout:    req.Settings.AckTimeout,
+			DeliveryLimit: req.Settings.DeliveryLimit,
 		},
 	)
 	if err != nil {
@@ -180,9 +181,12 @@ func (s *QueueServer) GetQueues(
 			Name: queue.Name,
 			Type: queue.Type,
 			Settings: &pb.QueueSettings{
-				Strategy:   pb.QueueSettings_Strategy(pb.QueueSettings_Strategy_value[queue.Settings.Strategy]),
-				MaxUnacked: uint32(queue.Settings.MaxUnacked),
-				AckTimeout: queue.Settings.AckTimeout,
+				Strategy: pb.QueueSettings_Strategy(
+					pb.QueueSettings_Strategy_value[queue.Settings.Strategy],
+				),
+				MaxUnacked:    uint32(queue.Settings.MaxUnacked),
+				AckTimeout:    queue.Settings.AckTimeout,
+				DeliveryLimit: queue.Settings.DeliveryLimit,
 			},
 			Stats: &pb.Stats{
 				EnqueueRPS: queue.Stats.EnqueueRPS,
@@ -218,9 +222,12 @@ func (s *QueueServer) GetQueue(
 		Name: queue.Name,
 		Type: queue.Type,
 		Settings: &pb.QueueSettings{
-			Strategy:   pb.QueueSettings_Strategy(pb.QueueSettings_Strategy_value[queue.Settings.Strategy]),
-			MaxUnacked: uint32(queue.Settings.MaxUnacked),
-			AckTimeout: queue.Settings.AckTimeout,
+			Strategy: pb.QueueSettings_Strategy(
+				pb.QueueSettings_Strategy_value[queue.Settings.Strategy],
+			),
+			MaxUnacked:    uint32(queue.Settings.MaxUnacked),
+			AckTimeout:    queue.Settings.AckTimeout,
+			DeliveryLimit: queue.Settings.DeliveryLimit,
 		},
 		Stats: &pb.Stats{
 			EnqueueRPS: queue.Stats.EnqueueRPS,
@@ -252,12 +259,13 @@ func (s *QueueServer) Enqueue(
 	}
 
 	return &pb.EnqueueResponse{
-		Success:  true,
-		Id:       message.ID,
-		Group:    message.Group,
-		Priority: message.Priority,
-		Content:  message.Content,
-		Metadata: message.Metadata,
+		Success:       true,
+		Id:            message.ID,
+		Group:         message.Group,
+		Priority:      message.Priority,
+		Content:       message.Content,
+		Metadata:      message.Metadata,
+		DeliveryCount: message.DeliveryCount,
 	}, nil
 }
 
@@ -284,12 +292,13 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 		}
 
 		err = stream.Send(&pb.EnqueueResponse{
-			Success:  true,
-			Id:       message.ID,
-			Group:    message.Group,
-			Priority: message.Priority,
-			Content:  message.Content,
-			Metadata: message.Metadata,
+			Success:       true,
+			Id:            message.ID,
+			Group:         message.Group,
+			Priority:      message.Priority,
+			Content:       message.Content,
+			Metadata:      message.Metadata,
+			DeliveryCount: message.DeliveryCount,
 		})
 		if err != nil {
 			log.Error().Str("component", "grpc").Err(err).Msgf(
@@ -322,12 +331,13 @@ func (s *QueueServer) Dequeue(
 	}
 
 	return &pb.DequeueResponse{
-		Success:  true,
-		Id:       message.ID,
-		Group:    message.Group,
-		Priority: message.Priority,
-		Content:  message.Content,
-		Metadata: message.Metadata,
+		Success:       true,
+		Id:            message.ID,
+		Group:         message.Group,
+		Priority:      message.Priority,
+		Content:       message.Content,
+		Metadata:      message.Metadata,
+		DeliveryCount: message.DeliveryCount,
 	}, nil
 }
 
@@ -392,12 +402,13 @@ func (s *QueueServer) DequeueStream(stream pb.DOQ_DequeueStreamServer) error {
 				Msgf("Dequeued message %d from queue %s", message.ID, queueName)
 
 			err = stream.Send(&pb.DequeueResponse{
-				Success:  true,
-				Id:       message.ID,
-				Group:    message.Group,
-				Priority: message.Priority,
-				Content:  message.Content,
-				Metadata: message.Metadata,
+				Success:       true,
+				Id:            message.ID,
+				Group:         message.Group,
+				Priority:      message.Priority,
+				Content:       message.Content,
+				Metadata:      message.Metadata,
+				DeliveryCount: message.DeliveryCount,
 			})
 			if err != nil {
 				log.Warn().
@@ -429,17 +440,19 @@ func (s *QueueServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespo
 	}
 
 	return &pb.GetResponse{
-		Success:  true,
-		Id:       message.ID,
-		Group:    message.Group,
-		Priority: message.Priority,
-		Content:  message.Content,
-		Metadata: message.Metadata,
+		Success:       true,
+		Id:            message.ID,
+		Group:         message.Group,
+		Priority:      message.Priority,
+		Content:       message.Content,
+		Metadata:      message.Metadata,
+		DeliveryCount: message.DeliveryCount,
 	}, nil
 }
 
-// Delete deletes a message from a queue by ID (this could be used to remove a message from a queue
-// in case of processing failure if max attempts reached)
+// Delete deletes a message from a queue by ID. Messages that exhaust their
+// queue's delivery_limit are dropped by the server, so callers no longer need to
+// track attempts themselves to clear a poison message.
 func (s *QueueServer) Delete(
 	ctx context.Context,
 	req *pb.DeleteRequest,

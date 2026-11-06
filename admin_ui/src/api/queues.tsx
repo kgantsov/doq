@@ -33,16 +33,19 @@ export const createQueue = async ({
   maxUnacked = 0,
   ackTimeout = 1800,
   strategy = "weighted",
+  deliveryLimit = 0,
 }: {
   name: string;
   type: string;
   maxUnacked?: number;
   ackTimeout?: number;
   strategy?: string;
+  deliveryLimit?: number;
 }) => {
   let settings: {
     max_unacked?: number;
     strategy?: string;
+    delivery_limit?: number;
     ack_timeout?: number;
   } = {};
 
@@ -54,6 +57,7 @@ export const createQueue = async ({
   }
 
   settings["ack_timeout"] = ackTimeout;
+  settings["delivery_limit"] = deliveryLimit;
 
   const response = await fetch("/API/v1/queues", {
     method: "POST",

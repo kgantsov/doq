@@ -848,3 +848,235 @@ func itemStrings(items []*pb.SnapshotItem) []string {
 	}
 	return out
 }
+
+// TestFSMRestorePreservesDeliveryCount guards the restore path. The snapshot
+// carries delivery_count (it is written field-agnostically from the stored
+// bytes), but Queue.Enqueue has no parameter for it — restoring through Enqueue
+// silently resets every counter and hands poison messages a fresh delivery
+// budget. The queue's delivery_limit must survive too.
+func TestFSMRestorePreservesDeliveryCount(t *testing.T) {
+	for _, queueType := range []string{"delayed", "fair"} {
+		t.Run(queueType, func(t *testing.T) {
+			tmpDir, _ := os.MkdirTemp("", "db*")
+			defer os.RemoveAll(tmpDir)
+
+			opts := badger.DefaultOptions(tmpDir)
+			db, err := badger.Open(opts)
+			require.NoError(t, err)
+
+			cfg := &config.Config{
+				Queue: config.QueueConfig{
+					AcknowledgementCheckInterval: 1,
+					QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+				},
+			}
+			settings := entity.QueueSettings{
+				AckTimeout:    3600,
+				DeliveryLimit: 5,
+			}
+			if queueType == "fair" {
+				settings.Strategy = "WEIGHTED"
+				settings.MaxUnacked = 10
+			}
+
+			queueManager := queue.NewQueueManager(storage.NewBadgerStore(db), cfg, nil, nil)
+			q, err := queueManager.CreateQueue(queueType, "queue_1", settings)
+			require.NoError(t, err)
+
+			// readyID stays on the ready queue; unackedID is left in flight, so
+			// the two restore paths (EnqueueRestored and RestoreUnacked) are both
+			// exercised.
+			const readyID, unackedID = uint64(1), uint64(2)
+			_, err = q.Enqueue(readyID, "g1", 10, "ready", nil)
+			require.NoError(t, err)
+			_, err = q.Enqueue(unackedID, "g1", 20, "unacked", nil)
+			require.NoError(t, err)
+
+			// Deliver each message a few times so both carry a non-zero count.
+			for i := 0; i < 3; i++ {
+				m, err := q.Dequeue(false, 0, time.Now())
+				require.NoError(t, err)
+				if i < 2 {
+					require.NoError(t, q.Nack(m.ID, 0, nil))
+				}
+			}
+			// One more delivery, left unacked, for the in-flight message.
+			inFlight, err := q.Dequeue(false, 0, time.Now())
+			require.NoError(t, err)
+
+			before := map[uint64]uint32{}
+			for _, id := range []uint64{readyID, unackedID} {
+				m, err := q.Get(id)
+				require.NoError(t, err)
+				require.NotZero(t, m.DeliveryCount, "message %d should have been delivered", id)
+				before[id] = m.DeliveryCount
+			}
+			require.NotNil(t, inFlight)
+
+			leaderConfig := NewLeaderConfig("node-1", "localhost:9000", "localhost:10000")
+			leaderConfig.Set("node-1", "localhost:9000", "localhost:10000", "localhost:8000")
+
+			fsm := &FSM{
+				queueManager: queueManager,
+				NodeID:       "node-1",
+				db:           db,
+				config:       cfg,
+				leaderConfig: leaderConfig,
+			}
+
+			snap, err := fsm.Snapshot()
+			require.NoError(t, err)
+
+			sink := &MockSink{}
+			require.NoError(t, snap.Persist(sink))
+
+			// Emulate a node restart: fresh DB, fresh queue manager, restore.
+			db.Close()
+			db, err = badger.Open(opts)
+			require.NoError(t, err)
+			defer db.Close()
+
+			queueManager = queue.NewQueueManager(storage.NewBadgerStore(db), cfg, nil, nil)
+			fsm = &FSM{
+				queueManager: queueManager,
+				NodeID:       "node-1",
+				db:           db,
+				config:       cfg,
+				leaderConfig: leaderConfig,
+			}
+			require.NoError(t, fsm.Restore(sink))
+
+			restored, err := queueManager.GetQueue("queue_1")
+			require.NoError(t, err)
+			assert.Equal(
+				t, uint32(5), restored.GetStats().Settings.DeliveryLimit,
+				"the queue's delivery limit must survive a restore",
+			)
+
+			for _, id := range []uint64{readyID, unackedID} {
+				m, err := restored.Get(id)
+				require.NoError(t, err)
+				assert.Equalf(
+					t, before[id], m.DeliveryCount,
+					"message %d lost its delivery count across snapshot/restore", id,
+				)
+			}
+		})
+	}
+}
+
+// TestFSMDeliveryCountSurvivesLogReplay covers what moving the delivery counter
+// into Store.Dequeue implies for restarts: applyDequeue now writes to BadgerDB,
+// which is persistent, so a replayed dequeue could inflate the count and drop a
+// message early.
+//
+// It does not, and the reason is worth pinning:
+//
+//   - Replay with no snapshot starts at index 1, and the message's own Enqueue
+//     entry rewrites it with delivery_count 0, so every later dequeue of it
+//     replays onto a reset counter and the final value is reproduced exactly.
+//   - Replay after a snapshot is safe because FSM.Restore clears all state
+//     first (DeleteAll) and seeds from the snapshot bytes, which carry
+//     delivery_count — so only post-snapshot entries apply, once.
+//
+// Both properties are incidental to code elsewhere (Store.Enqueue not
+// preserving an existing count; Restore clearing before it restores), so this
+// test guards against a change to either silently making dequeue non-idempotent.
+func TestFSMDeliveryCountSurvivesLogReplay(t *testing.T) {
+	cfg := &config.Config{Queue: config.QueueConfig{
+		AcknowledgementCheckInterval: 1,
+		QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+	}}
+
+	now := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	// Two deliveries, each nacked, so the message ends on delivery_count 2.
+	raftLog := []*pb.RaftCommand{
+		{Cmd: &pb.RaftCommand_CreateQueue{CreateQueue: &pb.CreateQueueRequest{
+			Type: "delayed", Name: "q", Settings: &pb.QueueSettings{AckTimeout: 60},
+		}}},
+		{Cmd: &pb.RaftCommand_Enqueue{Enqueue: &pb.EnqueueRequest{
+			QueueName: "q", Id: 1, Group: "default", Priority: 10, Content: "poison",
+		}}},
+		{Cmd: &pb.RaftCommand_Dequeue{Dequeue: &pb.DequeueRequest{QueueName: "q"}}},
+		{Cmd: &pb.RaftCommand_Nack{Nack: &pb.NackRequest{QueueName: "q", Id: 1}}},
+		{Cmd: &pb.RaftCommand_Dequeue{Dequeue: &pb.DequeueRequest{QueueName: "q"}}},
+		{Cmd: &pb.RaftCommand_Nack{Nack: &pb.NackRequest{QueueName: "q", Id: 1}}},
+	}
+
+	applyAll := func(fsm *FSM) {
+		for i, cmd := range raftLog {
+			fsm.Apply(raftLogAt(t, uint64(i+1), now.Add(time.Duration(i)*time.Second), cmd))
+		}
+	}
+	deliveryCount := func(fsm *FSM) uint32 {
+		q, err := fsm.queueManager.GetQueue("q")
+		require.NoError(t, err)
+		msg, err := q.Get(1)
+		require.NoError(t, err)
+		return msg.DeliveryCount
+	}
+
+	t.Run("replay without a snapshot", func(t *testing.T) {
+		dir, err := os.MkdirTemp("", "replay*")
+		require.NoError(t, err)
+		defer os.RemoveAll(dir)
+
+		opts := badger.DefaultOptions(dir).WithLogger(nil)
+		db, err := badger.Open(opts)
+		require.NoError(t, err)
+
+		fsm := newTestFSM(db, cfg)
+		applyAll(fsm)
+		require.Equal(t, uint32(2), deliveryCount(fsm))
+
+		// Restart with no snapshot: same Badger state, fresh FSM, whole log
+		// replayed.
+		require.NoError(t, db.Close())
+		db, err = badger.Open(opts)
+		require.NoError(t, err)
+		defer db.Close()
+
+		replayed := newTestFSM(db, cfg)
+		applyAll(replayed)
+		assert.Equal(
+			t, uint32(2), deliveryCount(replayed),
+			"log replay must not inflate the delivery count",
+		)
+	})
+
+	t.Run("replay after a snapshot", func(t *testing.T) {
+		db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true).WithLogger(nil))
+		require.NoError(t, err)
+		defer db.Close()
+
+		fsm := newTestFSM(db, cfg)
+		applyAll(fsm)
+		require.Equal(t, uint32(2), deliveryCount(fsm))
+
+		snap, err := fsm.Snapshot()
+		require.NoError(t, err)
+		sink := &MockSink{}
+		require.NoError(t, snap.Persist(sink))
+		snap.Release()
+
+		// A follower installing this snapshot, then replaying two more entries
+		// that were already applied before the snapshot was taken.
+		restoreDB, err := badger.Open(badger.DefaultOptions("").WithInMemory(true).WithLogger(nil))
+		require.NoError(t, err)
+		defer restoreDB.Close()
+
+		restored := newTestFSM(restoreDB, cfg)
+		require.NoError(t, restored.Restore(sink))
+		assert.Equal(
+			t, uint32(2), deliveryCount(restored),
+			"the snapshot must carry the delivery count",
+		)
+
+		restored.Apply(raftLogAt(t, 7, now.Add(7*time.Second), raftLog[4]))
+		restored.Apply(raftLogAt(t, 8, now.Add(8*time.Second), raftLog[5]))
+		assert.Equal(
+			t, uint32(3), deliveryCount(restored),
+			"entries after the snapshot apply exactly once",
+		)
+	})
+}

@@ -49,12 +49,13 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 	res := &EnqueueOutput{
 		Status: http.StatusOK,
 		Body: EnqueueOutputBody{
-			Status:   "ENQUEUED",
-			ID:       strconv.Itoa(int(msg.ID)),
-			Group:    group,
-			Priority: priority,
-			Content:  content,
-			Metadata: metadata,
+			Status:        "ENQUEUED",
+			ID:            strconv.Itoa(int(msg.ID)),
+			Group:         group,
+			Priority:      priority,
+			Content:       content,
+			Metadata:      metadata,
+			DeliveryCount: msg.DeliveryCount,
 		},
 	}
 	return res, nil
@@ -81,12 +82,13 @@ func (h *Handler) Dequeue(ctx context.Context, input *DequeueInput) (*DequeueOut
 	res := &DequeueOutput{
 		Status: http.StatusOK,
 		Body: DequeueOutputBody{
-			Status:   "DEQUEUED",
-			ID:       strconv.Itoa(int(msg.ID)),
-			Group:    msg.Group,
-			Priority: msg.Priority,
-			Content:  msg.Content,
-			Metadata: msg.Metadata,
+			Status:        "DEQUEUED",
+			ID:            strconv.Itoa(int(msg.ID)),
+			Group:         msg.Group,
+			Priority:      msg.Priority,
+			Content:       msg.Content,
+			Metadata:      msg.Metadata,
+			DeliveryCount: msg.DeliveryCount,
 		},
 	}
 	return res, nil
@@ -105,12 +107,13 @@ func (h *Handler) Get(ctx context.Context, input *GetInput) (*GetOutput, error) 
 	res := &GetOutput{
 		Status: http.StatusOK,
 		Body: GetOutputBody{
-			Status:   "GOT",
-			ID:       strconv.Itoa(int(msg.ID)),
-			Group:    msg.Group,
-			Priority: msg.Priority,
-			Content:  msg.Content,
-			Metadata: msg.Metadata,
+			Status:        "GOT",
+			ID:            strconv.Itoa(int(msg.ID)),
+			Group:         msg.Group,
+			Priority:      msg.Priority,
+			Content:       msg.Content,
+			Metadata:      msg.Metadata,
+			DeliveryCount: msg.DeliveryCount,
 		},
 	}
 	return res, nil

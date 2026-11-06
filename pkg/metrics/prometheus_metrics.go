@@ -10,6 +10,7 @@ type PrometheusMetrics struct {
 	DequeueTotal    *prometheus.CounterVec
 	AckTotal        *prometheus.CounterVec
 	NackTotal       *prometheus.CounterVec
+	DroppedTotal    *prometheus.CounterVec
 	Messages        *prometheus.GaugeVec
 	UnackedMessages *prometheus.GaugeVec
 	ReadyMessages   *prometheus.GaugeVec
@@ -62,6 +63,17 @@ func NewPrometheusMetrics(registry prometheus.Registerer, namespace, subsystem s
 		[]string{"queue_name"},
 	)
 	prometheus.MustRegister(m.NackTotal)
+
+	m.DroppedTotal = promauto.With(registry).NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: subsystem,
+			Name:      "dropped_total",
+			Help:      "Total number of messages dropped after reaching the queue's delivery limit.",
+		},
+		[]string{"queue_name"},
+	)
+	prometheus.MustRegister(m.DroppedTotal)
 
 	m.Messages = promauto.With(registry).NewGaugeVec(
 		prometheus.GaugeOpts{

@@ -548,3 +548,95 @@ async def test_message_nack(fixt_http_client, fixt_regular_queue_manual_nack):
             assert data["priority"] == test['messages'][index]["priority"]
             assert data["metadata"] == {"retry": "1"}
             assert data["id"] is not None
+
+
+@pytest.mark.asyncio
+async def test_delivery_limit_drops_poison_message(
+    fixt_http_client, fixt_delivery_limit_queue
+):
+    """A message that keeps failing is dropped once it has been delivered
+    delivery_limit times, instead of being redelivered forever."""
+    queue_name = fixt_delivery_limit_queue["name"]
+
+    response = await fixt_http_client.post(
+        url=f"/API/v1/queues/{queue_name}/messages",
+        json={"group": "default", "priority": 10, "content": "poison"},
+    )
+    assert response.status_code == 200, response.text
+    message_id = response.json()["id"]
+
+    # delivery_limit is 2, so the first delivery is redelivered and the second
+    # is dropped.
+    for expected_count in (1, 2):
+        response = await fixt_http_client.get(
+            url=f"/API/v1/queues/{queue_name}/messages?ack=false"
+        )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["id"] == message_id
+        assert data["delivery_count"] == expected_count, (
+            f"delivery_count should report the delivery in flight, got {data}"
+        )
+
+        response = await fixt_http_client.post(
+            url=f"/API/v1/queues/{queue_name}/messages/{message_id}/nack",
+            json={"priority": 10, "metadata": {"retry": str(expected_count)}},
+        )
+        assert response.status_code == 200, response.text
+
+    # Exhausted: gone from storage and not back on the queue.
+    response = await fixt_http_client.get(
+        url=f"/API/v1/queues/{queue_name}/messages/{message_id}"
+    )
+    assert response.status_code == 404, response.text
+
+    response = await fixt_http_client.get(
+        url=f"/API/v1/queues/{queue_name}/messages?ack=false"
+    )
+    assert response.status_code == 404, response.text
+
+    response = await fixt_http_client.get(url=f"/API/v1/queues/{queue_name}")
+    assert response.status_code == 200, response.text
+    assert response.json()["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_delivery_limit_unlimited_by_default(
+    fixt_http_client, fixt_regular_queue_manual_nack
+):
+    """Queues created without delivery_limit keep redelivering forever, so the
+    setting is opt-in and existing queues are unaffected."""
+    queue_name = fixt_regular_queue_manual_nack["name"]
+
+    response = await fixt_http_client.post(
+        url=f"/API/v1/queues/{queue_name}/messages",
+        json={"group": "default", "priority": 10, "content": "never dropped"},
+    )
+    assert response.status_code == 200, response.text
+    message_id = response.json()["id"]
+
+    for expected_count in range(1, 6):
+        response = await fixt_http_client.get(
+            url=f"/API/v1/queues/{queue_name}/messages?ack=false"
+        )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["id"] == message_id
+        assert data["delivery_count"] == expected_count
+
+        response = await fixt_http_client.post(
+            url=f"/API/v1/queues/{queue_name}/messages/{message_id}/nack",
+            json={"priority": 10},
+        )
+        assert response.status_code == 200, response.text
+
+    response = await fixt_http_client.get(
+        url=f"/API/v1/queues/{queue_name}/messages/{message_id}"
+    )
+    assert response.status_code == 200, response.text
+
+    # Clean up so the message does not leak into other tests in this package.
+    response = await fixt_http_client.delete(
+        url=f"/API/v1/queues/{queue_name}/messages/{message_id}"
+    )
+    assert response.status_code == 200, response.text

@@ -50,3 +50,34 @@ func TestQueueConfig_ToProto_StrategyMapping(t *testing.T) {
 	require.Equal(t, uint32(qc.Settings.MaxUnacked), protoQ.Settings.MaxUnacked)
 	require.Equal(t, qc.Settings.AckTimeout, protoQ.Settings.AckTimeout)
 }
+
+// TestQueueConfigDeliveryLimitRoundTrip checks DeliveryLimit survives the
+// stored-bytes round trip, and that 0 (unlimited) is the default for configs
+// written before the setting existed.
+func TestQueueConfigDeliveryLimitRoundTrip(t *testing.T) {
+	qc := &QueueConfig{
+		Name: "test_queue",
+		Type: "fair",
+		Settings: QueueSettings{
+			Strategy:      "WEIGHTED",
+			MaxUnacked:    5,
+			AckTimeout:    60,
+			DeliveryLimit: 3,
+		},
+	}
+
+	data, err := qc.ToBytes()
+	require.NoError(t, err)
+
+	decoded, err := QueueConfigFromBytes(data)
+	require.NoError(t, err)
+	require.Equal(t, uint32(3), decoded.Settings.DeliveryLimit)
+	require.Equal(t, qc, decoded)
+
+	bare := &QueueConfig{Name: "q", Type: "delayed", Settings: QueueSettings{Strategy: "WEIGHTED"}}
+	data, err = bare.ToBytes()
+	require.NoError(t, err)
+	decoded, err = QueueConfigFromBytes(data)
+	require.NoError(t, err)
+	require.Equal(t, uint32(0), decoded.Settings.DeliveryLimit)
+}

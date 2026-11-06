@@ -52,6 +52,7 @@ message QueueSettings {
     Strategy strategy = 1;
     uint32 max_unacked = 2;
     uint32 ack_timeout = 3; // in seconds
+    uint32 delivery_limit = 4;
 }
 
 message Queue {
@@ -67,6 +68,7 @@ message Message {
     int64 priority = 3;
     string content = 4;
     map<string, string> metadata = 5;
+    uint32 delivery_count = 6;
 }
 
 message LeaderConfiguration {
@@ -189,6 +191,7 @@ message EnqueueResponse {
     int64 priority = 5;
     string content = 6;
     map<string, string> metadata = 7;
+    uint32 delivery_count = 8;
 }
 
 message DequeueRequest {
@@ -204,6 +207,7 @@ message DequeueResponse {
     int64 priority = 5;
     string content = 6;
     map<string, string> metadata = 7;
+    uint32 delivery_count = 8;
 }
 
 message GetRequest {
@@ -219,6 +223,7 @@ message GetResponse {
     int64 priority = 5;
     string content = 6;
     map<string, string> metadata = 7;
+    uint32 delivery_count = 8;
 }
 
 message DeleteRequest {

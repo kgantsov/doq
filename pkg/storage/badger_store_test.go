@@ -451,3 +451,112 @@ func TestBadgerStoreDeleteAll(t *testing.T) {
 		return err
 	}), "DeleteAll removed a key that isn't queue data")
 }
+
+// TestDequeueCountsDeliveries pins the one place the delivery counter moves.
+// Dequeue is the single writer: the failure paths only read the count to decide
+// whether the queue's delivery limit is exhausted.
+func TestDequeueCountsDeliveries(t *testing.T) {
+	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+	require.NoError(t, err)
+	defer db.Close()
+
+	store := NewBadgerStore(db)
+
+	_, err = store.Enqueue("test_queue", 1, "default", 10, "poison", nil)
+	require.NoError(t, err)
+
+	msg, err := store.Get("test_queue", 1)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(0), msg.DeliveryCount, "an enqueued message has not been delivered")
+
+	for i := uint32(1); i <= 3; i++ {
+		msg, err = store.Dequeue("test_queue", 1, false)
+		require.NoError(t, err)
+		assert.Equal(t, i, msg.DeliveryCount, "Dequeue must report the delivery it just made")
+
+		// Persisted, not only on the returned copy.
+		stored, err := store.Get("test_queue", 1)
+		require.NoError(t, err)
+		assert.Equal(t, i, stored.DeliveryCount)
+	}
+}
+
+// TestDequeueAutoAckReportsDelivery checks an auto-acking dequeue still reports
+// the delivery, even though it deletes the message in the same transaction.
+func TestDequeueAutoAckReportsDelivery(t *testing.T) {
+	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+	require.NoError(t, err)
+	defer db.Close()
+
+	store := NewBadgerStore(db)
+
+	_, err = store.Enqueue("test_queue", 1, "default", 10, "msg", nil)
+	require.NoError(t, err)
+
+	msg, err := store.Dequeue("test_queue", 1, true)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(1), msg.DeliveryCount)
+
+	_, err = store.Get("test_queue", 1)
+	assert.Error(t, err, "an auto-acked message must be gone")
+}
+
+// TestUpdateMessagePreservesDeliveryCount guards the conditional-update path:
+// it rewrites the whole message, so it must not reset the counter when a nack
+// carries a new priority or metadata.
+func TestUpdateMessagePreservesDeliveryCount(t *testing.T) {
+	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+	require.NoError(t, err)
+	defer db.Close()
+
+	store := NewBadgerStore(db)
+
+	_, err = store.Enqueue("test_queue", 1, "default", 10, "msg", nil)
+	require.NoError(t, err)
+	_, err = store.Dequeue("test_queue", 1, false)
+	require.NoError(t, err)
+	_, err = store.Dequeue("test_queue", 1, false)
+	require.NoError(t, err)
+
+	require.NoError(t, store.UpdateMessage(
+		"test_queue", 1, 30, "", map[string]string{"retry": "1"},
+	))
+
+	msg, err := store.Get("test_queue", 1)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(2), msg.DeliveryCount)
+	assert.Equal(t, int64(30), msg.Priority)
+	assert.Equal(t, map[string]string{"retry": "1"}, msg.Metadata)
+
+	// Same for the priority-only path.
+	_, err = store.UpdatePriority("test_queue", 1, 40)
+	require.NoError(t, err)
+	msg, err = store.Get("test_queue", 1)
+	require.NoError(t, err)
+	assert.Equal(t, uint32(2), msg.DeliveryCount)
+}
+
+// TestRestoreMessageWritesVerbatim checks the snapshot-restore path persists
+// fields the normal Enqueue path has no parameter for. Without it a restore
+// silently resets every delivery counter.
+func TestRestoreMessageWritesVerbatim(t *testing.T) {
+	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+	require.NoError(t, err)
+	defer db.Close()
+
+	store := NewBadgerStore(db)
+
+	msg := &entity.Message{
+		ID:            7,
+		Group:         "g1",
+		Priority:      15,
+		Content:       "restored",
+		Metadata:      map[string]string{"retry": "2"},
+		DeliveryCount: 4,
+	}
+	require.NoError(t, store.RestoreMessage("test_queue", msg))
+
+	stored, err := store.Get("test_queue", 7)
+	require.NoError(t, err)
+	assert.Equal(t, msg, stored)
+}

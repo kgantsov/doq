@@ -328,3 +328,52 @@ func TestTouch(t *testing.T) {
 	assert.Equal(t, "TOUCHED", output.Status)
 	assert.Equal(t, "6123", output.ID)
 }
+
+// TestDeliveryCountInMessageResponses checks delivery_count reaches HTTP clients
+// on every message-returning endpoint. Each response body is built field by
+// field, so a missing assignment reports 0 forever.
+func TestDeliveryCountInMessageResponses(t *testing.T) {
+	_, api := humatest.New(t)
+
+	mockNode := mocks.NewMockNode()
+	h := &Handler{node: mockNode}
+	h.RegisterRoutes(api)
+
+	msg := &entity.Message{
+		ID:            uint64(5465),
+		Priority:      250,
+		Group:         "default",
+		Content:       "poison",
+		Metadata:      map[string]string{"retry": "2"},
+		DeliveryCount: 3,
+	}
+
+	mockNode.On(
+		"Enqueue", "my-queue", uint64(0), "default", int64(250), "poison", msg.Metadata,
+	).Return(msg, nil)
+	mockNode.On("Dequeue", "my-queue", false).Return(msg, nil)
+	mockNode.On("Get", "my-queue", uint64(5465)).Return(msg, nil)
+
+	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
+		"group":    "default",
+		"priority": 250,
+		"content":  "poison",
+		"metadata": msg.Metadata,
+	})
+	enqueueOutput := &EnqueueOutputBody{}
+	assert.NoError(t, json.Unmarshal(resp.Body.Bytes(), enqueueOutput))
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, uint32(3), enqueueOutput.DeliveryCount, "enqueue response")
+
+	resp = api.Get("/API/v1/queues/my-queue/messages")
+	dequeueOutput := &DequeueOutputBody{}
+	assert.NoError(t, json.Unmarshal(resp.Body.Bytes(), dequeueOutput))
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, uint32(3), dequeueOutput.DeliveryCount, "dequeue response")
+
+	resp = api.Get("/API/v1/queues/my-queue/messages/5465")
+	getOutput := &GetOutputBody{}
+	assert.NoError(t, json.Unmarshal(resp.Body.Bytes(), getOutput))
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, uint32(3), getOutput.DeliveryCount, "get response")
+}

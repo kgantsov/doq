@@ -15,9 +15,10 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 	queueSettings := input.Body.Settings
 
 	err := h.node.CreateQueue(queueType, queueName, entity.QueueSettings{
-		Strategy:   strings.ToUpper(queueSettings.Strategy),
-		MaxUnacked: queueSettings.MaxUnacked,
-		AckTimeout: queueSettings.AckTimeout,
+		Strategy:      strings.ToUpper(queueSettings.Strategy),
+		MaxUnacked:    queueSettings.MaxUnacked,
+		AckTimeout:    queueSettings.AckTimeout,
+		DeliveryLimit: queueSettings.DeliveryLimit,
 	})
 
 	if err != nil {
@@ -32,9 +33,10 @@ func (h *Handler) CreateQueue(ctx context.Context, input *CreateQueueInput) (*Cr
 			Name:   queueName,
 			Type:   queueType,
 			Settings: QueueSettings{
-				Strategy:   strings.ToUpper(queueSettings.Strategy),
-				MaxUnacked: queueSettings.MaxUnacked,
-				AckTimeout: queueSettings.AckTimeout,
+				Strategy:      strings.ToUpper(queueSettings.Strategy),
+				MaxUnacked:    queueSettings.MaxUnacked,
+				AckTimeout:    queueSettings.AckTimeout,
+				DeliveryLimit: queueSettings.DeliveryLimit,
 			},
 		},
 	}
@@ -47,9 +49,10 @@ func (h *Handler) UpdateQueue(ctx context.Context, input *UpdateQueueInput) (*Up
 	queueSettings := input.Body.Settings
 
 	err := h.node.UpdateQueue(queueName, entity.QueueSettings{
-		Strategy:   strings.ToUpper(queueSettings.Strategy),
-		MaxUnacked: queueSettings.MaxUnacked,
-		AckTimeout: queueSettings.AckTimeout,
+		Strategy:      strings.ToUpper(queueSettings.Strategy),
+		MaxUnacked:    queueSettings.MaxUnacked,
+		AckTimeout:    queueSettings.AckTimeout,
+		DeliveryLimit: queueSettings.DeliveryLimit,
 	})
 
 	if err != nil {
@@ -63,9 +66,10 @@ func (h *Handler) UpdateQueue(ctx context.Context, input *UpdateQueueInput) (*Up
 			Status: "UPDATED",
 			Name:   queueName,
 			Settings: QueueSettings{
-				Strategy:   strings.ToUpper(queueSettings.Strategy),
-				MaxUnacked: queueSettings.MaxUnacked,
-				AckTimeout: queueSettings.AckTimeout,
+				Strategy:      strings.ToUpper(queueSettings.Strategy),
+				MaxUnacked:    queueSettings.MaxUnacked,
+				AckTimeout:    queueSettings.AckTimeout,
+				DeliveryLimit: queueSettings.DeliveryLimit,
 			},
 		},
 	}
@@ -102,9 +106,10 @@ func (h *Handler) Queues(ctx context.Context, input *QueuesInput) (*QueuesOutput
 			Name: queue.Name,
 			Type: queue.Type,
 			Settings: QueueSettings{
-				Strategy:   queue.Settings.Strategy,
-				MaxUnacked: queue.Settings.MaxUnacked,
-				AckTimeout: queue.Settings.AckTimeout,
+				Strategy:      queue.Settings.Strategy,
+				MaxUnacked:    queue.Settings.MaxUnacked,
+				AckTimeout:    queue.Settings.AckTimeout,
+				DeliveryLimit: queue.Settings.DeliveryLimit,
 			},
 			EnqueueRPS: queue.Stats.EnqueueRPS,
 			DequeueRPS: queue.Stats.DequeueRPS,
@@ -145,9 +150,10 @@ func (h *Handler) QueueInfo(ctx context.Context, input *QueueInfoInput) (*QueueI
 			Name: queueName,
 			Type: queueInfo.Type,
 			Settings: QueueSettings{
-				Strategy:   queueInfo.Settings.Strategy,
-				MaxUnacked: queueInfo.Settings.MaxUnacked,
-				AckTimeout: queueInfo.Settings.AckTimeout,
+				Strategy:      queueInfo.Settings.Strategy,
+				MaxUnacked:    queueInfo.Settings.MaxUnacked,
+				AckTimeout:    queueInfo.Settings.AckTimeout,
+				DeliveryLimit: queueInfo.Settings.DeliveryLimit,
 			},
 			EnqueueRPS: queueInfo.Stats.EnqueueRPS,
 			DequeueRPS: queueInfo.Stats.DequeueRPS,

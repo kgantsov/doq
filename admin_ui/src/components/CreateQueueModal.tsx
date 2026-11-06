@@ -27,6 +27,7 @@ const CreateQueueModal = ({
   const [strategy, setStrategy] = useState(["weighted"]);
   const [maxUnacked, setMaxUnacked] = useState(0);
   const [ackTimeout, setAckTimeout] = useState(1800);
+  const [deliveryLimit, setDeliveryLimit] = useState(0);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -43,6 +44,7 @@ const CreateQueueModal = ({
       setType(["delayed"]);
       setStrategy(["weighted"]);
       setMaxUnacked(0);
+      setDeliveryLimit(0);
       setAckTimeout(1800);
       onClose();
     },
@@ -66,6 +68,7 @@ const CreateQueueModal = ({
       name: name,
       type: type[0],
       maxUnacked: maxUnacked,
+      deliveryLimit: deliveryLimit,
       strategy: strategy[0],
       ackTimeout: ackTimeout,
     });
@@ -109,6 +112,19 @@ const CreateQueueModal = ({
                   value={ackTimeout.toString()}
                   onValueChange={(e) => setAckTimeout(Number(e.value))}
                   min={60}
+                >
+                  <NumberInput.Control />
+                  <NumberInput.Input />
+                </NumberInput.Root>
+              </Field.Root>
+
+              <Field.Root invalid={isError}>
+                <Field.Label>Delivery Limit</Field.Label>
+                <NumberInput.Root
+                  width="100%"
+                  value={deliveryLimit.toString()}
+                  onValueChange={(e) => setDeliveryLimit(Number(e.value))}
+                  min={0}
                 >
                   <NumberInput.Control />
                   <NumberInput.Input />

@@ -190,31 +190,35 @@ func (q *Queue) expireAcks() {
 // ready queue. It is applied through the FSM so every replica re-queues the
 // same message at the same point in the log.
 func (q *Queue) AckTimeout(id uint64) error {
-	if q.ackQueue.Delete("default", id) == nil {
+	item := q.ackQueue.Get("default", id)
+	if item == nil {
 		return errors.ErrMessageNotFound
 	}
 
 	message, err := q.Get(id)
 	if err != nil {
 		log.Error().Err(err).Msgf("Failed to get message by ID: %d", id)
+
+		// The message is gone from storage, so there is nothing to re-queue.
+		// Drop the stale unacked entry anyway (releasing its fair-queue slot),
+		// or the ack sweep retries this same head item on every tick.
+		if q.ackQueue.Delete("default", id) != nil && q.config.Type == "fair" {
+			q.queue.UpdateWeights(item.Group, id)
+		}
+
 		return err
 	}
 
-	q.queue.Enqueue(message.Group, &memory.Item{
-		ID:       message.ID,
-		Priority: message.Priority,
-		Group:    message.Group,
-	})
-	// An ack-timeout re-delivery moves the message out of the in-flight
-	// (unacked) state, so release its unacked slot for fair queues. Otherwise
-	// the per-group unacked counter leaks upward on every timeout and
-	// eventually pins the group's weight to 0, permanently starving it (see
-	// "No group selected" log spam).
-	if q.config.Type == "fair" {
-		q.queue.UpdateWeights(message.Group, message.ID)
+	dropped, err := q.redeliverOrDrop(message, 0)
+	if err != nil {
+		return err
 	}
-	q.notify()
-	log.Debug().Msgf("Re-enqueued message: %d", message.ID)
+
+	if dropped {
+		log.Debug().Msgf("Dropped message after ack timeout: %d", message.ID)
+	} else {
+		log.Debug().Msgf("Re-enqueued message: %d", message.ID)
+	}
 
 	if q.cfg.Prometheus.Enabled {
 		q.updatePrometheusQueueSizes()
@@ -574,32 +578,17 @@ func (q *Queue) Nack(id uint64, priority int64, metadata map[string]string) erro
 		return err
 	}
 
-	queueItem := &memory.Item{
-		ID:       message.ID,
-		Priority: message.Priority,
-		Group:    message.Group,
+	dropped, err := q.redeliverOrDrop(message, priority)
+	if err != nil {
+		return err
 	}
 
-	if priority != 0 {
-		queueItem.Priority = priority
-	}
-
-	q.queue.Enqueue(message.Group, queueItem)
-	// A nacked message leaves the in-flight (unacked) state, so release its
-	// unacked slot for fair queues. Otherwise the per-group unacked counter
-	// leaks upward on every nack and eventually pins the group's weight to 0,
-	// permanently starving it (see "No group selected" log spam).
-	if q.config.Type == "fair" {
-		q.queue.UpdateWeights(message.Group, message.ID)
-	}
-	q.notify()
-	q.ackQueue.Delete("default", item.ID)
-
-	if metadata != nil || queueItem.Priority != message.Priority {
-		err = q.store.UpdateMessage(q.config.Name, item.ID, priority, "", metadata)
-
-		if err != nil {
-			log.Error().Err(err).Msgf("Failed to update message: %d", item.ID)
+	// Only persist the caller's priority/metadata when the message survived:
+	// writing them back to a message that was just deleted would resurrect a
+	// partial record under its key.
+	if !dropped && (metadata != nil || (priority != 0 && priority != message.Priority)) {
+		if err := q.store.UpdateMessage(q.config.Name, message.ID, priority, "", metadata); err != nil {
+			log.Error().Err(err).Msgf("Failed to update message: %d", message.ID)
 			return err
 		}
 	}
@@ -612,6 +601,72 @@ func (q *Queue) Nack(id uint64, priority int64, metadata map[string]string) erro
 	}
 
 	return nil
+}
+
+// redeliverOrDrop takes a message out of the in-flight (unacked) state after a
+// failed delivery — an explicit nack or an ack timeout — and either puts it back
+// on the ready queue or, once the queue's DeliveryLimit is exhausted, removes it
+// for good. It reports whether the message was dropped so callers can skip work
+// on a message that no longer exists.
+//
+// newPriority is 0 to keep the message's current priority. The message must
+// still be in the ack queue: this is the single place either failure path
+// releases its unacked slot, and doing it twice corrupts the fair-queue
+// per-group counter.
+//
+// The delivery counter itself is not touched here — Store.Dequeue owns it — so
+// message.DeliveryCount already includes the delivery that just failed.
+func (q *Queue) redeliverOrDrop(message *entity.Message, newPriority int64) (bool, error) {
+	if limit := q.config.Settings.DeliveryLimit; limit > 0 && message.DeliveryCount >= limit {
+		log.Warn().
+			Str("queue", q.config.Name).
+			Uint64("id", message.ID).
+			Str("group", message.Group).
+			Uint32("delivery_count", message.DeliveryCount).
+			Uint32("delivery_limit", limit).
+			Msg("Dropping message: delivery limit reached")
+
+		// q.Delete removes the message from storage, the ready queue and the ack
+		// queue, and releases the fair-queue unacked slot because the message is
+		// still in flight here — the same release the redelivery path below does.
+		if err := q.Delete(message.ID); err != nil {
+			return false, err
+		}
+
+		if q.cfg.Prometheus.Enabled {
+			q.PrometheusMetrics.DroppedTotal.With(
+				prometheus.Labels{"queue_name": q.config.Name},
+			).Inc()
+		}
+
+		// Nothing became available, so no q.notify().
+		return true, nil
+	}
+
+	q.ackQueue.Delete("default", message.ID)
+
+	queueItem := &memory.Item{
+		ID:       message.ID,
+		Priority: message.Priority,
+		Group:    message.Group,
+	}
+
+	if newPriority != 0 {
+		queueItem.Priority = newPriority
+	}
+
+	q.queue.Enqueue(message.Group, queueItem)
+	// A redelivered message leaves the in-flight (unacked) state, so release its
+	// unacked slot for fair queues. Otherwise the per-group unacked counter
+	// leaks upward on every failure and eventually pins the group's weight to 0,
+	// permanently starving it (see "No group selected" log spam).
+	if q.config.Type == "fair" {
+		q.queue.UpdateWeights(message.Group, message.ID)
+	}
+
+	q.notify()
+
+	return false, nil
 }
 
 func (q *Queue) Len() int {
@@ -709,37 +764,67 @@ func (q *Queue) RestoreRoundRobinState(state *pb.RoundRobinState) {
 	s.RestoreSchedulingState(nodes)
 }
 
-// RestoreUnacked restores a message from a snapshot as in flight: it goes to the
-// ack queue with its original deadline, not to the ready queue, and counts
-// towards its group's unacked limit in fair queues.
-func (q *Queue) RestoreUnacked(
-	id uint64,
-	group string,
-	priority int64,
-	content string,
-	metadata map[string]string,
-	ackDeadline int64,
-) error {
+// EnqueueRestored restores a message from a snapshot onto the ready queue. It
+// writes the message exactly as it was persisted, so fields the normal Enqueue
+// path has no parameter for — notably DeliveryCount — survive the restore
+// instead of silently resetting to zero.
+//
+// Unlike Enqueue it does not count towards the queue's enqueue traffic stats: a
+// snapshot install is not client traffic.
+func (q *Queue) EnqueueRestored(msg *entity.Message) error {
 	if q.config.Type != "fair" {
-		group = "default"
+		msg.Group = "default"
 	}
 
-	msg, err := q.store.Enqueue(q.config.Name, id, group, priority, content, metadata)
-	if err != nil {
+	if err := q.store.RestoreMessage(q.config.Name, msg); err != nil {
+		return err
+	}
+
+	// Restoring over existing state (a follower installing a snapshot): the
+	// message may already be on the ready queue here.
+	if q.queue.Get(msg.Group, msg.ID) == nil {
+		q.queue.Enqueue(msg.Group, &memory.Item{
+			ID:       msg.ID,
+			Group:    msg.Group,
+			Priority: msg.Priority,
+		})
+		q.notify()
+	}
+
+	if q.cfg.Prometheus.Enabled {
+		q.updatePrometheusQueueSizes()
+	}
+
+	return nil
+}
+
+// RestoreUnacked restores a message from a snapshot as in flight: it goes to the
+// ack queue with its original deadline, not to the ready queue, and counts
+// towards its group's unacked limit in fair queues. Like EnqueueRestored it
+// persists the message verbatim, so DeliveryCount survives.
+func (q *Queue) RestoreUnacked(msg *entity.Message, ackDeadline int64) error {
+	if q.config.Type != "fair" {
+		msg.Group = "default"
+	}
+
+	if err := q.store.RestoreMessage(q.config.Name, msg); err != nil {
 		return err
 	}
 
 	// Restoring over existing state (a follower installing a snapshot): the
 	// message may already be in flight or ready here.
-	if q.ackQueue.Get("default", id) != nil {
-		q.ackQueue.UpdatePriority("default", id, ackDeadline)
+	if q.ackQueue.Get("default", msg.ID) != nil {
+		q.ackQueue.UpdatePriority("default", msg.ID, ackDeadline)
 		return nil
 	}
-	if q.queue.Get(msg.Group, id) != nil {
-		q.queue.Delete(msg.Group, id)
+	if q.queue.Get(msg.Group, msg.ID) != nil {
+		q.queue.Delete(msg.Group, msg.ID)
 	}
 
-	q.ackQueue.Enqueue("default", &memory.Item{ID: id, Priority: ackDeadline, Group: msg.Group})
+	q.ackQueue.Enqueue(
+		"default",
+		&memory.Item{ID: msg.ID, Priority: ackDeadline, Group: msg.Group},
+	)
 	q.queue.MarkUnacked(msg.Group)
 
 	if q.cfg.Prometheus.Enabled {

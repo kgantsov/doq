@@ -111,6 +111,14 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
                 </Box>
                 <Box>
                   <Heading size="xs" textTransform="uppercase">
+                    Delivery Count
+                  </Heading>
+                  <Text pt="2" fontSize="sm">
+                    {dequeuedMessage.delivery_count}
+                  </Text>
+                </Box>
+                <Box>
+                  <Heading size="xs" textTransform="uppercase">
                     Content
                   </Heading>
                   <Text pt="2" fontSize="sm">

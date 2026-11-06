@@ -188,6 +188,7 @@ Dequeuing repeatedly yields `customerA`, `customerB`, `customerC`, `customerA`,
 | `priority` | yes | Ordering value. Lower is delivered first; can be a future Unix timestamp in delayed queues. |
 | `content` | yes | The message payload (typically a JSON string). |
 | `metadata` | no | Arbitrary `string → string` map, e.g. a retry counter or trace ID. |
+| `delivery_count` | read-only | How many times the message has been delivered. `1` while the first delivery is in flight. |
 
 ## Delivery lifecycle
 
@@ -223,6 +224,44 @@ Step by step:
 You can also change a message's `priority` while it is waiting in the queue with
 the update-priority operation.
 
+### Delivery limits
+
+A message that a consumer can never process would otherwise be redelivered
+forever. `delivery_limit` bounds that: once a message has been delivered
+`delivery_limit` times and fails again, it is **dropped** — deleted from storage
+instead of returned to the queue.
+
+- `delivery_limit: 0` (the default) means **unlimited** — today's behaviour, so
+  existing queues are unaffected and the limit is opt-in per queue.
+- `delivery_limit: N` allows **N deliveries in total**, not N retries on top of
+  the first. `delivery_limit: 3` means one initial delivery plus two
+  redeliveries, then the message is dropped.
+- Both failure paths count: an explicit **nack** and an **ack timeout**. A
+  consumer that crashes without acking exhausts the limit just like one that
+  nacks.
+- `delivery_count` is incremented when the message is handed out, so it is
+  truthful while the message is in flight: a consumer that reads
+  `delivery_count: 3` is on the third delivery. Compare it against the queue's
+  `delivery_limit` to tell that this is the last attempt.
+- An **ack** ends the message's life, so there is no counter to reset.
+- Lowering `delivery_limit` on a live queue applies to messages already in
+  flight: a message whose `delivery_count` is already at or over the new limit is
+  dropped on its next failure.
+- Dropping is logged at warn level with the queue, message ID, group and count,
+  and increments the `..._dropped_total` Prometheus counter.
+
+Dropped messages are deleted, not moved anywhere — there is no dead-letter queue
+yet, so set `delivery_limit` only where losing a permanently failing message is
+acceptable.
+
+Create a queue that gives up after three deliveries:
+
+```bash
+curl -X POST http://localhost:8000/API/v1/queues \
+  -H 'Content-Type: application/json' \
+  -d '{"name": "transcode", "type": "delayed", "settings": {"delivery_limit": 3}}'
+```
+
 ## Queue settings
 
 Passed under `settings` when creating or updating a queue:
@@ -232,6 +271,7 @@ Passed under `settings` when creating or updating a queue:
 | `strategy` | FAIR | `round_robin` or `weighted`. |
 | `max_unacked` | FAIR | Max in-flight (dequeued but unacked) messages per group. |
 | `ack_timeout` | both | Seconds before an unacked message is redelivered (overrides the server default). |
+| `delivery_limit` | both | Max times a message may be delivered before it is dropped. `0` (the default) means unlimited. |
 
 ## Examples
 

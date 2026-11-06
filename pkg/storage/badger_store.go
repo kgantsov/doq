@@ -226,13 +226,27 @@ func (s *BadgerStore) Dequeue(queueName string, id uint64, ack bool) (*entity.Me
 			msg, err = entity.MessageFromBytes(val)
 			return err
 		})
+		if err != nil {
+			return err
+		}
+
+		// Handing the message out is a delivery, so this is the one place the
+		// counter moves. DeliveryLimit is then checked on the failure paths
+		// (Nack, AckTimeout) against a count that is already truthful: 1 while
+		// the first delivery is in flight.
+		msg.DeliveryCount++
 
 		if ack {
 			// in case of autoAck, we need to remove the message from the queue
 			return txn.Delete(s.GetMessagesKey(queueName, id))
 		}
 
-		return nil
+		data, err := msg.ToBytes()
+		if err != nil {
+			return err
+		}
+
+		return txn.Set(s.GetMessagesKey(queueName, id), data)
 	})
 
 	if err != nil {
@@ -402,6 +416,20 @@ func (s *BadgerStore) UpdateMessage(
 		}
 
 		return txn.Set(s.GetMessagesKey(queueName, id), data)
+	})
+}
+
+// RestoreMessage writes a message exactly as it was persisted, including the
+// fields the normal Enqueue path does not accept. Snapshot restore uses it so
+// counters such as DeliveryCount survive a restore instead of resetting.
+func (s *BadgerStore) RestoreMessage(queueName string, msg *entity.Message) error {
+	return s.db.Update(func(txn *badger.Txn) error {
+		data, err := msg.ToBytes()
+		if err != nil {
+			return err
+		}
+
+		return txn.Set(s.GetMessagesKey(queueName, msg.ID), data)
 	})
 }
 

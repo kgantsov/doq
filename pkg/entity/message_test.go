@@ -73,3 +73,39 @@ func TestMessage_UpdatePriority(t *testing.T) {
 	m.UpdatePriority(999)
 	assert.Equal(t, int64(999), m.Priority)
 }
+
+// TestMessageDeliveryCountRoundTrip checks the delivery counter is durable:
+// messages are stored as marshalled bytes, so a field that does not survive
+// ToBytes/MessageFromBytes resets on every read.
+func TestMessageDeliveryCountRoundTrip(t *testing.T) {
+	msg := &Message{
+		ID:            42,
+		Group:         "g1",
+		Priority:      10,
+		Content:       "hello",
+		Metadata:      map[string]string{"retry": "1"},
+		DeliveryCount: 3,
+	}
+
+	data, err := msg.ToBytes()
+	assert.NoError(t, err)
+
+	decoded, err := MessageFromBytes(data)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(3), decoded.DeliveryCount)
+	assert.Equal(t, msg, decoded)
+
+	assert.Equal(t, uint32(3), msg.ToProto().DeliveryCount)
+}
+
+// TestMessageDeliveryCountDefaultsToZero covers the rollout case: bytes written
+// before delivery_count existed must decode as "never delivered" rather than
+// failing, which is what makes the field backward compatible.
+func TestMessageDeliveryCountDefaultsToZero(t *testing.T) {
+	data, err := (&Message{ID: 1, Group: "default", Content: "old"}).ToBytes()
+	assert.NoError(t, err)
+
+	decoded, err := MessageFromBytes(data)
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(0), decoded.DeliveryCount)
+}

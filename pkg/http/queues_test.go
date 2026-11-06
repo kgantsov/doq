@@ -223,3 +223,69 @@ func TestGetQueue(t *testing.T) {
 	assert.Equal(t, int64(456), queueOutput.Unacked)
 	assert.Equal(t, int64(789), queueOutput.Total)
 }
+
+// TestCreateQueueWithDeliveryLimit checks delivery_limit is accepted on create
+// and echoed back, so it is a first-class queue setting over HTTP rather than
+// being silently dropped between the JSON body and the Raft command.
+func TestCreateQueueWithDeliveryLimit(t *testing.T) {
+	_, api := humatest.New(t)
+
+	mockNode := mocks.NewMockNode()
+	h := &Handler{node: mockNode}
+	h.RegisterRoutes(api)
+
+	mockNode.On(
+		"CreateQueue",
+		"delayed",
+		"my-queue",
+		entity.QueueSettings{AckTimeout: 60, DeliveryLimit: 3},
+	).Return(nil)
+
+	resp := api.Post("/API/v1/queues", map[string]any{
+		"name": "my-queue",
+		"type": "delayed",
+		"settings": map[string]any{
+			"ack_timeout":    60,
+			"delivery_limit": 3,
+		},
+	})
+
+	out := &CreateQueueOutputBody{}
+	assert.NoError(t, json.Unmarshal(resp.Body.Bytes(), out))
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, uint32(3), out.Settings.DeliveryLimit)
+	mockNode.AssertCalled(
+		t, "CreateQueue", "delayed", "my-queue",
+		entity.QueueSettings{AckTimeout: 60, DeliveryLimit: 3},
+	)
+}
+
+// TestUpdateQueueWithDeliveryLimit covers the same for the update path, which
+// replaces the queue's settings wholesale.
+func TestUpdateQueueWithDeliveryLimit(t *testing.T) {
+	_, api := humatest.New(t)
+
+	mockNode := mocks.NewMockNode()
+	h := &Handler{node: mockNode}
+	h.RegisterRoutes(api)
+
+	mockNode.On(
+		"UpdateQueue",
+		"my-queue",
+		entity.QueueSettings{AckTimeout: 60, DeliveryLimit: 5},
+	).Return(nil)
+
+	resp := api.Put("/API/v1/queues/my-queue", map[string]any{
+		"settings": map[string]any{
+			"ack_timeout":    60,
+			"delivery_limit": 5,
+		},
+	})
+
+	out := &UpdateQueueOutputBody{}
+	assert.NoError(t, json.Unmarshal(resp.Body.Bytes(), out))
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, uint32(5), out.Settings.DeliveryLimit)
+}

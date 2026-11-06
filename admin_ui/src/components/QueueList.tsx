@@ -68,6 +68,13 @@ const columns = [
               <Badge colorPalette={"orange"}>{settings?.ack_timeout}</Badge>
             </Tooltip>
           )}
+          {settings?.delivery_limit && (
+            <Tooltip content="The maximum number of times a message is delivered before it is dropped">
+              <Badge colorPalette={"red"}>
+                {settings?.delivery_limit}
+              </Badge>
+            </Tooltip>
+          )}
         </Box>
       );
     },

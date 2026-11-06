@@ -5,6 +5,7 @@ export interface Queue {
     max_unacked?: number;
     strategy?: string;
     ack_timeout?: string;
+    delivery_limit?: number;
   };
   enqueue_rps: number;
   dequeue_rps: number;

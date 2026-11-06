@@ -35,6 +35,7 @@ type Store interface {
 		content string,
 		metadata map[string]string,
 	) error
+	RestoreMessage(queueName string, msg *entity.Message) error
 	PersistSnapshot(
 		queueConfig *entity.QueueConfig,
 		unacked []*pb.UnackedMessage,

@@ -37,6 +37,7 @@ describe("DequeueMessageForm", () => {
       priority: 0,
       content: "hello world",
       status: 0,
+      delivery_count: 1,
     });
 
     renderWithProviders(<DequeueMessageForm queueName="test-queue" />);

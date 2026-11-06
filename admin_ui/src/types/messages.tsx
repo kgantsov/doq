@@ -3,5 +3,6 @@ export interface Message {
   group: string;
   content: string;
   priority: number;
+  delivery_count: number;
   status: number;
 }

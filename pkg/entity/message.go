@@ -6,11 +6,12 @@ import (
 )
 
 type Message struct {
-	Group    string
-	ID       uint64
-	Priority int64
-	Content  string
-	Metadata map[string]string
+	Group         string
+	ID            uint64
+	Priority      int64
+	Content       string
+	Metadata      map[string]string
+	DeliveryCount uint32
 }
 
 func (m *Message) ToBytes() ([]byte, error) {
@@ -20,11 +21,12 @@ func (m *Message) ToBytes() ([]byte, error) {
 
 func (m *Message) ToProto() *pb.Message {
 	return &pb.Message{
-		Group:    m.Group,
-		Id:       m.ID,
-		Priority: m.Priority,
-		Content:  m.Content,
-		Metadata: m.Metadata,
+		Group:         m.Group,
+		Id:            m.ID,
+		Priority:      m.Priority,
+		Content:       m.Content,
+		Metadata:      m.Metadata,
+		DeliveryCount: m.DeliveryCount,
 	}
 }
 
@@ -36,11 +38,12 @@ func MessageFromBytes(data []byte) (*Message, error) {
 	var msg pb.Message
 	err := proto.Unmarshal(data, &msg)
 	return &Message{
-		Group:    msg.Group,
-		ID:       msg.Id,
-		Priority: msg.Priority,
-		Content:  msg.Content,
-		Metadata: msg.Metadata,
+		Group:         msg.Group,
+		ID:            msg.Id,
+		Priority:      msg.Priority,
+		Content:       msg.Content,
+		Metadata:      msg.Metadata,
+		DeliveryCount: msg.DeliveryCount,
 	}, err
 }
 

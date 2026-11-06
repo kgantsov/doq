@@ -111,11 +111,12 @@ func (n *Node) Enqueue(
 			return nil, err
 		}
 		return &entity.Message{
-			ID:       msg.Id,
-			Group:    group,
-			Priority: msg.Priority,
-			Content:  msg.Content,
-			Metadata: msg.Metadata,
+			ID:            msg.Id,
+			Group:         group,
+			Priority:      msg.Priority,
+			Content:       msg.Content,
+			Metadata:      msg.Metadata,
+			DeliveryCount: msg.DeliveryCount,
 		}, nil
 	}
 
@@ -141,11 +142,12 @@ func (n *Node) Enqueue(
 	}
 
 	return &entity.Message{
-		ID:       r.ID,
-		Group:    group,
-		Priority: r.Priority,
-		Content:  r.Content,
-		Metadata: r.Metadata,
+		ID:            r.ID,
+		Group:         group,
+		Priority:      r.Priority,
+		Content:       r.Content,
+		Metadata:      r.Metadata,
+		DeliveryCount: r.DeliveryCount,
 	}, nil
 }
 
@@ -194,11 +196,12 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
 		}
 
 		return &entity.Message{
-			ID:       msg.Id,
-			Group:    msg.Group,
-			Priority: msg.Priority,
-			Content:  msg.Content,
-			Metadata: msg.Metadata,
+			ID:            msg.Id,
+			Group:         msg.Group,
+			Priority:      msg.Priority,
+			Content:       msg.Content,
+			Metadata:      msg.Metadata,
+			DeliveryCount: msg.DeliveryCount,
 		}, nil
 	}
 
@@ -219,11 +222,12 @@ func (n *Node) Dequeue(QueueName string, ack bool) (*entity.Message, error) {
 	}
 
 	return &entity.Message{
-		ID:       r.ID,
-		Group:    r.Group,
-		Priority: r.Priority,
-		Content:  r.Content,
-		Metadata: r.Metadata,
+		ID:            r.ID,
+		Group:         r.Group,
+		Priority:      r.Priority,
+		Content:       r.Content,
+		Metadata:      r.Metadata,
+		DeliveryCount: r.DeliveryCount,
 	}, nil
 }
 
@@ -261,11 +265,12 @@ func (n *Node) Get(QueueName string, id uint64) (*entity.Message, error) {
 			return nil, err
 		}
 		return &entity.Message{
-			ID:       msg.Id,
-			Group:    msg.Group,
-			Priority: msg.Priority,
-			Content:  msg.Content,
-			Metadata: msg.Metadata,
+			ID:            msg.Id,
+			Group:         msg.Group,
+			Priority:      msg.Priority,
+			Content:       msg.Content,
+			Metadata:      msg.Metadata,
+			DeliveryCount: msg.DeliveryCount,
 		}, nil
 	}
 
@@ -286,11 +291,12 @@ func (n *Node) Get(QueueName string, id uint64) (*entity.Message, error) {
 	}
 
 	return &entity.Message{
-		ID:       r.ID,
-		Group:    r.Group,
-		Priority: r.Priority,
-		Content:  r.Content,
-		Metadata: r.Metadata,
+		ID:            r.ID,
+		Group:         r.Group,
+		Priority:      r.Priority,
+		Content:       r.Content,
+		Metadata:      r.Metadata,
+		DeliveryCount: r.DeliveryCount,
 	}, nil
 }
 
@@ -534,7 +540,6 @@ func (n *Node) GetQueueInfo(queueName string) (*queue.QueueInfo, error) {
 }
 
 func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSettings) error {
-
 	req := &pb.CreateQueueRequest{
 		Name: queueName,
 		Type: queueType,
@@ -542,8 +547,9 @@ func (n *Node) CreateQueue(queueType, queueName string, settings entity.QueueSet
 			Strategy: pb.QueueSettings_Strategy(
 				pb.QueueSettings_Strategy_value[settings.Strategy],
 			),
-			MaxUnacked: uint32(settings.MaxUnacked),
-			AckTimeout: settings.AckTimeout,
+			MaxUnacked:    uint32(settings.MaxUnacked),
+			AckTimeout:    settings.AckTimeout,
+			DeliveryLimit: settings.DeliveryLimit,
 		},
 	}
 
@@ -586,8 +592,9 @@ func (n *Node) UpdateQueue(queueName string, settings entity.QueueSettings) erro
 			Strategy: pb.QueueSettings_Strategy(
 				pb.QueueSettings_Strategy_value[settings.Strategy],
 			),
-			MaxUnacked: uint32(settings.MaxUnacked),
-			AckTimeout: settings.AckTimeout,
+			MaxUnacked:    uint32(settings.MaxUnacked),
+			AckTimeout:    settings.AckTimeout,
+			DeliveryLimit: settings.DeliveryLimit,
 		},
 	}
 	if n.Raft.State() != raft.Leader {
