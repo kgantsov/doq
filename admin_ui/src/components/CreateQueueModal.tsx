@@ -100,83 +100,52 @@ const CreateQueueModal = ({
           <Dialog.CloseTrigger />
           <Dialog.Body>
             <form onSubmit={handleSubmit}>
-              <Field.Root invalid={isError}>
-                <Field.Label>Name</Field.Label>
-                <Input onChange={handleNameChange} value={name}></Input>
-              </Field.Root>
-
-              <Field.Root invalid={isError}>
-                <Field.Label>Acknowledgement Timeout</Field.Label>
-                <NumberInput.Root
-                  width="100%"
-                  value={ackTimeout.toString()}
-                  onValueChange={(e) => setAckTimeout(Number(e.value))}
-                  min={60}
-                >
-                  <NumberInput.Control />
-                  <NumberInput.Input />
-                </NumberInput.Root>
-              </Field.Root>
-
-              <Field.Root invalid={isError}>
-                <Field.Label>Delivery Limit</Field.Label>
-                <NumberInput.Root
-                  width="100%"
-                  value={deliveryLimit.toString()}
-                  onValueChange={(e) => setDeliveryLimit(Number(e.value))}
-                  min={0}
-                >
-                  <NumberInput.Control />
-                  <NumberInput.Input />
-                </NumberInput.Root>
-              </Field.Root>
-
-              <Field.Root invalid={isError}>
-                <Field.Label>Type</Field.Label>
-
-                <Select.Root
-                  size="sm"
-                  collection={types}
-                  defaultValue={type}
-                  onValueChange={(v) => setType(v.value)}
-                >
-                  <Select.HiddenSelect />
-                  <Select.Control>
-                    <Select.Trigger>
-                      <Select.ValueText placeholder="Select type" />
-                    </Select.Trigger>
-                    <Select.IndicatorGroup>
-                      <Select.Indicator />
-                    </Select.IndicatorGroup>
-                  </Select.Control>
-                  <Select.Positioner>
-                    <Select.Content>
-                      {types.items.map((typeOption) => (
-                        <Select.Item item={typeOption} key={typeOption.value}>
-                          {typeOption.label}
-                          <Select.ItemIndicator />
-                        </Select.Item>
-                      ))}
-                    </Select.Content>
-                  </Select.Positioner>
-                </Select.Root>
-              </Field.Root>
-              {type[0] === "fair" ? (
-                <Fieldset.Root mt={10}>
-                  <Fieldset.Legend>Settings</Fieldset.Legend>
+              <Fieldset.Root>
+                <Fieldset.Content>
+                  <Field.Root invalid={isError}>
+                    <Field.Label>Name</Field.Label>
+                    <Input onChange={handleNameChange} value={name}></Input>
+                  </Field.Root>
 
                   <Field.Root invalid={isError}>
-                    <Field.Label>Strategy</Field.Label>
+                    <Field.Label>Acknowledgement Timeout</Field.Label>
+                    <NumberInput.Root
+                      width="100%"
+                      value={ackTimeout.toString()}
+                      onValueChange={(e) => setAckTimeout(Number(e.value))}
+                      min={60}
+                    >
+                      <NumberInput.Control />
+                      <NumberInput.Input />
+                    </NumberInput.Root>
+                  </Field.Root>
+
+                  <Field.Root invalid={isError}>
+                    <Field.Label>Delivery Limit</Field.Label>
+                    <NumberInput.Root
+                      width="100%"
+                      value={deliveryLimit.toString()}
+                      onValueChange={(e) => setDeliveryLimit(Number(e.value))}
+                      min={0}
+                    >
+                      <NumberInput.Control />
+                      <NumberInput.Input />
+                    </NumberInput.Root>
+                  </Field.Root>
+
+                  <Field.Root invalid={isError}>
+                    <Field.Label>Type</Field.Label>
+
                     <Select.Root
                       size="sm"
-                      collection={strategies}
-                      defaultValue={strategy}
-                      onValueChange={(v) => setStrategy(v.value)}
+                      collection={types}
+                      defaultValue={type}
+                      onValueChange={(v) => setType(v.value)}
                     >
                       <Select.HiddenSelect />
                       <Select.Control>
                         <Select.Trigger>
-                          <Select.ValueText placeholder="Select strategy" />
+                          <Select.ValueText placeholder="Select type" />
                         </Select.Trigger>
                         <Select.IndicatorGroup>
                           <Select.Indicator />
@@ -184,12 +153,9 @@ const CreateQueueModal = ({
                       </Select.Control>
                       <Select.Positioner>
                         <Select.Content>
-                          {strategies.items.map((strategyOption) => (
-                            <Select.Item
-                              item={strategyOption}
-                              key={strategyOption.value}
-                            >
-                              {strategyOption.label}
+                          {types.items.map((typeOption) => (
+                            <Select.Item item={typeOption} key={typeOption.value}>
+                              {typeOption.label}
                               <Select.ItemIndicator />
                             </Select.Item>
                           ))}
@@ -197,34 +163,72 @@ const CreateQueueModal = ({
                       </Select.Positioner>
                     </Select.Root>
                   </Field.Root>
+                  {type[0] === "fair" ? (
+                    <Fieldset.Root mt={10}>
+                      <Fieldset.Legend>Settings</Fieldset.Legend>
 
-                  <Field.Root invalid={isError}>
-                    <Field.Label>Max Unacked</Field.Label>
-                    <NumberInput.Root
-                      width="100%"
-                      value={maxUnacked.toString()}
-                      onValueChange={(e) => setMaxUnacked(Number(e.value))}
-                      min={0}
+                      <Field.Root invalid={isError}>
+                        <Field.Label>Strategy</Field.Label>
+                        <Select.Root
+                          size="sm"
+                          collection={strategies}
+                          defaultValue={strategy}
+                          onValueChange={(v) => setStrategy(v.value)}
+                        >
+                          <Select.HiddenSelect />
+                          <Select.Control>
+                            <Select.Trigger>
+                              <Select.ValueText placeholder="Select strategy" />
+                            </Select.Trigger>
+                            <Select.IndicatorGroup>
+                              <Select.Indicator />
+                            </Select.IndicatorGroup>
+                          </Select.Control>
+                          <Select.Positioner>
+                            <Select.Content>
+                              {strategies.items.map((strategyOption) => (
+                                <Select.Item
+                                  item={strategyOption}
+                                  key={strategyOption.value}
+                                >
+                                  {strategyOption.label}
+                                  <Select.ItemIndicator />
+                                </Select.Item>
+                              ))}
+                            </Select.Content>
+                          </Select.Positioner>
+                        </Select.Root>
+                      </Field.Root>
+
+                      <Field.Root invalid={isError}>
+                        <Field.Label>Max Unacked</Field.Label>
+                        <NumberInput.Root
+                          width="100%"
+                          value={maxUnacked.toString()}
+                          onValueChange={(e) => setMaxUnacked(Number(e.value))}
+                          min={0}
+                        >
+                          <NumberInput.Control />
+                          <NumberInput.Input />
+                        </NumberInput.Root>
+                      </Field.Root>
+                    </Fieldset.Root>
+                  ) : (
+                    ""
+                  )}
+                  <Box mt={4}>
+                    <Progress.Root
+                      size="xs"
+                      opacity={mutation.isPending ? 1 : 0}
+                      value={null}
                     >
-                      <NumberInput.Control />
-                      <NumberInput.Input />
-                    </NumberInput.Root>
-                  </Field.Root>
-                </Fieldset.Root>
-              ) : (
-                ""
-              )}
-              <Box mt={4}>
-                <Progress.Root
-                  size="xs"
-                  opacity={mutation.isPending ? 1 : 0}
-                  value={null}
-                >
-                  <Progress.Track>
-                    <Progress.Range />
-                  </Progress.Track>
-                </Progress.Root>
-              </Box>
+                      <Progress.Track>
+                        <Progress.Range />
+                      </Progress.Track>
+                    </Progress.Root>
+                  </Box>
+                </Fieldset.Content>
+              </Fieldset.Root>
             </form>
           </Dialog.Body>
 

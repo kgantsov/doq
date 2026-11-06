@@ -1,5 +1,6 @@
 import {
   Field,
+  Fieldset,
   Button,
   Switch,
   Text,
@@ -48,36 +49,43 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
       <Card.Root>
         <Card.Body>
           <form onSubmit={handleSubmit}>
-            <Field.Root>
-              <Field.Label>Ack</Field.Label>
-              <Switch.Root
-                size="lg"
-                onCheckedChange={(v) => handleAckChange(v.checked)}
-                checked={ack}
-              >
-                <Switch.HiddenInput />
-                <Switch.Control>
-                  <Switch.Thumb />
-                </Switch.Control>
-                <Switch.Label />
-              </Switch.Root>
-            </Field.Root>
-            <Box mt={4}>
-              <Progress.Root
-                size="xs"
-                opacity={mutation.isPending ? 1 : 0}
-                value={null}
-              >
-                <Progress.Track>
-                  <Progress.Range />
-                </Progress.Track>
-              </Progress.Root>
-            </Box>
-            <Stack gap={5} pt={4} direction="row" align="center">
-              <Button colorPalette="teal" type="submit">
-                Dequeue
-              </Button>
-            </Stack>
+            <Fieldset.Root>
+              <Fieldset.Content>
+                <Field.Root>
+                  <Field.Label>Ack</Field.Label>
+                  <Switch.Root
+                    size="lg"
+                    onCheckedChange={(v) => handleAckChange(v.checked)}
+                    checked={ack}
+                  >
+                    <Switch.HiddenInput />
+                    <Switch.Control>
+                      <Switch.Thumb />
+                    </Switch.Control>
+                    <Switch.Label />
+                  </Switch.Root>
+                </Field.Root>
+                {mutation.isPending ? (
+                  <Box mt={4}>
+                    <Progress.Root
+                      size="xs"
+                      opacity={mutation.isPending ? 1 : 0}
+                      value={null}
+                    >
+                      <Progress.Track>
+                        <Progress.Range />
+                      </Progress.Track>
+                    </Progress.Root>
+                  </Box>
+                ) : (
+                  <Stack gap={5} pt={4} direction="row" align="center">
+                    <Button colorPalette="teal" type="submit">
+                      Dequeue
+                    </Button>
+                  </Stack>
+                ) }
+              </Fieldset.Content>
+            </Fieldset.Root>
           </form>
         </Card.Body>
       </Card.Root>
