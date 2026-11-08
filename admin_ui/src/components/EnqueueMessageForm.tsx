@@ -16,6 +16,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toaster } from "./ui/toaster";
 import { InfoIcon } from "lucide-react";
 import { Tooltip } from "./ui/tooltip";
+import { ApiError } from "@/api/errors";
 
 const EnqueueMessageForm = ({ queueName }: { queueName: string }) => {
   const [content, setContent] = useState("");
@@ -25,10 +26,10 @@ const EnqueueMessageForm = ({ queueName }: { queueName: string }) => {
 
   const mutation = useMutation({
     mutationFn: EnqueueMessage,
-    onError: (error: Error) => {
+    onError: (error: ApiError) => {
       toaster.create({
-        title: "Error enqueuing message",
-        description: error.message,
+        title: error?.details?.detail || "Error enqueuing message",
+        description: (error?.details?.errors) ? error?.details?.errors[0]?.message : error.message,
         type: "error",
         duration: 9000,
       });

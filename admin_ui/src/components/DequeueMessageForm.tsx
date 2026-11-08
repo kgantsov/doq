@@ -1,4 +1,6 @@
 import {
+  Alert,
+  CloseButton,
   Field,
   Fieldset,
   Button,
@@ -10,6 +12,7 @@ import {
   Heading,
   Progress,
 } from "@chakra-ui/react";
+import { ApiError } from "../api/errors";
 import { useState } from "react";
 import { DequeueMessage, NackMessage, DequeueRequest } from "../api/messages";
 import { Message } from "../types/messages";
@@ -20,7 +23,7 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
   const [dequeuedAt, setDequeuedAt] = useState("");
   const [ack, setAck] = useState(false);
 
-  const mutation = useMutation({
+  const mutation = useMutation<Message, ApiError, DequeueRequest>({
     mutationFn: async ({ queueName, ack }: DequeueRequest) => {
       const data = await DequeueMessage({ queueName, ack });
       if (ack) return data;
@@ -43,6 +46,8 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
       ack: ack,
     });
   };
+
+  const err = mutation.error as ApiError | null;
 
   return (
     <>
@@ -90,7 +95,25 @@ const DequeueMessageForm = ({ queueName }: { queueName: string }) => {
         </Card.Body>
       </Card.Root>
       {mutation.isError ? (
-        <Text>Failed to dequeue message</Text>
+        <Card.Root mt={4}>
+          <Alert.Root status={err?.status === 404 ? "info" : "error"}>
+            <Alert.Indicator />
+            <Alert.Content>
+              <Alert.Title>
+                {err?.details?.detail || "Error"}
+              </Alert.Title>
+              <Alert.Description>
+                {(err?.details?.errors) ? (
+                  err?.details?.errors[0]?.message || mutation.error.message
+                ) : mutation.error.message}
+              </Alert.Description>
+            </Alert.Content>
+            <CloseButton pos="relative" top="-2" insetEnd="-2" onClick={() => {
+              setDequeuedMessage(null)
+              mutation.reset()
+            }} />
+          </Alert.Root>
+        </Card.Root>
       ) : (
         dequeuedMessage?.content && (
           <Card.Root mt={4}>

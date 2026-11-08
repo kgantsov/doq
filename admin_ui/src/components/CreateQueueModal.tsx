@@ -13,7 +13,8 @@ import {
 import { toaster } from "./ui/toaster";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createQueue } from "../api/queues";
+import { createQueue, CreateQueueRequest } from "../api/queues";
+import { ApiError } from "@/api/errors";
 
 const CreateQueueModal = ({
   isOpen,
@@ -30,7 +31,7 @@ const CreateQueueModal = ({
   const [deliveryLimit, setDeliveryLimit] = useState(0);
   const queryClient = useQueryClient();
 
-  const mutation = useMutation({
+  const mutation = useMutation<unknown, ApiError, CreateQueueRequest>({
     mutationFn: createQueue,
     onSuccess: () => {
       toaster.create({
@@ -48,10 +49,10 @@ const CreateQueueModal = ({
       setAckTimeout(1800);
       onClose();
     },
-    onError: (error) => {
+    onError: (error: ApiError) => {
       toaster.create({
-        title: "Failed to create queue.",
-        description: error.message,
+        title: error?.details?.detail || "Failed to create queue.",
+        description: (error?.details?.errors) ? error?.details?.errors[0]?.message : error.message,
         type: "error",
         duration: 9000,
       });

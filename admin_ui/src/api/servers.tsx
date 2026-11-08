@@ -1,18 +1,23 @@
-const parseErrorMessage = async (response: Response) => {
-  let message = `Error ${response.status}`;
-
-  try {
-    const body = await response.json();
-    message = body?.errors?.[0]?.message || body?.detail || message;
-  } catch (err) {
-    console.error(err);
-  }
-
-  return message;
-};
+import { ApiError } from "./errors";
 
 export const getServers = async () => {
   const response = await fetch("/API/v1/cluster/servers");
+
+  if (!response.ok) {
+    let errorDetails;
+    try {
+      errorDetails = await response.json();
+    } catch {
+      errorDetails = null;
+    }
+
+    throw new ApiError(
+      `Failed to get servers: ${response.statusText}`,
+      response.status,
+      errorDetails
+    );
+  }
+
   return await response.json();
 };
 
@@ -30,7 +35,18 @@ export const leaveCluster = async ({
   });
 
   if (!response.ok) {
-    throw new Error(await parseErrorMessage(response));
+    let errorDetails;
+    try {
+      errorDetails = await response.json();
+    } catch {
+      errorDetails = null;
+    }
+
+    throw new ApiError(
+      `Failed to leave cluster: ${response.statusText}`,
+      response.status,
+      errorDetails
+    );
   }
 };
 
@@ -40,6 +56,17 @@ export const transferLeadership = async () => {
   });
 
   if (!response.ok) {
-    throw new Error(await parseErrorMessage(response));
+    let errorDetails;
+    try {
+      errorDetails = await response.json();
+    } catch {
+      errorDetails = null;
+    }
+
+    throw new ApiError(
+      `Failed to transfer leadership: ${response.statusText}`,
+      response.status,
+      errorDetails
+    );
   }
 };

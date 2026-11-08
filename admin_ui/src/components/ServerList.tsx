@@ -20,6 +20,7 @@ import { LogOut, ArrowRightLeft } from "lucide-react";
 // arrow-big-up-dash
 
 import { Tooltip } from "./ui/tooltip";
+import { ApiError } from "@/api/errors";
 
 const suffrageColors: Record<Suffrage, string> = {
   Voter: "teal",
@@ -59,13 +60,11 @@ const ServerList = () => {
         duration: 9000,
       });
     },
-    onError: (error: Error) => {
+    onError: (error: ApiError) => {
       setIsOpen({ id: "", isOpen: false });
       toaster.create({
-        title: "Failed to leave the cluster.",
-        description:
-          error.message ||
-          "This action can only be performed on the leader node.",
+        title: error?.details?.detail || "Failed to leave the cluster.",
+        description: (error?.details?.errors) ? error?.details?.errors[0]?.message : error.message,
         type: "error",
         duration: 9000,
       });
@@ -84,13 +83,11 @@ const ServerList = () => {
         duration: 9000,
       });
     },
-    onError: (error: Error) => {
+    onError: (error: ApiError) => {
       setIsTransferOpen(false);
       toaster.create({
-        title: "Failed to transfer leadership.",
-        description:
-          error.message ||
-          "This action can only be performed on the leader node.",
+        title: error?.details?.detail || "Failed to transfer leadership.",
+        description: (error?.details?.errors) ? error?.details?.errors[0]?.message : error.message,
         type: "error",
         duration: 9000,
       });

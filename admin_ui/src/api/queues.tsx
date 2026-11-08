@@ -1,4 +1,5 @@
 import { Queue } from "../types/queues";
+import { ApiError } from "./errors";
 
 export const getQueues = async () => {
   const response = await fetch("/API/v1/queues");
@@ -7,24 +8,34 @@ export const getQueues = async () => {
 
 export const getQueue = async (name: string): Promise<Queue> => {
   const response = await fetch(`/API/v1/queues/${name}`);
-  if (!response.ok) {
-    // Example: Read error body or create your own
-    let message = `Error ${response.status}`;
 
+  if (!response.ok) {
+    let errorDetails;
     try {
-      const body = await response.json();
-      message = body?.errors?.[0]?.message || message;
-    } catch (err) {
-      console.error(err);
+      errorDetails = await response.json();
+    } catch {
+      errorDetails = null;
     }
 
-    // Throw the error for React Query to catch
-    throw new Error(message);
+    throw new ApiError(
+      `Failed to get a queue: ${response.statusText}`,
+      response.status,
+      errorDetails
+    );
   }
 
   const data = await response.json();
 
   return data;
+};
+
+export type CreateQueueRequest = {
+  name: string;
+  type: string;
+  maxUnacked?: number;
+  ackTimeout?: number;
+  strategy?: string;
+  deliveryLimit?: number;
 };
 
 export const createQueue = async ({
@@ -34,14 +45,7 @@ export const createQueue = async ({
   ackTimeout = 1800,
   strategy = "weighted",
   deliveryLimit = 0,
-}: {
-  name: string;
-  type: string;
-  maxUnacked?: number;
-  ackTimeout?: number;
-  strategy?: string;
-  deliveryLimit?: number;
-}) => {
+}: CreateQueueRequest) => {
   let settings: {
     max_unacked?: number;
     strategy?: string;
@@ -68,14 +72,18 @@ export const createQueue = async ({
   });
 
   if (!response.ok) {
-    let message = `Error ${response.status}`;
+    let errorDetails;
     try {
-      const body = await response.json();
-      message = body?.errors?.[0]?.message || message;
-    } catch (err) {
-      console.error(err);
+      errorDetails = await response.json();
+    } catch {
+      errorDetails = null;
     }
-    throw new Error(message);
+
+    throw new ApiError(
+      `Failed to create a queue: ${response.statusText}`,
+      response.status,
+      errorDetails
+    );
   }
 };
 
@@ -85,13 +93,17 @@ export const deleteQueue = async ({ name }: { name: string }) => {
   });
 
   if (!response.ok) {
-    let message = `Error ${response.status}`;
+    let errorDetails;
     try {
-      const body = await response.json();
-      message = body?.errors?.[0]?.message || message;
-    } catch (err) {
-      console.error(err);
+      errorDetails = await response.json();
+    } catch {
+      errorDetails = null;
     }
-    throw new Error(message);
+
+    throw new ApiError(
+      `Failed to delete a queue: ${response.statusText}`,
+      response.status,
+      errorDetails
+    );
   }
 };

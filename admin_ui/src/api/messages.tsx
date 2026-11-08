@@ -1,4 +1,5 @@
 import { Message } from "../types/messages";
+import { ApiError } from "./errors";
 
 export type EnqueueRequest = {
   id: string;
@@ -33,9 +34,22 @@ export const EnqueueMessage = async ({
       content,
     }),
   });
+
   if (!response.ok) {
-    throw new Error(`Failed to enqueue message: ${response.statusText}`);
+    let errorDetails;
+    try {
+      errorDetails = await response.json();
+    } catch {
+      errorDetails = null;
+    }
+
+    throw new ApiError(
+      `Failed to enqueue message: ${response.statusText}`,
+      response.status,
+      errorDetails
+    );
   }
+
   return await response.json();
 };
 
@@ -53,9 +67,22 @@ export const DequeueMessage = async ({
       },
     }
   );
+
   if (!response.ok) {
-    throw new Error(`Failed to dequeue message: ${response.statusText}`);
+    let errorDetails;
+    try {
+      errorDetails = await response.json();
+    } catch {
+      errorDetails = null;
+    }
+
+    throw new ApiError(
+      `Failed to dequeue message: ${response.statusText}`,
+      response.status,
+      errorDetails
+    );
   }
+
   return await response.json();
 };
 
@@ -73,8 +100,21 @@ export const NackMessage = async (queueName: string, id: string) => {
       }),
     }
   );
+
   if (!response.ok) {
-    throw new Error(`Failed to nack message: ${response.statusText}`);
+    let errorDetails;
+    try {
+      errorDetails = await response.json();
+    } catch {
+      errorDetails = null;
+    }
+
+    throw new ApiError(
+      `Failed to nack message: ${response.statusText}`,
+      response.status,
+      errorDetails
+    );
   }
+
   return await response.json();
 };

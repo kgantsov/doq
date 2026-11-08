@@ -28,6 +28,7 @@ import EnqueueMessageForm from "./EnqueueMessageForm";
 import DequeueMessageForm from "./DequeueMessageForm";
 import SparkLine from "./SparkLine";
 import { Tooltip } from "./ui/tooltip";
+import { ApiError } from "@/api/errors";
 
 const QueueDetails = ({ queueName }: { queueName: string }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,11 +50,11 @@ const QueueDetails = ({ queueName }: { queueName: string }) => {
         duration: 9000,
       });
     },
-    onError: (error) => {
+    onError: (error: ApiError) => {
       setIsOpen(false);
       toaster.create({
-        title: "Failed to delete queue.",
-        description: error.message,
+        title: error?.details?.detail || "Failed to delete queue.",
+        description: (error?.details?.errors) ? error?.details?.errors[0]?.message : error.message,
         type: "error",
         duration: 9000,
       });
