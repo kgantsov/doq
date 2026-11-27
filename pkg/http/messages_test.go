@@ -131,6 +131,45 @@ func TestEnqueue(t *testing.T) {
 	assert.Equal(t, "3", enqueueOutput.Metadata["retry"])
 }
 
+// TestEnqueueAlreadyExists checks that an enqueue for an id DOQ already holds
+// reports ALREADY_EXISTS and returns the stored message, not the request.
+func TestEnqueueAlreadyExists(t *testing.T) {
+	_, api := humatest.New(t)
+
+	mockNode := mocks.NewMockNode()
+	h := &Handler{node: mockNode}
+	h.RegisterRoutes(api)
+
+	mockNode.On(
+		"Enqueue", "my-queue", uint64(7), "default", int64(100), "copy", map[string]string(nil),
+	).Return(&entity.Message{
+		ID:            uint64(7),
+		Priority:      10,
+		Group:         "default",
+		Content:       "original",
+		Metadata:      map[string]string{"retry": "1"},
+		DeliveryCount: 1,
+		AlreadyExists: true,
+	}, nil)
+
+	resp := api.Post("/API/v1/queues/my-queue/messages", map[string]any{
+		"id":       "7",
+		"content":  "copy",
+		"priority": 100,
+	})
+
+	out := &EnqueueOutputBody{}
+	json.Unmarshal(resp.Body.Bytes(), out)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, "ALREADY_EXISTS", out.Status)
+	assert.Equal(t, "7", out.ID)
+	assert.Equal(t, int64(10), out.Priority)
+	assert.Equal(t, "original", out.Content)
+	assert.Equal(t, map[string]string{"retry": "1"}, out.Metadata)
+	assert.Equal(t, uint32(1), out.DeliveryCount)
+}
+
 func TestDequeue(t *testing.T) {
 	_, api := humatest.New(t)
 

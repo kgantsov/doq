@@ -37,6 +37,7 @@ type FSMResponse struct {
 	Content       string
 	Metadata      map[string]string
 	DeliveryCount uint32
+	AlreadyExists bool
 	error         error
 }
 
@@ -155,6 +156,7 @@ func (f *FSM) applyEnqueue(payload *pb.RaftCommand_Enqueue) *FSMResponse {
 		Content:       msg.Content,
 		Metadata:      msg.Metadata,
 		DeliveryCount: msg.DeliveryCount,
+		AlreadyExists: msg.AlreadyExists,
 		error:         nil,
 	}
 }

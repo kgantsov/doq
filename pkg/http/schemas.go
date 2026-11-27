@@ -159,7 +159,7 @@ type EnqueueInput struct {
 }
 
 type EnqueueOutputBody struct {
-	Status        string            `json:"status" example:"ENQUEUED" doc:"Status of the enqueue operation"`
+	Status        string            `json:"status" enum:"ENQUEUED,ALREADY_EXISTS" example:"ENQUEUED" doc:"Status of the enqueue operation. ALREADY_EXISTS: the id was already in the queue, nothing changed, and the fields describe the stored message"`
 	ID            string            `json:"id" doc:"ID of the message"`
 	Group         string            `json:"group,omitempty" default:"default" example:"customer-1" doc:"Group of the message"`
 	Priority      int64             `json:"priority" minimum:"0" example:"60" doc:"Priority of the message"`

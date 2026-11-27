@@ -35,6 +35,16 @@ const EnqueueMessageForm = ({ queueName }: { queueName: string }) => {
       });
     },
     onSuccess: (message) => {
+      if (message.status === "ALREADY_EXISTS") {
+        toaster.create({
+          title: "Message not enqueued.",
+          description: `A message with ID ${message.id} already exists in the queue, so nothing was changed.`,
+          type: "warning",
+          duration: 9000,
+        });
+        return;
+      }
+
       toaster.create({
         title: "Message enqueued.",
         description: `The message with ID ${message.id} has been enqueued successfully.`,

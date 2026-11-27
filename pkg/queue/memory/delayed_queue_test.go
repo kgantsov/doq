@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestDelayedQueue tests the priority queue
@@ -228,4 +229,24 @@ func TestDelayedQueuePeekReady(t *testing.T) {
 	assert.True(t, ready)
 	assert.Equal(t, time.Duration(0), wait)
 	assert.Equal(t, uint64(2), q.Len())
+}
+
+// TestDelayedQueueEnqueueDuplicateID enqueues an ID that is already queued. The
+// id index holds one position per ID, so the second enqueue must move the
+// existing item rather than add an entry Get and Delete can't reach.
+func TestDelayedQueueEnqueueDuplicateID(t *testing.T) {
+	q := NewDelayedQueue(true)
+
+	q.Enqueue("default", &Item{ID: 1, Priority: 30})
+	q.Enqueue("default", &Item{ID: 2, Priority: 20})
+	q.Enqueue("default", &Item{ID: 1, Priority: 10})
+
+	assert.Equal(t, uint64(2), q.Len())
+	require.NotNil(t, q.Get("default", 1))
+	assert.Equal(t, int64(10), q.Get("default", 1).Priority)
+	assert.Equal(t, uint64(1), q.queue.Peek().(*Item).ID)
+
+	require.NotNil(t, q.Delete("default", 1))
+	assert.Nil(t, q.Get("default", 1))
+	assert.Equal(t, uint64(1), q.Len())
 }

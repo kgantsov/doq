@@ -811,3 +811,83 @@ func testRaftConfig(addr string) config.RaftConfig {
 		SnapshotThreshold: 8192,
 	}
 }
+
+// TestNodeEnqueueExistingIDSurvivesRestart enqueues an id that is unacked, then
+// restarts the node without a snapshot. The restart replays the Raft log over a
+// store that already holds the messages, so the duplicate check must give the
+// same answer on replay as it did live: the unacked message stays unacked and
+// the other message is ready, each exactly once.
+func TestNodeEnqueueExistingIDSurvivesRestart(t *testing.T) {
+	storeDir := t.TempDir()
+	raftDir := t.TempDir()
+	stableStoreDir := t.TempDir()
+
+	cfg := &config.Config{
+		Cluster: config.ClusterConfig{NodeID: "localhost"},
+		Http:    config.HttpConfig{Port: "9190"},
+		Raft:    testRaftConfig("localhost:9191"),
+		Queue: config.QueueConfig{
+			AcknowledgementCheckInterval: 1,
+			QueueStats:                   config.QueueStatsConfig{WindowSide: 10},
+		},
+	}
+
+	// The DBs stay open across the restart, as in
+	// TestNodeAckTimeoutSurvivesRestart.
+	db, err := badger.Open(badger.DefaultOptions(storeDir))
+	require.NoError(t, err)
+	defer db.Close()
+	raftDB, err := badger.Open(badger.DefaultOptions(stableStoreDir))
+	require.NoError(t, err)
+	defer raftDB.Close()
+
+	startNode := func() (*Node, func()) {
+		n := NewNode(db, raftDB, raftDir, cfg, []string{})
+		n.Initialize()
+		require.Eventually(t, n.IsLeader, 10*time.Second, 20*time.Millisecond)
+		require.NoError(t, n.Raft.Barrier(10*time.Second).Error())
+
+		return n, func() { require.NoError(t, n.Shutdown()) }
+	}
+
+	const queueName = "enqueue_existing_id"
+
+	n, stop := startNode()
+
+	require.NoError(t, n.CreateQueue("delayed", queueName, entity.QueueSettings{AckTimeout: 3600}))
+
+	m, err := n.Enqueue(queueName, 1, "default", 10, "original", nil)
+	require.NoError(t, err)
+	assert.False(t, m.AlreadyExists)
+
+	got, err := n.Dequeue(queueName, false)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(1), got.ID)
+
+	m, err = n.Enqueue(queueName, 1, "default", 20, "copy", nil)
+	require.NoError(t, err)
+	assert.True(t, m.AlreadyExists)
+	assert.Equal(t, "original", m.Content)
+	assert.Equal(t, int64(10), m.Priority)
+	assert.Equal(t, uint32(1), m.DeliveryCount)
+
+	_, err = n.Enqueue(queueName, 2, "default", 10, "other", nil)
+	require.NoError(t, err)
+
+	stop()
+
+	n, stop = startNode()
+	defer stop()
+
+	info, err := n.GetQueueInfo(queueName)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), info.Ready)
+	assert.Equal(t, int64(1), info.Unacked)
+
+	got, err = n.Dequeue(queueName, true)
+	require.NoError(t, err)
+	assert.Equal(t, uint64(2), got.ID)
+
+	_, err = n.Dequeue(queueName, true)
+	require.Error(t, err)
+}

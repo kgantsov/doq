@@ -12,6 +12,11 @@ type Message struct {
 	Content       string
 	Metadata      map[string]string
 	DeliveryCount uint32
+
+	// AlreadyExists reports that an enqueue found this id already in the queue
+	// and left the message as it was. It describes the enqueue, not the
+	// message, so it is never persisted.
+	AlreadyExists bool
 }
 
 func (m *Message) ToBytes() ([]byte, error) {

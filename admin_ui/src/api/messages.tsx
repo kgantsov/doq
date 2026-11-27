@@ -9,6 +9,14 @@ export type EnqueueRequest = {
   content: string;
 };
 
+// ALREADY_EXISTS: the id was already in the queue, so nothing was enqueued and
+// the response describes the stored message, not the request.
+export type EnqueueStatus = "ENQUEUED" | "ALREADY_EXISTS";
+
+export interface EnqueueResponse extends Message {
+  status: EnqueueStatus;
+}
+
 export type DequeueRequest = {
   queueName: string;
   ack: boolean;
@@ -20,7 +28,7 @@ export const EnqueueMessage = async ({
   group,
   priority,
   content,
-}: EnqueueRequest): Promise<Message> => {
+}: EnqueueRequest): Promise<EnqueueResponse> => {
   const response = await fetch(`/API/v1/queues/${queueName}/messages`, {
     method: "POST",
     headers: {

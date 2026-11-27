@@ -948,3 +948,70 @@ func TestDeliveryLimitInQueueSettings(t *testing.T) {
 	assert.True(t, resp.Success)
 	mockNode.AssertCalled(t, "CreateQueue", "delayed", "test-queue", settings)
 }
+
+// TestEnqueueStreamAlreadyExists sends an id DOQ already holds, then a new one,
+// on one stream. The duplicate is flagged on its own response with the stored
+// message, and the stream carries on.
+func TestEnqueueStreamAlreadyExists(t *testing.T) {
+	mockNode := mocks.NewMockNode()
+	startTestServer(mockNode)
+
+	ctx := context.Background()
+	conn, err := grpc.DialContext(
+		ctx, "bufnet", grpc.WithContextDialer(bufDialer), grpc.WithInsecure(),
+	)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	client := pb.NewDOQClient(conn)
+
+	mockNode.On(
+		"Enqueue", "test-queue", uint64(7), "default", int64(20), "copy", map[string]string(nil),
+	).Return(&entity.Message{
+		ID:            uint64(7),
+		Priority:      10,
+		Group:         "default",
+		Content:       "original",
+		DeliveryCount: 1,
+		AlreadyExists: true,
+	}, nil)
+	mockNode.On(
+		"Enqueue", "test-queue", uint64(8), "default", int64(20), "new", map[string]string(nil),
+	).Return(&entity.Message{
+		ID:       uint64(8),
+		Priority: 20,
+		Group:    "default",
+		Content:  "new",
+	}, nil)
+
+	// Unary.
+	resp, err := client.Enqueue(ctx, &pb.EnqueueRequest{
+		QueueName: "test-queue", Id: 7, Group: "default", Priority: 20, Content: "copy",
+	})
+	require.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.True(t, resp.AlreadyExists)
+	assert.Equal(t, "original", resp.Content)
+	assert.Equal(t, int64(10), resp.Priority)
+	assert.Equal(t, uint32(1), resp.DeliveryCount)
+
+	// Stream.
+	stream, err := client.EnqueueStream(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, stream.Send(&pb.EnqueueRequest{
+		QueueName: "test-queue", Id: 7, Group: "default", Priority: 20, Content: "copy",
+	}))
+	resp, err = stream.Recv()
+	require.NoError(t, err)
+	assert.True(t, resp.AlreadyExists)
+	assert.Equal(t, "original", resp.Content)
+
+	require.NoError(t, stream.Send(&pb.EnqueueRequest{
+		QueueName: "test-queue", Id: 8, Group: "default", Priority: 20, Content: "new",
+	}))
+	resp, err = stream.Recv()
+	require.NoError(t, err, "stream ended after a duplicate")
+	assert.False(t, resp.AlreadyExists)
+	assert.Equal(t, uint64(8), resp.Id)
+}

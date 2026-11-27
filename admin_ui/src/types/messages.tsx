@@ -4,5 +4,6 @@ export interface Message {
   content: string;
   priority: number;
   delivery_count: number;
-  status: number;
+  // What the request did, e.g. "DEQUEUED" or "ENQUEUED".
+  status: string;
 }
