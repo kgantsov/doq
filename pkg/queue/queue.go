@@ -375,6 +375,19 @@ func (q *Queue) Enqueue(
 		group = "default"
 	}
 
+	// An enqueue for an id that is ready or unacked changes nothing and returns
+	// the stored message: client retries are safe, and an unacked message isn't
+	// handed to a second consumer.
+	if q.contains(group, id) {
+		log.Debug().Msgf("Message %d already exists, ignoring enqueue", id)
+		existing, err := q.store.Get(q.config.Name, id)
+		if err != nil {
+			return nil, err
+		}
+		existing.AlreadyExists = true
+		return existing, nil
+	}
+
 	queueItem := &memory.Item{
 		ID:       id,
 		Group:    group,
@@ -386,12 +399,6 @@ func (q *Queue) Enqueue(
 	)
 	if err != nil {
 		return msg, err
-	}
-	item := q.queue.Get(group, queueItem.ID) // Ensure the item is in the queue
-	if item != nil {
-		log.Debug().Msgf("Item with ID %d already exists in the queue, updating priority", queueItem.ID)
-		queueItem.UpdatePriority(item.Priority)
-		return msg, nil
 	}
 
 	log.Debug().Msgf("Enqueuing new item with ID %d", queueItem.ID)
@@ -407,6 +414,26 @@ func (q *Queue) Enqueue(
 	}
 
 	return msg, nil
+}
+
+// contains reports whether id is on the ready queue or unacked. It asks the
+// in-memory queues, not the store: they always match the FSM's position in the
+// Raft log, while a node restarting without a snapshot replays the log over a
+// store that already holds the entries' results.
+func (q *Queue) contains(group string, id uint64) bool {
+	if q.ackQueue.Get("default", id) != nil || q.queue.Get(group, id) != nil {
+		return true
+	}
+
+	// A fair queue's ready queue is looked up by group, and the id may come
+	// back under a different one. The store only says where to look.
+	if q.config.Type == "fair" {
+		if stored, err := q.store.Get(q.config.Name, id); err == nil && stored.Group != group {
+			return q.queue.Get(stored.Group, id) != nil
+		}
+	}
+
+	return false
 }
 
 // Dequeue removes and returns the next message. seed drives the random pick of

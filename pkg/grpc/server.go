@@ -266,6 +266,7 @@ func (s *QueueServer) Enqueue(
 		Content:       message.Content,
 		Metadata:      message.Metadata,
 		DeliveryCount: message.DeliveryCount,
+		AlreadyExists: message.AlreadyExists,
 	}, nil
 }
 
@@ -299,6 +300,7 @@ func (s *QueueServer) EnqueueStream(stream pb.DOQ_EnqueueStreamServer) error {
 			Content:       message.Content,
 			Metadata:      message.Metadata,
 			DeliveryCount: message.DeliveryCount,
+			AlreadyExists: message.AlreadyExists,
 		})
 		if err != nil {
 			log.Error().Str("component", "grpc").Err(err).Msgf(

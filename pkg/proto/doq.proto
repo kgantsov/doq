@@ -192,6 +192,9 @@ message EnqueueResponse {
     string content = 6;
     map<string, string> metadata = 7;
     uint32 delivery_count = 8;
+    // The id was already in the queue, so nothing changed and the fields above
+    // describe the stored message, not the request.
+    bool already_exists = 9;
 }
 
 message DequeueRequest {

@@ -46,15 +46,22 @@ func (h *Handler) Enqueue(ctx context.Context, input *EnqueueInput) (*EnqueueOut
 		return nil, mapError("Failed to enqueue a message", err)
 	}
 
+	// For an id that was already in the queue, nothing changed: the response
+	// shows the stored message, not the request.
+	status := "ENQUEUED"
+	if msg.AlreadyExists {
+		status = "ALREADY_EXISTS"
+	}
+
 	res := &EnqueueOutput{
 		Status: http.StatusOK,
 		Body: EnqueueOutputBody{
-			Status:        "ENQUEUED",
+			Status:        status,
 			ID:            strconv.Itoa(int(msg.ID)),
-			Group:         group,
-			Priority:      priority,
-			Content:       content,
-			Metadata:      metadata,
+			Group:         msg.Group,
+			Priority:      msg.Priority,
+			Content:       msg.Content,
+			Metadata:      msg.Metadata,
 			DeliveryCount: msg.DeliveryCount,
 		},
 	}

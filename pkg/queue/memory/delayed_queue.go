@@ -21,9 +21,17 @@ func (pq *DelayedQueue) UpdateMaxUnacked(maxUnacked int) error {
 	return nil
 }
 
+// Enqueue adds item, or, when an item with its ID is already queued, moves that
+// item to item's priority. The id index holds one position per ID, so a second
+// entry for an ID could never be reached by Get, Delete or UpdatePriority.
 func (pq *DelayedQueue) Enqueue(group string, item *Item) {
 	pq.mu.Lock()
 	defer pq.mu.Unlock()
+
+	if pq.queue.Get(item.ID) != nil {
+		pq.queue.UpdatePriority(item.ID, item.Priority)
+		return
+	}
 
 	heap.Push(pq.queue, item)
 }

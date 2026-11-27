@@ -112,11 +112,12 @@ func (n *Node) Enqueue(
 		}
 		return &entity.Message{
 			ID:            msg.Id,
-			Group:         group,
+			Group:         msg.Group,
 			Priority:      msg.Priority,
 			Content:       msg.Content,
 			Metadata:      msg.Metadata,
 			DeliveryCount: msg.DeliveryCount,
+			AlreadyExists: msg.AlreadyExists,
 		}, nil
 	}
 
@@ -143,11 +144,12 @@ func (n *Node) Enqueue(
 
 	return &entity.Message{
 		ID:            r.ID,
-		Group:         group,
+		Group:         r.Group,
 		Priority:      r.Priority,
 		Content:       r.Content,
 		Metadata:      r.Metadata,
 		DeliveryCount: r.DeliveryCount,
+		AlreadyExists: r.AlreadyExists,
 	}, nil
 }
 
